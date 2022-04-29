@@ -1,5 +1,8 @@
 import warnings
 
+import numpy.linalg
+import pandas as pd
+
 from .target_space import TargetSpace
 from .event import Events, DEFAULT_EVENTS
 from .logger import _get_default_logger
@@ -41,6 +44,7 @@ class Observable(object):
     Inspired/Taken from
         https://www.protechtraining.com/blog/post/879#simple-observer
     """
+
     def __init__(self, events):
         # maps event names to subscribers
         # str -> dict
@@ -88,6 +92,9 @@ class BayesianOptimization(Observable):
     bounds_transformer: DomainTransformer, optional(default=None)
         If provided, the transformation is applied to the bounds.
 
+    dataset_path: str, optional(default=None)
+            path of the dataset file specified by the user.
+
     Methods
     -------
     probe()
@@ -101,8 +108,11 @@ class BayesianOptimization(Observable):
     set_bounds()
         Allows changing the lower and upper searching bounds
     """
+
     def __init__(self, f, pbounds, random_state=None, verbose=2,
-                 bounds_transformer=None):
+                 bounds_transformer=None,
+                 dataset_path=None):
+        self._dataset_path = dataset_path
         self._random_state = ensure_rng(random_state)
 
         # Data structure containing the function to be optimized, the bounds of
@@ -122,6 +132,7 @@ class BayesianOptimization(Observable):
 
         self._verbose = verbose
         self._bounds_transformer = bounds_transformer
+
         if self._bounds_transformer:
             try:
                 self._bounds_transformer.initialize(self._space)
@@ -248,6 +259,7 @@ class BayesianOptimization(Observable):
 
         xi: float, optional(default=0.0)
             [unused]
+
         """
         self._prime_subscriptions()
         self.dispatch(Events.OPTIMIZATION_START)
@@ -260,21 +272,75 @@ class BayesianOptimization(Observable):
                                kappa_decay=kappa_decay,
                                kappa_decay_delay=kappa_decay_delay)
         iteration = 0
-        while not self._queue.empty or iteration < n_iter:
-            try:
-                x_probe = next(self._queue)
-            except StopIteration:
-                util.update_params()
-                x_probe = self.suggest(util)
-                iteration += 1
 
-            self.probe(x_probe, lazy=False)
+        # if user specifies a dataset it takes approximated points from it
+        if self._dataset_path is not None:
+            ds = pd.read_csv(self._dataset_path)
+            while not self._queue.empty or iteration < n_iter:
+                try:
+                    x_probe = next(self._queue)
+                except StopIteration:
+                    util.update_params()
+                    x_probe = self.suggest(util)
+                    iteration += 1
 
-            if self._bounds_transformer:
-                self.set_bounds(
-                    self._bounds_transformer.transform(self._space))
+                approximation = self.get_approximation(ds, x_probe)
+                if approximation is not None:
+                    self.probe(approximation, lazy=False)
+                else:
+                    self.probe(x_probe, lazy=False)
 
-        self.dispatch(Events.OPTIMIZATION_END)
+
+                if self._bounds_transformer:
+                    self.set_bounds(
+                        self._bounds_transformer.transform(self._space))
+
+            self.dispatch(Events.OPTIMIZATION_END)
+        else:
+            while not self._queue.empty or iteration < n_iter:
+                try:
+                    x_probe = next(self._queue)
+                except StopIteration:
+                    util.update_params()
+                    x_probe = self.suggest(util)
+                    iteration += 1
+
+                self.probe(x_probe, lazy=False)
+
+                if self._bounds_transformer:
+                    self.set_bounds(
+                        self._bounds_transformer.transform(self._space))
+
+            self.dispatch(Events.OPTIMIZATION_END)
+
+    # get point approximation (x_probe) from dataset provided by user
+    def get_approximation(self, dataset, x_probe):
+
+        try:
+            x_array = numpy.array(list(x_probe.values()))
+
+        except AttributeError:
+            x_array = x_probe
+
+        min_distance = None
+        min_index = None
+        approximation = None
+
+        for i in dataset.itertuples():
+            tuple_arr = []
+            for j in range(x_array.size):
+                tuple_arr.append(i[j + 1])
+            res = numpy.linalg.norm(x_array - tuple_arr)
+
+            if min_distance is None:
+                min_distance = res
+                min_index = i.Index
+                approximation = self._space.array_to_params(tuple_arr)
+            elif res < min_distance:
+                min_distance = res
+                min_index = i.Index
+                approximation = self._space.array_to_params(tuple_arr)
+        return approximation
 
     def set_bounds(self, new_bounds):
         """
