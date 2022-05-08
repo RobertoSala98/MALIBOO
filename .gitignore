@@ -9,6 +9,8 @@ scratch/
 bo_eg*.png
 gif/
 
+*.csv
+
 # Unit test / coverage reports
 htmlcov/
 .tox/

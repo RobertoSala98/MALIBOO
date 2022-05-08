@@ -112,7 +112,12 @@ class BayesianOptimization(Observable):
     def __init__(self, f, pbounds, random_state=None, verbose=2,
                  bounds_transformer=None,
                  dataset_path=None):
-        self._dataset_path = dataset_path
+
+        if dataset_path is None:
+            self._dataset = None
+        else:
+            self._dataset = pd.read_csv(dataset_path)
+
         self._random_state = ensure_rng(random_state)
 
         # Data structure containing the function to be optimized, the bounds of
@@ -273,9 +278,13 @@ class BayesianOptimization(Observable):
                                kappa_decay_delay=kappa_decay_delay)
         iteration = 0
 
+        # un csv per ognuno:
+        # salva file risultati: punti scelti dall'ottimizzazione, se dataset entrambi
+        # valori funzione target, valori funzione di acquisizione
+
         # if user specifies a dataset it takes approximated points from it
-        if self._dataset_path is not None:
-            ds = pd.read_csv(self._dataset_path)
+        if self._dataset is not None:
+            print("here")
             while not self._queue.empty or iteration < n_iter:
                 try:
                     x_probe = next(self._queue)
@@ -290,12 +299,12 @@ class BayesianOptimization(Observable):
                 else:
                     self.probe(x_probe, lazy=False)
 
-
                 if self._bounds_transformer:
                     self.set_bounds(
                         self._bounds_transformer.transform(self._space))
-
             self.dispatch(Events.OPTIMIZATION_END)
+            self.save_res_to_csv(True)
+
         else:
             while not self._queue.empty or iteration < n_iter:
                 try:
@@ -312,9 +321,22 @@ class BayesianOptimization(Observable):
                         self._bounds_transformer.transform(self._space))
 
             self.dispatch(Events.OPTIMIZATION_END)
+            self.save_res_to_csv(False)
 
-    # get point approximation (x_probe) from dataset provided by user
+
     def get_approximation(self, dataset, x_probe):
+        """
+        Method to get from the dataset passed by the user the nearest point to the x_probe point
+
+        Parameters
+        ----------
+
+        dataset: pandas.DataFrame
+            dataset specified by the user
+
+        x_probe: dict
+            point found by the optimization process
+        """
 
         try:
             x_array = numpy.array(list(x_probe.values()))
@@ -326,21 +348,41 @@ class BayesianOptimization(Observable):
         min_index = None
         approximation = None
 
-        for i in dataset.itertuples():
-            tuple_arr = []
+        for row in dataset.itertuples():
+            dataset_tuple = []
+            # inizializzazione nello stesso istante
             for j in range(x_array.size):
-                tuple_arr.append(i[j + 1])
-            res = numpy.linalg.norm(x_array - tuple_arr)
+                dataset_tuple.append(row[j + 1])
+            # Norma L2 esplicitata, aggiungere parametro al metodo?
+            res = numpy.linalg.norm(x_array - dataset_tuple, 2)
 
             if min_distance is None:
                 min_distance = res
-                min_index = i.Index
-                approximation = self._space.array_to_params(tuple_arr)
+                min_index = row.Index
+                approximation = self._space.array_to_params(dataset_tuple)
             elif res < min_distance:
                 min_distance = res
-                min_index = i.Index
-                approximation = self._space.array_to_params(tuple_arr)
+                min_index = row.Index
+                approximation = self._space.array_to_params(dataset_tuple)
         return approximation
+
+    def save_res_to_csv(self, is_approximation):
+        """
+        A method to save results of the optimization to csv files located in results directory
+
+        Parameters
+        ----------
+
+        is_approximation: bool
+            true if the user passes a dataset as input
+        """
+        if is_approximation:
+            approximation_res = pd.DataFrame.from_dict(self.res)
+            approximation_res.to_csv("results/approximation.csv", index=True)
+
+        else:
+            exact_res = pd.DataFrame.from_dict(self.res)
+            exact_res.to_csv("results/exact.csv", index=True)
 
     def set_bounds(self, new_bounds):
         """
