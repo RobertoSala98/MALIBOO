@@ -1,3 +1,4 @@
+import random
 import warnings
 
 import numpy.linalg
@@ -356,7 +357,7 @@ class BayesianOptimization(Observable):
 
         min_distance = None
         min_index = None
-        approximation = []
+        approximations = []
 
         if self._target_column is None:
             for row in dataset.itertuples():
@@ -368,32 +369,37 @@ class BayesianOptimization(Observable):
 
                 if min_distance is None:
                     min_distance = res
-                    approximation = self._space.array_to_params(dataset_tuple)
+                    approximations = self._space.array_to_params(dataset_tuple)
+                elif res == min_distance:
+                    approximations.append(self._space.array_to_params(dataset_tuple))
                 elif res < min_distance:
                     min_distance = res
-                    approximation = self._space.array_to_params(dataset_tuple)
-            return approximation
+                    approximations = self._space.array_to_params(dataset_tuple)
+            return random.choice(approximations)
         else:
-            #dataset.drop(self._target_column)
+            # dataset.drop(self._target_column)
             for row in dataset.loc[:, dataset.columns != self._target_column].itertuples():
                 dataset_tuple = []
                 for j in range(x_array.size):
                     dataset_tuple.append(row[j + 1])
 
-
                 res = numpy.linalg.norm(x_array - dataset_tuple, 2)
 
-                 ##TODO aggiungi caso in cui res == min_distance
                 if min_distance.size == 0:
                     min_index = row[0]
                     min_distance = res
-                    approximation = self._space.array_to_params(dataset_tuple)
+                    approximations = self._space.array_to_params(dataset_tuple)
+                elif res == min_distance:
+                    if row[self._target_column] > dataset.iloc[min_index][self._target_column]:
+                        min_index = row[0]
+                        min_distance = res
+                        approximations = self._space.array_to_params(dataset_tuple)
+
                 elif res < min_distance:
                     min_index = row[0]
                     min_distance = res
-                    approximation = self._space.array_to_params(dataset_tuple)
-            return approximation, dataset.iloc[min_index][self._target_column]
-
+                    approximations = self._space.array_to_params(dataset_tuple)
+            return approximations, dataset.iloc[min_index][self._target_column]
 
     def save_res_to_csv(self, is_approximation, exact_x=None):
         """
