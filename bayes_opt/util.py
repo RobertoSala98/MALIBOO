@@ -57,6 +57,7 @@ def acq_max(ac, gp, y_max, bounds, random_state, n_warmup=10000, n_iter=10):
                        bounds=bounds,
                        method="L-BFGS-B")
 
+
         # See if success
         if not res.success:
             continue

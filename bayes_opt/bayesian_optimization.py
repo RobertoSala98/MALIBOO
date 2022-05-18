@@ -111,12 +111,17 @@ class BayesianOptimization(Observable):
 
     def __init__(self, f, pbounds, random_state=None, verbose=2,
                  bounds_transformer=None,
-                 dataset_path=None):
+                 dataset_path=None, target_column=None):
 
         if dataset_path is None:
             self._dataset = None
         else:
             self._dataset = pd.read_csv(dataset_path)
+
+        if target_column is None:
+            self._target_column = None
+        else:
+            self._target_column = target_column
 
         self._random_state = ensure_rng(random_state)
 
@@ -278,13 +283,9 @@ class BayesianOptimization(Observable):
                                kappa_decay_delay=kappa_decay_delay)
         iteration = 0
 
-        # un csv per ognuno:
-        # salva file risultati: punti scelti dall'ottimizzazione, se dataset entrambi
-        # valori funzione target, valori funzione di acquisizione
-
         # if user specifies a dataset it takes approximated points from it
         if self._dataset is not None:
-            print("here")
+            exact_x_dict = []
             while not self._queue.empty or iteration < n_iter:
                 try:
                     x_probe = next(self._queue)
@@ -293,8 +294,18 @@ class BayesianOptimization(Observable):
                     x_probe = self.suggest(util)
                     iteration += 1
 
-                approximation = self.get_approximation(ds, x_probe)
-                if approximation is not None:
+                try:
+                    exact_x_dict.append(dict(zip(self._space.keys, x_probe.T)))
+
+                except AttributeError:
+                    exact_x_dict.append(x_probe)
+
+                approximation = self.get_approximation(self._dataset, x_probe)
+                if self._target_column is not None and approximation is not None:
+
+                    self._space.register(approximation[0], approximation[1])
+
+                elif approximation is not None:
                     self.probe(approximation, lazy=False)
                 else:
                     self.probe(x_probe, lazy=False)
@@ -303,7 +314,7 @@ class BayesianOptimization(Observable):
                     self.set_bounds(
                         self._bounds_transformer.transform(self._space))
             self.dispatch(Events.OPTIMIZATION_END)
-            self.save_res_to_csv(True)
+            self.save_res_to_csv(True, exact_x=exact_x_dict)
 
         else:
             while not self._queue.empty or iteration < n_iter:
@@ -322,7 +333,6 @@ class BayesianOptimization(Observable):
 
             self.dispatch(Events.OPTIMIZATION_END)
             self.save_res_to_csv(False)
-
 
     def get_approximation(self, dataset, x_probe):
         """
@@ -346,27 +356,46 @@ class BayesianOptimization(Observable):
 
         min_distance = None
         min_index = None
-        approximation = None
+        approximation = []
 
-        for row in dataset.itertuples():
-            dataset_tuple = []
-            # inizializzazione nello stesso istante
-            for j in range(x_array.size):
-                dataset_tuple.append(row[j + 1])
-            # Norma L2 esplicitata, aggiungere parametro al metodo?
-            res = numpy.linalg.norm(x_array - dataset_tuple, 2)
+        if self._target_column is None:
+            for row in dataset.itertuples():
+                dataset_tuple = []
+                for j in range(x_array.size):
+                    dataset_tuple.append(row[j + 1])
 
-            if min_distance is None:
-                min_distance = res
-                min_index = row.Index
-                approximation = self._space.array_to_params(dataset_tuple)
-            elif res < min_distance:
-                min_distance = res
-                min_index = row.Index
-                approximation = self._space.array_to_params(dataset_tuple)
-        return approximation
+                res = numpy.linalg.norm(x_array - dataset_tuple, 2)
 
-    def save_res_to_csv(self, is_approximation):
+                if min_distance is None:
+                    min_distance = res
+                    approximation = self._space.array_to_params(dataset_tuple)
+                elif res < min_distance:
+                    min_distance = res
+                    approximation = self._space.array_to_params(dataset_tuple)
+            return approximation
+        else:
+            #dataset.drop(self._target_column)
+            for row in dataset.loc[:, dataset.columns != self._target_column].itertuples():
+                dataset_tuple = []
+                for j in range(x_array.size):
+                    dataset_tuple.append(row[j + 1])
+
+
+                res = numpy.linalg.norm(x_array - dataset_tuple, 2)
+
+                 ##TODO aggiungi caso in cui res == min_distance
+                if min_distance.size == 0:
+                    min_index = row[0]
+                    min_distance = res
+                    approximation = self._space.array_to_params(dataset_tuple)
+                elif res < min_distance:
+                    min_index = row[0]
+                    min_distance = res
+                    approximation = self._space.array_to_params(dataset_tuple)
+            return approximation, dataset.iloc[min_index][self._target_column]
+
+
+    def save_res_to_csv(self, is_approximation, exact_x=None):
         """
         A method to save results of the optimization to csv files located in results directory
 
@@ -375,10 +404,15 @@ class BayesianOptimization(Observable):
 
         is_approximation: bool
             true if the user passes a dataset as input
+        exact_x : list[dict]
+            contains exact x_probe
         """
         if is_approximation:
             approximation_res = pd.DataFrame.from_dict(self.res)
             approximation_res.to_csv("results/approximation.csv", index=True)
+
+            exact_points = pd.DataFrame.from_dict(exact_x)
+            exact_points.to_csv("results/exact_x.csv", index=True)
 
         else:
             exact_res = pd.DataFrame.from_dict(self.res)

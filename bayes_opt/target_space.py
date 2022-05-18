@@ -52,7 +52,6 @@ class TargetSpace(object):
         # preallocated memory for X and Y points
         self._params = np.empty(shape=(0, self.dim))
         self._target = np.empty(shape=(0))
-
         # keep track of unique points we have seen so far
         self._cache = {}
 
