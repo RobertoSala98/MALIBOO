@@ -1,3 +1,4 @@
+import os
 import random
 import warnings
 
@@ -112,7 +113,9 @@ class BayesianOptimization(Observable):
 
     def __init__(self, f, pbounds, random_state=None, verbose=2,
                  bounds_transformer=None,
-                 dataset_path=None, target_column=None):
+                 dataset_path=None, output_path=None, target_column=None):
+
+        self.output_path = output_path
 
         if dataset_path is None:
             self._dataset = None
@@ -304,7 +307,8 @@ class BayesianOptimization(Observable):
                 approximation = self.get_approximation(self._dataset, x_probe)
                 if self._target_column is not None and approximation is not None:
 
-                    self._space.register(approximation[0], approximation[1])
+                    self._space.register(approximation["params"], approximation["target"])
+                    self.dispatch(Events.OPTIMIZATION_STEP)
 
                 elif approximation is not None:
                     self.probe(approximation, lazy=False)
@@ -347,6 +351,13 @@ class BayesianOptimization(Observable):
 
         x_probe: dict
             point found by the optimization process
+
+        Returns
+        -------
+            approximations : dict[]
+
+            approximated x_probe, with corresponding target value, if target column is specified by the user
+
         """
 
         try:
@@ -361,45 +372,45 @@ class BayesianOptimization(Observable):
 
         if self._target_column is None:
             for row in dataset.itertuples():
-                dataset_tuple = []
-                for j in range(x_array.size):
-                    dataset_tuple.append(row[j + 1])
+
+                dataset_tuple = numpy.array(row[1:])
 
                 res = numpy.linalg.norm(x_array - dataset_tuple, 2)
 
                 if min_distance is None:
                     min_distance = res
-                    approximations = self._space.array_to_params(dataset_tuple)
+                    approximations = [self._space.array_to_params(dataset_tuple)]
                 elif res == min_distance:
                     approximations.append(self._space.array_to_params(dataset_tuple))
                 elif res < min_distance:
                     min_distance = res
-                    approximations = self._space.array_to_params(dataset_tuple)
+                    approximations = [self._space.array_to_params(dataset_tuple)]
             return random.choice(approximations)
         else:
-            # dataset.drop(self._target_column)
             for row in dataset.loc[:, dataset.columns != self._target_column].itertuples():
-                dataset_tuple = []
-                for j in range(x_array.size):
-                    dataset_tuple.append(row[j + 1])
+
+                dataset_tuple = numpy.array(row[1:])
 
                 res = numpy.linalg.norm(x_array - dataset_tuple, 2)
 
-                if min_distance.size == 0:
+                if min_distance is None:
                     min_index = row[0]
                     min_distance = res
-                    approximations = self._space.array_to_params(dataset_tuple)
+                    approximations = [{"target": dataset.iloc[min_index][self._target_column],
+                                       "params": self._space.array_to_params(dataset_tuple)}]
                 elif res == min_distance:
-                    if row[self._target_column] > dataset.iloc[min_index][self._target_column]:
-                        min_index = row[0]
-                        min_distance = res
-                        approximations = self._space.array_to_params(dataset_tuple)
+
+                    min_index = row[0]
+                    min_distance = res
+                    approximations.append({"target": dataset.iloc[min_index][self._target_column],
+                                           "params": self._space.array_to_params(dataset_tuple)})
 
                 elif res < min_distance:
                     min_index = row[0]
                     min_distance = res
-                    approximations = self._space.array_to_params(dataset_tuple)
-            return approximations, dataset.iloc[min_index][self._target_column]
+                    approximations = [{"target": dataset.iloc[min_index][self._target_column],
+                                       "params": self._space.array_to_params(dataset_tuple)}]
+            return random.choice(approximations)
 
     def save_res_to_csv(self, is_approximation, exact_x=None):
         """
@@ -414,15 +425,26 @@ class BayesianOptimization(Observable):
             contains exact x_probe
         """
         if is_approximation:
+
+            try:
+                os.makedirs(self.output_path + "results")
+            except FileExistsError:
+                pass
+
             approximation_res = pd.DataFrame.from_dict(self.res)
-            approximation_res.to_csv("results/approximation.csv", index=True)
+            approximation_res.to_csv(self.output_path+"results/approx_x.csv", index=True)
 
             exact_points = pd.DataFrame.from_dict(exact_x)
-            exact_points.to_csv("results/exact_x.csv", index=True)
+            exact_points.to_csv(self.output_path+"results/exact_x.csv", index=True)
 
         else:
+            try:
+                os.makedirs(self.output_path + "results")
+            except FileExistsError:
+                pass
+
             exact_res = pd.DataFrame.from_dict(self.res)
-            exact_res.to_csv("results/exact.csv", index=True)
+            exact_res.to_csv(self.output_path+"results/exact.csv", index=True)
 
     def set_bounds(self, new_bounds):
         """

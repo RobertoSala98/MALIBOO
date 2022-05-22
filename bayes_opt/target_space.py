@@ -156,11 +156,11 @@ class TargetSpace(object):
         1
         """
         x = self._as_array(params)
-        if x in self:
-            raise KeyError('Data point {} is not unique'.format(x))
+        if x not in self:
+            # Insert data into unique dictionary
+            self._cache[_hashable(x.ravel())] = target
 
-        # Insert data into unique dictionary
-        self._cache[_hashable(x.ravel())] = target
+
 
         self._params = np.concatenate([self._params, x.reshape(1, -1)])
         self._target = np.concatenate([self._target, [target]])
