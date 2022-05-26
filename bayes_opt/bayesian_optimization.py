@@ -115,7 +115,10 @@ class BayesianOptimization(Observable):
                  bounds_transformer=None,
                  dataset_path=None, output_path=None, target_column=None):
 
-        self.output_path = output_path
+        if output_path is None:
+            self.output_path = os.getcwd()
+        else:
+            self.output_path = output_path
 
         if dataset_path is None:
             self._dataset = None
@@ -427,24 +430,24 @@ class BayesianOptimization(Observable):
         if is_approximation:
 
             try:
-                os.makedirs(self.output_path + "results")
+                os.makedirs(self.output_path)
             except FileExistsError:
                 pass
 
             approximation_res = pd.DataFrame.from_dict(self.res)
-            approximation_res.to_csv(self.output_path+"results/approx_x.csv", index=True)
+            approximation_res.to_csv(os.path.join(self.output_path, "approx_x.csv"), index=True)
 
             exact_points = pd.DataFrame.from_dict(exact_x)
-            exact_points.to_csv(self.output_path+"results/exact_x.csv", index=True)
+            exact_points.to_csv(os.path.join(self.output_path, "exact_x.csv"), index=True)
 
         else:
             try:
-                os.makedirs(self.output_path + "results")
+                os.makedirs(self.output_path)
             except FileExistsError:
                 pass
 
             exact_res = pd.DataFrame.from_dict(self.res)
-            exact_res.to_csv(self.output_path+"results/exact.csv", index=True)
+            exact_res.to_csv(os.path.join(self.output_path, "exact.csv"), index=True)
 
     def set_bounds(self, new_bounds):
         """
