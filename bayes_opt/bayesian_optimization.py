@@ -97,6 +97,9 @@ class BayesianOptimization(Observable):
     dataset_path: str, optional(default=None)
             path of the dataset file specified by the user.
 
+    output_path: str, optional(default=None)
+            path to directory in which the results are written, if not specified by user it is the working directory
+
     Methods
     -------
     probe()
@@ -399,20 +402,28 @@ class BayesianOptimization(Observable):
                 if min_distance is None:
                     min_index = row[0]
                     min_distance = res
-                    approximations = [{"target": dataset.iloc[min_index][self._target_column],
-                                       "params": self._space.array_to_params(dataset_tuple)}]
+                    approximations = [
+                        {
+                            "target": dataset.iloc[min_index][self._target_column],
+                            "params": self._space.array_to_params(dataset_tuple)
+                        }]
                 elif res == min_distance:
 
                     min_index = row[0]
                     min_distance = res
-                    approximations.append({"target": dataset.iloc[min_index][self._target_column],
-                                           "params": self._space.array_to_params(dataset_tuple)})
-
+                    approximations.append(
+                        {
+                            "target": dataset.iloc[min_index][self._target_column],
+                            "params": self._space.array_to_params(dataset_tuple)
+                        })
                 elif res < min_distance:
                     min_index = row[0]
                     min_distance = res
-                    approximations = [{"target": dataset.iloc[min_index][self._target_column],
-                                       "params": self._space.array_to_params(dataset_tuple)}]
+                    approximations = [
+                        {
+                            "target": dataset.iloc[min_index][self._target_column],
+                            "params": self._space.array_to_params(dataset_tuple)
+                        }]
             return random.choice(approximations)
 
     def save_res_to_csv(self, is_approximation, exact_x=None):
@@ -435,10 +446,11 @@ class BayesianOptimization(Observable):
                 pass
 
             approximation_res = pd.DataFrame.from_dict(self.res)
-            approximation_res.to_csv(os.path.join(self.output_path, "approx_x.csv"), index=True)
+            approximation_res.to_csv(os.path.join(self.output_path, "approx_x.csv"), index=False)
 
             exact_points = pd.DataFrame.from_dict(exact_x)
-            exact_points.to_csv(os.path.join(self.output_path, "exact_x.csv"), index=True)
+            exact_points.to_csv(os.path.join(self.output_path, "exact_x.csv"), index=False)
+            print("Results successfully saved to " + self.output_path)
 
         else:
             try:
@@ -447,7 +459,9 @@ class BayesianOptimization(Observable):
                 pass
 
             exact_res = pd.DataFrame.from_dict(self.res)
-            exact_res.to_csv(os.path.join(self.output_path, "exact.csv"), index=True)
+            exact_res.to_csv(os.path.join(self.output_path, "exact.csv"), index=False)
+
+            print("Results successfully saved to " + self.output_path)
 
     def set_bounds(self, new_bounds):
         """

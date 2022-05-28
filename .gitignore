@@ -9,7 +9,9 @@ scratch/
 bo_eg*.png
 gif/
 
-*.csv
+approx_x.csv
+exact.csv
+exact_x.csv
 
 # Unit test / coverage reports
 htmlcov/

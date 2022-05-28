@@ -65,7 +65,7 @@ class ScreenLogger(_Tracker):
         cells.append(self._format_number(res["target"]))
 
         for key in instance.space.keys:
-            cells.append(self._format_number(res["params"][key]))
+            cells.append(self._format_number(res[key]))
 
         return "| " + " | ".join(map(colour, cells)) + " |"
 
