@@ -8,6 +8,8 @@ scratch/
 .DS_Store
 bo_eg*.png
 gif/
+*.csv
+!datasets/test*.csv
 
 approx_x.csv
 exact.csv
