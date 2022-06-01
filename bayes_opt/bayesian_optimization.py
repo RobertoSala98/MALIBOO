@@ -76,10 +76,10 @@ class BayesianOptimization(Observable):
 
     Parameters
     ----------
-    f: function
+    f: function, optional(default=None)
         Function to be maximized.
 
-    pbounds: dict
+    pbounds: dict, optional(default=None)
         Dictionary with parameters names as keys and a tuple with minimum
         and maximum values.
 
@@ -114,7 +114,7 @@ class BayesianOptimization(Observable):
         Allows changing the lower and upper searching bounds
     """
 
-    def __init__(self, f, pbounds, random_state=None, verbose=2,
+    def __init__(self, f=None, pbounds=None, random_state=None, verbose=2,
                  bounds_transformer=None,
                  dataset_path=None, output_path=None, target_column=None):
 
@@ -133,7 +133,17 @@ class BayesianOptimization(Observable):
         else:
             self._target_column = target_column
 
+        if pbounds is None:
+            raise ValueError("pbounds must be specified!")
         self._random_state = ensure_rng(random_state)
+
+        if f is None and target_column is None:
+            raise ValueError("target column must be specified if no function is given!")
+        elif f is not None and target_column is not None:
+            raise Exception("You cannot specify both function and target column, one of them must be None!")
+
+        if target_column is not None and dataset_path is None:
+            raise Exception("You must specify a dataset for the given target column!")
 
         # Data structure containing the function to be optimized, the bounds of
         # its domain, and a record of the evaluations we have done so far
