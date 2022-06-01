@@ -1,4 +1,9 @@
+import os
+import random
 import warnings
+
+import numpy.linalg
+import pandas as pd
 
 from .target_space import TargetSpace
 from .event import Events, DEFAULT_EVENTS
@@ -41,6 +46,7 @@ class Observable(object):
     Inspired/Taken from
         https://www.protechtraining.com/blog/post/879#simple-observer
     """
+
     def __init__(self, events):
         # maps event names to subscribers
         # str -> dict
@@ -70,10 +76,10 @@ class BayesianOptimization(Observable):
 
     Parameters
     ----------
-    f: function
+    f: function, optional(default=None)
         Function to be maximized.
 
-    pbounds: dict
+    pbounds: dict, optional(default=None)
         Dictionary with parameters names as keys and a tuple with minimum
         and maximum values.
 
@@ -88,6 +94,12 @@ class BayesianOptimization(Observable):
     bounds_transformer: DomainTransformer, optional(default=None)
         If provided, the transformation is applied to the bounds.
 
+    dataset_path: str, optional(default=None)
+            path of the dataset file specified by the user.
+
+    output_path: str, optional(default=None)
+            path to directory in which the results are written, if not specified by user it is the working directory
+
     Methods
     -------
     probe()
@@ -101,9 +113,37 @@ class BayesianOptimization(Observable):
     set_bounds()
         Allows changing the lower and upper searching bounds
     """
-    def __init__(self, f, pbounds, random_state=None, verbose=2,
-                 bounds_transformer=None):
+
+    def __init__(self, f=None, pbounds=None, random_state=None, verbose=2,
+                 bounds_transformer=None,
+                 dataset_path=None, output_path=None, target_column=None):
+
+        if output_path is None:
+            self.output_path = os.getcwd()
+        else:
+            self.output_path = output_path
+
+        if dataset_path is None:
+            self._dataset = None
+        else:
+            self._dataset = pd.read_csv(dataset_path)
+
+        if target_column is None:
+            self._target_column = None
+        else:
+            self._target_column = target_column
+
+        if pbounds is None:
+            raise ValueError("pbounds must be specified!")
         self._random_state = ensure_rng(random_state)
+
+        if f is None and target_column is None:
+            raise ValueError("target column must be specified if no function is given!")
+        elif f is not None and target_column is not None:
+            raise Exception("You cannot specify both function and target column, one of them must be None!")
+
+        if target_column is not None and dataset_path is None:
+            raise Exception("You must specify a dataset for the given target column!")
 
         # Data structure containing the function to be optimized, the bounds of
         # its domain, and a record of the evaluations we have done so far
@@ -122,6 +162,7 @@ class BayesianOptimization(Observable):
 
         self._verbose = verbose
         self._bounds_transformer = bounds_transformer
+
         if self._bounds_transformer:
             try:
                 self._bounds_transformer.initialize(self._space)
@@ -248,6 +289,7 @@ class BayesianOptimization(Observable):
 
         xi: float, optional(default=0.0)
             [unused]
+
         """
         self._prime_subscriptions()
         self.dispatch(Events.OPTIMIZATION_START)
@@ -260,21 +302,176 @@ class BayesianOptimization(Observable):
                                kappa_decay=kappa_decay,
                                kappa_decay_delay=kappa_decay_delay)
         iteration = 0
-        while not self._queue.empty or iteration < n_iter:
+
+        # if user specifies a dataset it takes approximated points from it
+        if self._dataset is not None:
+            exact_x_dict = []
+            while not self._queue.empty or iteration < n_iter:
+                try:
+                    x_probe = next(self._queue)
+                except StopIteration:
+                    util.update_params()
+                    x_probe = self.suggest(util)
+                    iteration += 1
+
+                try:
+                    exact_x_dict.append(dict(zip(self._space.keys, x_probe.T)))
+
+                except AttributeError:
+                    exact_x_dict.append(x_probe)
+
+                approximation = self.get_approximation(self._dataset, x_probe)
+                if self._target_column is not None and approximation is not None:
+
+                    self._space.register(approximation["params"], approximation["target"])
+                    self.dispatch(Events.OPTIMIZATION_STEP)
+
+                elif approximation is not None:
+                    self.probe(approximation, lazy=False)
+                else:
+                    self.probe(x_probe, lazy=False)
+
+                if self._bounds_transformer:
+                    self.set_bounds(
+                        self._bounds_transformer.transform(self._space))
+            self.dispatch(Events.OPTIMIZATION_END)
+            self.save_res_to_csv(True, exact_x=exact_x_dict)
+
+        else:
+            while not self._queue.empty or iteration < n_iter:
+                try:
+                    x_probe = next(self._queue)
+                except StopIteration:
+                    util.update_params()
+                    x_probe = self.suggest(util)
+                    iteration += 1
+
+                self.probe(x_probe, lazy=False)
+
+                if self._bounds_transformer:
+                    self.set_bounds(
+                        self._bounds_transformer.transform(self._space))
+
+            self.dispatch(Events.OPTIMIZATION_END)
+            self.save_res_to_csv(False)
+
+    def get_approximation(self, dataset, x_probe):
+        """
+        Method to get from the dataset passed by the user the nearest point to the x_probe point
+
+        Parameters
+        ----------
+
+        dataset: pandas.DataFrame
+            dataset specified by the user
+
+        x_probe: dict
+            point found by the optimization process
+
+        Returns
+        -------
+            approximations : dict[]
+
+            approximated x_probe, with corresponding target value, if target column is specified by the user
+
+        """
+
+        try:
+            x_array = numpy.array(list(x_probe.values()))
+
+        except AttributeError:
+            x_array = x_probe
+
+        min_distance = None
+        min_index = None
+        approximations = []
+
+        if self._target_column is None:
+            for row in dataset.itertuples():
+
+                dataset_tuple = numpy.array(row[1:])
+
+                res = numpy.linalg.norm(x_array - dataset_tuple, 2)
+
+                if min_distance is None:
+                    min_distance = res
+                    approximations = [self._space.array_to_params(dataset_tuple)]
+                elif res == min_distance:
+                    approximations.append(self._space.array_to_params(dataset_tuple))
+                elif res < min_distance:
+                    min_distance = res
+                    approximations = [self._space.array_to_params(dataset_tuple)]
+            return random.choice(approximations)
+        else:
+            for row in dataset.loc[:, dataset.columns != self._target_column].itertuples():
+
+                dataset_tuple = numpy.array(row[1:])
+
+                res = numpy.linalg.norm(x_array - dataset_tuple, 2)
+
+                if min_distance is None:
+                    min_index = row[0]
+                    min_distance = res
+                    approximations = [
+                        {
+                            "target": dataset.iloc[min_index][self._target_column],
+                            "params": self._space.array_to_params(dataset_tuple)
+                        }]
+                elif res == min_distance:
+
+                    min_index = row[0]
+                    min_distance = res
+                    approximations.append(
+                        {
+                            "target": dataset.iloc[min_index][self._target_column],
+                            "params": self._space.array_to_params(dataset_tuple)
+                        })
+                elif res < min_distance:
+                    min_index = row[0]
+                    min_distance = res
+                    approximations = [
+                        {
+                            "target": dataset.iloc[min_index][self._target_column],
+                            "params": self._space.array_to_params(dataset_tuple)
+                        }]
+            return random.choice(approximations)
+
+    def save_res_to_csv(self, is_approximation, exact_x=None):
+        """
+        A method to save results of the optimization to csv files located in results directory
+
+        Parameters
+        ----------
+
+        is_approximation: bool
+            true if the user passes a dataset as input
+        exact_x : list[dict]
+            contains exact x_probe
+        """
+        if is_approximation:
+
             try:
-                x_probe = next(self._queue)
-            except StopIteration:
-                util.update_params()
-                x_probe = self.suggest(util)
-                iteration += 1
+                os.makedirs(self.output_path)
+            except FileExistsError:
+                pass
 
-            self.probe(x_probe, lazy=False)
+            approximation_res = pd.DataFrame.from_dict(self.res)
+            approximation_res.to_csv(os.path.join(self.output_path, "approx_x.csv"), index=False)
 
-            if self._bounds_transformer:
-                self.set_bounds(
-                    self._bounds_transformer.transform(self._space))
+            exact_points = pd.DataFrame.from_dict(exact_x)
+            exact_points.to_csv(os.path.join(self.output_path, "exact_x.csv"), index=False)
+            print("Results successfully saved to " + self.output_path)
 
-        self.dispatch(Events.OPTIMIZATION_END)
+        else:
+            try:
+                os.makedirs(self.output_path)
+            except FileExistsError:
+                pass
+
+            exact_res = pd.DataFrame.from_dict(self.res)
+            exact_res.to_csv(os.path.join(self.output_path, "exact.csv"), index=False)
+
+            print("Results successfully saved to " + self.output_path)
 
     def set_bounds(self, new_bounds):
         """

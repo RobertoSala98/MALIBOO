@@ -22,6 +22,7 @@ class TargetSpace(object):
     >>> y = space.register_point(x)
     >>> assert self.max_point()['max_val'] == y
     """
+
     def __init__(self, target_func, pbounds, random_state=None):
         """
         Parameters
@@ -52,7 +53,6 @@ class TargetSpace(object):
         # preallocated memory for X and Y points
         self._params = np.empty(shape=(0, self.dim))
         self._target = np.empty(shape=(0))
-
         # keep track of unique points we have seen so far
         self._cache = {}
 
@@ -157,11 +157,9 @@ class TargetSpace(object):
         1
         """
         x = self._as_array(params)
-        if x in self:
-            raise KeyError('Data point {} is not unique'.format(x))
-
-        # Insert data into unique dictionary
-        self._cache[_hashable(x.ravel())] = target
+        if x not in self:
+            # Insert data into unique dictionary
+            self._cache[_hashable(x.ravel())] = target
 
         self._params = np.concatenate([self._params, x.reshape(1, -1)])
         self._target = np.concatenate([self._target, [target]])
@@ -187,12 +185,9 @@ class TargetSpace(object):
         """
         x = self._as_array(params)
 
-        try:
-            target = self._cache[_hashable(x)]
-        except KeyError:
-            params = dict(zip(self._keys, x))
-            target = self.target_func(**params)
-            self.register(x, target)
+        params = dict(zip(self._keys, x))
+        target = self.target_func(**params)
+        self.register(x, target)
         return target
 
     def random_sample(self):
@@ -219,7 +214,7 @@ class TargetSpace(object):
         return data.ravel()
 
     def max(self):
-        """Get maximum target value found and corresponding parametes."""
+        """Get maximum target value found and corresponding parameters."""
         try:
             res = {
                 'target': self.target.max(),
@@ -232,11 +227,11 @@ class TargetSpace(object):
         return res
 
     def res(self):
-        """Get all target values found and corresponding parametes."""
+        """Get all target values found and corresponding parameters."""
         params = [dict(zip(self.keys, p)) for p in self.params]
 
         return [
-            {"target": target, "params": param}
+            {"target": target} | param
             for target, param in zip(self.target, params)
         ]
 
