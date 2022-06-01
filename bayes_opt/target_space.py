@@ -185,12 +185,9 @@ class TargetSpace(object):
         """
         x = self._as_array(params)
 
-        try:
-            target = self._cache[_hashable(x)]
-        except KeyError:
-            params = dict(zip(self._keys, x))
-            target = self.target_func(**params)
-            self.register(x, target)
+        params = dict(zip(self._keys, x))
+        target = self.target_func(**params)
+        self.register(x, target)
         return target
 
     def random_sample(self):
