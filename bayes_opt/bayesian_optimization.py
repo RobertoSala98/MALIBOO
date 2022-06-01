@@ -82,6 +82,8 @@ class BayesianOptimization(Observable):
     pbounds: dict, optional(default=None)
         Dictionary with parameters names as keys and a tuple with minimum
         and maximum values.
+        It is actually a mandatory parameter: if the default value None is left,
+        an error will be raised.
 
     random_state: int or numpy.random.RandomState, optional(default=None)
         If the value is an integer, it is used as the seed for creating a
@@ -456,10 +458,10 @@ class BayesianOptimization(Observable):
                 pass
 
             approximation_res = pd.DataFrame.from_dict(self.res)
-            approximation_res.to_csv(os.path.join(self.output_path, "approx_x.csv"), index=False)
+            approximation_res.to_csv(os.path.join(self.output_path, "results.csv"), index=False)
 
             exact_points = pd.DataFrame.from_dict(exact_x)
-            exact_points.to_csv(os.path.join(self.output_path, "exact_x.csv"), index=False)
+            exact_points.to_csv(os.path.join(self.output_path, "results_exact.csv"), index=False)
             print("Results successfully saved to " + self.output_path)
 
         else:
@@ -469,7 +471,7 @@ class BayesianOptimization(Observable):
                 pass
 
             exact_res = pd.DataFrame.from_dict(self.res)
-            exact_res.to_csv(os.path.join(self.output_path, "exact.csv"), index=False)
+            exact_res.to_csv(os.path.join(self.output_path, "results.csv"), index=False)
 
             print("Results successfully saved to " + self.output_path)
 

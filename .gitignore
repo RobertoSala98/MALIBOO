@@ -11,10 +11,6 @@ gif/
 *.csv
 !datasets/test*.csv
 
-approx_x.csv
-exact.csv
-exact_x.csv
-
 # Unit test / coverage reports
 htmlcov/
 .tox/
