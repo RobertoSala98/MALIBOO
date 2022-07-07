@@ -230,17 +230,7 @@ class BayesianOptimization(Observable):
             self._gp.fit(self._space.params, self._space.target)
             # If requird, train ML model with all space parameters data collected so far
             if 'ml' in utility_function.kind:
-                model = Ridge()
-                X = pd.DataFrame(self._space._params, columns=self._space.keys)
-                y_name = utility_function.ml_target
-                try:
-                    y = self._space._target_dict_info[y_name]
-                except KeyError:
-                    raise KeyError("Target function has no '{}' field".format(y_name))
-                model.fit(X, y)
-                # print("Training MAPE =", mape(model.predict(X), y))  # !DEBUG!
-                # print("Coefficients =", model.coef_)  # !DEBUG!
-                utility_function.ml_model = model
+                utility_function.ml_model = self.get_ml_model(y_name=utility_function.ml_target)
 
         # Finding argmax of the acquisition function.
         suggestion = acq_max(
@@ -521,3 +511,31 @@ class BayesianOptimization(Observable):
     def set_gp_params(self, **params):
         """Set parameters to the internal Gaussian Process Regressor"""
         self._gp.set_params(**params)
+
+    def get_ml_model(self, y_name):
+        """
+        Returns Machine Learning model trained on current history
+
+        Parameters
+        ----------
+        y_name: str
+            Name of the dataset column that will act as the target of the regression
+
+        Returns
+        -------
+        model: sklearn.model object
+            The trained ML model
+        """
+        # Build training dataset for the ML model
+        X = pd.DataFrame(self._space._params, columns=self._space.keys)
+        try:
+            y = self._space._target_dict_info[y_name]
+        except KeyError:
+            raise KeyError("Target function has no '{}' field".format(y_name))
+
+        # Initialize and train model
+        model = Ridge()
+        model.fit(X, y)
+        # print("Training MAPE =", mape(model.predict(X), y))  # !DEBUG!
+        # print("Coefficients =", model.coef_)  # !DEBUG!
+        return model
