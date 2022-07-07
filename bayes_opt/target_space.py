@@ -1,5 +1,6 @@
 from numbers import Number
 import numpy as np
+import pandas as pd
 from .util import ensure_rng
 
 
@@ -54,7 +55,7 @@ class TargetSpace(object):
         # preallocated memory for X and Y points
         self._params = np.empty(shape=(0, self.dim))
         self._target = np.empty(shape=(0))
-        self._target_dict_info = []
+        self._target_dict_info = pd.DataFrame()
         self._target_dict_key = 'value'
         # keep track of unique points we have seen so far
         self._cache = {}
@@ -169,7 +170,10 @@ class TargetSpace(object):
         self._params = np.concatenate([self._params, x.reshape(1, -1)])
         self._target = np.concatenate([self._target, [value]])
         if info:
-            self._target_dict_info.append(info)
+            if self._target_dict_info.empty:
+                self._target_dict_info = pd.DataFrame(info, index=[0])
+            else:
+                self._target_dict_info = pd.concat((self._target_dict_info, pd.DataFrame(info, index=[0])), ignore_index=True)
 
     def probe(self, params):
         """
