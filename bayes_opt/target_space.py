@@ -169,10 +169,12 @@ class TargetSpace(object):
 
         self._params = np.concatenate([self._params, x.reshape(1, -1)])
         self._target = np.concatenate([self._target, [value]])
-        if info:
+        if info:  # The return value of the target function is a dict
             if self._target_dict_info.empty:
+                # Initialize member
                 self._target_dict_info = pd.DataFrame(info, index=[0])
             else:
+                # Append new point to member
                 self._target_dict_info = pd.concat((self._target_dict_info, pd.DataFrame(info, index=[0])), ignore_index=True)
             # print(self._target_dict_info)  # !DEBUG!
 
@@ -262,6 +264,26 @@ class TargetSpace(object):
                 self._bounds[row] = new_bounds[key]
 
     def extract_value_and_info(self, target):
+        """
+        Return function numeric value and further information
+
+        The return value of the target function can also be a dictionary. In this case,
+        we return separately its 'value' field as the true target value, and we also
+        return the whole dictionary separately. Otherwise, if the target function is
+        purely numeric, we return an empty information dictionary
+
+        Parameters
+        ----------
+        target: numeric value or dict
+            An object returned by the target function
+
+        Returns
+        -------
+        target: numeric value
+            The actual numeric value
+        info: dict
+            The full input dictionary, or an empty dictionary if target was purely numeric
+        """
         if isinstance(target, Number):
             return target, {}
         elif isinstance(target, dict):

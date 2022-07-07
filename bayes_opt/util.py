@@ -75,6 +75,8 @@ def acq_max(ac, gp, y_max, bounds, random_state, n_warmup=10000, n_iter=10):
 class UtilityFunction(object):
     """
     An object to compute the acquisition functions.
+
+    See the maximize() function in bayesian_optimization.py for a description of the constructor arguments.
     """
 
     def __init__(self, kind, kappa, xi, kappa_decay=1, kappa_decay_delay=0, ml_info={}):

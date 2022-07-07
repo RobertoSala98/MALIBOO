@@ -104,6 +104,10 @@ class BayesianOptimization(Observable):
     output_path: str, optional(default=None)
             path to directory in which the results are written, if not specified by user it is the working directory
 
+    target_column: str, optional(default=None)
+            name of the column that will act as the target value of the optimization.
+            It only works if dataset_path is passed.
+
     Methods
     -------
     probe()
@@ -122,6 +126,7 @@ class BayesianOptimization(Observable):
                  bounds_transformer=None,
                  dataset_path=None, output_path=None, target_column=None):
 
+        # Check arguments and initialize them if not provided
         if output_path is None:
             self.output_path = os.getcwd()
         else:
@@ -137,6 +142,7 @@ class BayesianOptimization(Observable):
         else:
             self._target_column = target_column
 
+        # Check for error conditions
         if pbounds is None:
             raise ValueError("pbounds must be specified!")
         self._random_state = ensure_rng(random_state)
@@ -222,7 +228,7 @@ class BayesianOptimization(Observable):
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
             self._gp.fit(self._space.params, self._space.target)
-            # Train ML model if necessary
+            # If requird, train ML model with all space parameters data collected so far
             if 'ml' in utility_function.kind:
                 model = Ridge()
                 X = pd.DataFrame(self._space._params, columns=self._space.keys)
@@ -283,8 +289,8 @@ class BayesianOptimization(Observable):
             Number of iterations where the method attempts to find the maximum
             value.
 
-        acq: {'ucb', 'ei', 'poi'}
-            The acquisition method used.
+        acq: str
+            The acquisition method used. Among others:
                 * 'ucb' stands for the Upper Confidence Bounds method
                 * 'ei' is the Expected Improvement method
                 * 'poi' is the Probability Of Improvement criterion.
@@ -304,6 +310,11 @@ class BayesianOptimization(Observable):
 
         xi: float, optional(default=0.0)
             [unused]
+
+        ml_info: dict, optional(default={})
+            Information required for Machine Learning models. Namely, ml_info['target'] is the
+            name of the target quantity and ml_info['bounds'] is a tuple with its lower and
+            upper bounds.
 
         """
         self._prime_subscriptions()
@@ -373,7 +384,7 @@ class BayesianOptimization(Observable):
 
     def get_approximation(self, dataset, x_probe):
         """
-        Method to get from the dataset passed by the user the nearest point to the x_probe point
+        Method to get from the dataset passed by the user the nearest point (wrt to the euclidean distance) to the x_probe point
 
         Parameters
         ----------
@@ -403,6 +414,7 @@ class BayesianOptimization(Observable):
         approximations = []
 
         if self._target_column is None:
+            # Find closest point to x_array in the dataset
             for row in dataset.itertuples():
 
                 dataset_tuple = numpy.array(row[1:])
@@ -417,8 +429,10 @@ class BayesianOptimization(Observable):
                 elif res < min_distance:
                     min_distance = res
                     approximations = [self._space.array_to_params(dataset_tuple)]
+            # If multiple, choose randomly
             return random.choice(approximations)
         else:
+            # Find closest point to x_array in the dataset, not considering the column of the target variable
             for row in dataset.loc[:, dataset.columns != self._target_column].itertuples():
 
                 dataset_tuple = numpy.array(row[1:])
@@ -450,6 +464,7 @@ class BayesianOptimization(Observable):
                             "target": dataset.iloc[min_index][self._target_column],
                             "params": self._space.array_to_params(dataset_tuple)
                         }]
+            # If multiple, choose randomly
             return random.choice(approximations)
 
     def save_res_to_csv(self, is_approximation, exact_x=None):
