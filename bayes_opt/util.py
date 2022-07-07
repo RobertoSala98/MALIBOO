@@ -87,13 +87,7 @@ class UtilityFunction(object):
         
         self._iters_counter = 0
 
-        if kind not in ['ucb', 'ei', 'poi']:
-            err = "The utility function " \
-                  "{} has not been implemented, " \
-                  "please choose one of ucb, ei, or poi.".format(kind)
-            raise NotImplementedError(err)
-        else:
-            self.kind = kind
+        self.kind = kind
 
     def update_params(self):
         self._iters_counter += 1
@@ -106,8 +100,11 @@ class UtilityFunction(object):
             return self._ucb(x, gp, self.kappa)
         if self.kind == 'ei':
             return self._ei(x, gp, y_max, self.xi)
+        if self.kind == 'ei_ml':
+            return self._ei_ml(x, gp, y_max, self.xi)
         if self.kind == 'poi':
             return self._poi(x, gp, y_max, self.xi)
+        raise NotImplementedError("The utility function {} has not been implemented.".format(self.kind))
 
     @staticmethod
     def _ucb(x, gp, kappa):
@@ -126,6 +123,11 @@ class UtilityFunction(object):
         a = (mean - y_max - xi)
         z = a / std
         return a * norm.cdf(z) + std * norm.pdf(z)
+
+    @staticmethod
+    def _ei_ml(x, gp, y_max, xi):
+        ei = UtilityFunction._ei(x, gp, y_max, xi)
+        return ei
 
     @staticmethod
     def _poi(x, gp, y_max, xi):
