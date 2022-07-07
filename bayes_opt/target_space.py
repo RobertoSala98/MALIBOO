@@ -1,3 +1,4 @@
+from numbers import Number
 import numpy as np
 from .util import ensure_rng
 
@@ -256,7 +257,7 @@ class TargetSpace(object):
                 self._bounds[row] = new_bounds[key]
 
     def extract_value_and_info(self, target):
-        if isinstance(target, (int, float)):
+        if isinstance(target, Number):
             return target, {}
         elif isinstance(target, dict):
             if self._target_dict_key not in target:
