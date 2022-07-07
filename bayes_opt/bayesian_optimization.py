@@ -4,6 +4,7 @@ import warnings
 
 import numpy.linalg
 import pandas as pd
+from sklearn.linear_model import Ridge
 
 from .target_space import TargetSpace
 from .event import Events, DEFAULT_EVENTS
@@ -220,6 +221,14 @@ class BayesianOptimization(Observable):
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
             self._gp.fit(self._space.params, self._space.target)
+            # Train ML model if necessary
+            if 'ml' in utility_function.kind:
+                model = Ridge()
+                X = pd.DataFrame(self._space._params, columns=self._space.keys)
+                y_name = utility_function.ml_target
+                y = self._space._target_dict_info[y_name]
+                model.fit(X, y)
+                utility_function.ml_model = model
 
         # Finding argmax of the acquisition function.
         suggestion = acq_max(
@@ -255,6 +264,7 @@ class BayesianOptimization(Observable):
                  kappa_decay=1,
                  kappa_decay_delay=0,
                  xi=0.0,
+                 ml_info={},
                  **gp_params):
         """
         Probes the target space to find the parameters that yield the maximum
@@ -302,7 +312,8 @@ class BayesianOptimization(Observable):
                                kappa=kappa,
                                xi=xi,
                                kappa_decay=kappa_decay,
-                               kappa_decay_delay=kappa_decay_delay)
+                               kappa_decay_delay=kappa_decay_delay,
+                               ml_info=ml_info)
         iteration = 0
 
         # if user specifies a dataset it takes approximated points from it

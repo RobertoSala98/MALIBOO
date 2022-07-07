@@ -77,17 +77,22 @@ class UtilityFunction(object):
     An object to compute the acquisition functions.
     """
 
-    def __init__(self, kind, kappa, xi, kappa_decay=1, kappa_decay_delay=0):
+    def __init__(self, kind, kappa, xi, kappa_decay=1, kappa_decay_delay=0, ml_info={}):
 
         self.kappa = kappa
         self._kappa_decay = kappa_decay
         self._kappa_decay_delay = kappa_decay_delay
-
         self.xi = xi
+        self.kind = kind
+        if ml_info:
+            for key in ('target', 'bounds'):
+                if key not in ml_info:
+                    raise ValueError("ml_info must have '{}' field".format(key))
+                self.__setattr__('ml_'+key, ml_info[key])
+        elif 'ml' in kind:
+            raise ValueError("ml_info option must be provided if using '{}' acquisition".format(kind))
         
         self._iters_counter = 0
-
-        self.kind = kind
 
     def update_params(self):
         self._iters_counter += 1
@@ -101,7 +106,7 @@ class UtilityFunction(object):
         if self.kind == 'ei':
             return self._ei(x, gp, y_max, self.xi)
         if self.kind == 'ei_ml':
-            return self._ei_ml(x, gp, y_max, self.xi)
+            return self._ei_ml(x, gp, y_max, self.xi, self.ml_model, self.ml_bounds)
         if self.kind == 'poi':
             return self._poi(x, gp, y_max, self.xi)
         raise NotImplementedError("The utility function {} has not been implemented.".format(self.kind))
@@ -125,9 +130,14 @@ class UtilityFunction(object):
         return a * norm.cdf(z) + std * norm.pdf(z)
 
     @staticmethod
-    def _ei_ml(x, gp, y_max, xi):
+    def _ei_ml(x, gp, y_max, xi, ml_model, ml_bounds):
         ei = UtilityFunction._ei(x, gp, y_max, xi)
-        return ei
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            y_hat = ml_model.predict(x)
+        lb, ub = ml_bounds
+        indicator = np.array([lb <= y and y <= ub for y in y_hat])
+        return ei * indicator
 
     @staticmethod
     def _poi(x, gp, y_max, xi):
