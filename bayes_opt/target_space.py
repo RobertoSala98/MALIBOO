@@ -53,6 +53,8 @@ class TargetSpace(object):
         # preallocated memory for X and Y points
         self._params = np.empty(shape=(0, self.dim))
         self._target = np.empty(shape=(0))
+        self._target_dict_info = []
+        self._target_dict_key = 'value'
         # keep track of unique points we have seen so far
         self._cache = {}
 
@@ -157,12 +159,16 @@ class TargetSpace(object):
         1
         """
         x = self._as_array(params)
+        value, info = self.extract_value_and_info(target)
+
         if x not in self:
             # Insert data into unique dictionary
-            self._cache[_hashable(x.ravel())] = target
+            self._cache[_hashable(x.ravel())] = value
 
         self._params = np.concatenate([self._params, x.reshape(1, -1)])
-        self._target = np.concatenate([self._target, [target]])
+        self._target = np.concatenate([self._target, [value]])
+        if info:
+            self._target_dict_info.append(info)
 
     def probe(self, params):
         """
@@ -188,7 +194,8 @@ class TargetSpace(object):
         params = dict(zip(self._keys, x))
         target = self.target_func(**params)
         self.register(x, target)
-        return target
+        ret, _ = self.extract_value_and_info(target)
+        return ret
 
     def random_sample(self):
         """
@@ -247,3 +254,14 @@ class TargetSpace(object):
         for row, key in enumerate(self.keys):
             if key in new_bounds:
                 self._bounds[row] = new_bounds[key]
+
+    def extract_value_and_info(self, target):
+        if isinstance(target, (int, float)):
+            return target, {}
+        elif isinstance(target, dict):
+            if self._target_dict_key not in target:
+                raise ValueError("If target function is a dictionary, it must "
+                                 "contain the '{}' field".format(self._target_dict_key))
+            return target[self._target_dict_key], target
+        else:
+            raise ValueError("Unrecognized return type '{}' in target function".format(type(target)))
