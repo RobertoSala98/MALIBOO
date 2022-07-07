@@ -7,8 +7,8 @@ def black_box_function(x, y):
 def black_box_function_ml(x, y):
     ret = {}
     ret['value'] = -x ** 2 - (y - 1) ** 2 + 1
-    ret['something'] = str(x) + "lol"
-    ret['blackbox'] = 2 * x + 3 * y
+    ret['field'] = "idk"
+    ret['blackbox'] = 2.0 * x + 3.0 * y
     return ret
 
 seed = 1
@@ -51,9 +51,9 @@ def test03_dataset_X():
 def test04_free_ml():
   optimizer = BO(f=black_box_function_ml, pbounds={'x': (2, 4), 'y': (-3, 3)},
                  random_state=seed,
-                 output_path=os.path.join('outputs' ,'test01'))
+                 output_path=os.path.join('outputs' ,'test04'))
   optimizer.maximize(init_points=n0, n_iter=n_iter, acq='ei_ml',
-                     ml_info={'target': 'blackbox', 'bounds': (0, 10)})
+                     ml_info={'target': 'blackbox', 'bounds': (2, 8)})
 
 
 if __name__ == '__main__':

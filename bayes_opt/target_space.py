@@ -174,6 +174,7 @@ class TargetSpace(object):
                 self._target_dict_info = pd.DataFrame(info, index=[0])
             else:
                 self._target_dict_info = pd.concat((self._target_dict_info, pd.DataFrame(info, index=[0])), ignore_index=True)
+            # print(self._target_dict_info)  # !DEBUG!
 
     def probe(self, params):
         """

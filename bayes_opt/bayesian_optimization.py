@@ -5,6 +5,7 @@ import warnings
 import numpy.linalg
 import pandas as pd
 from sklearn.linear_model import Ridge
+from sklearn.metrics import mean_absolute_percentage_error as mape
 
 from .target_space import TargetSpace
 from .event import Events, DEFAULT_EVENTS
@@ -228,6 +229,8 @@ class BayesianOptimization(Observable):
                 y_name = utility_function.ml_target
                 y = self._space._target_dict_info[y_name]
                 model.fit(X, y)
+                # print("Training MAPE =", mape(model.predict(X), y))  # !DEBUG!
+                # print("Coefficients =", model.coef_)  # !DEBUG!
                 utility_function.ml_model = model
 
         # Finding argmax of the acquisition function.

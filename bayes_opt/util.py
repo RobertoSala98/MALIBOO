@@ -87,10 +87,10 @@ class UtilityFunction(object):
         if ml_info:
             for key in ('target', 'bounds'):
                 if key not in ml_info:
-                    raise ValueError("ml_info must have '{}' field".format(key))
+                    raise ValueError("'ml_info' option must have '{}' field".format(key))
                 self.__setattr__('ml_'+key, ml_info[key])
         elif 'ml' in kind:
-            raise ValueError("ml_info option must be provided if using '{}' acquisition".format(kind))
+            raise ValueError("'ml_info' option must be provided if using '{}' acquisition".format(kind))
         
         self._iters_counter = 0
 
