@@ -233,7 +233,10 @@ class BayesianOptimization(Observable):
                 model = Ridge()
                 X = pd.DataFrame(self._space._params, columns=self._space.keys)
                 y_name = utility_function.ml_target
-                y = self._space._target_dict_info[y_name]
+                try:
+                    y = self._space._target_dict_info[y_name]
+                except KeyError:
+                    raise KeyError("Target function has no '{}' field".format(y_name))
                 model.fit(X, y)
                 # print("Training MAPE =", mape(model.predict(X), y))  # !DEBUG!
                 # print("Coefficients =", model.coef_)  # !DEBUG!
