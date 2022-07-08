@@ -293,7 +293,7 @@ def test_maximize():
 
 
 def test_define_wrong_transformer():
-    with pytest.raises(TypeError):
+    with pytest.raises(AttributeError):
         optimizer = BayesianOptimization(target_func, PBOUNDS,
                                          random_state=np.random.RandomState(1),
                                          bounds_transformer=3)
