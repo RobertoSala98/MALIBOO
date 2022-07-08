@@ -323,7 +323,7 @@ class BayesianOptimization(Observable):
                                ml_info=ml_info)
         iteration = 0
 
-        # if user specifies a dataset it takes approximated points from it
+        # If user specifies a dataset, we take approximated points from it
         if self._dataset is not None:
             exact_x_dict = []
             while not self._queue.empty or iteration < n_iter:
@@ -341,22 +341,27 @@ class BayesianOptimization(Observable):
                     exact_x_dict.append(x_probe)
 
                 approximation = self.get_approximation(self._dataset, x_probe)
-                if self._target_column is not None and approximation is not None:
 
+                # Perform evaluation (dataset cases)
+                if self._target_column is not None and approximation is not None:
+                    # Dataset for X and for y: read point entirely from dataset without probe()
                     self._space.register(approximation["params"], approximation["target"])
                     self.dispatch(Events.OPTIMIZATION_STEP)
-
                 elif approximation is not None:
+                    # Dataset for X only: evaluate approximated point
                     self.probe(approximation, lazy=False)
                 else:
+                    # Dataset for X only, but there's no approximation: evaluate sampled point directly
                     self.probe(x_probe, lazy=False)
 
                 if self._bounds_transformer:
                     self.set_bounds(
                         self._bounds_transformer.transform(self._space))
+
             self.dispatch(Events.OPTIMIZATION_END)
             self.save_res_to_csv(True, exact_x=exact_x_dict)
 
+        # No dataset: we evaluate the target function directly
         else:
             while not self._queue.empty or iteration < n_iter:
                 try:
@@ -366,6 +371,7 @@ class BayesianOptimization(Observable):
                     x_probe = self.suggest(util)
                     iteration += 1
 
+                # Perform evaluation
                 self.probe(x_probe, lazy=False)
 
                 if self._bounds_transformer:
