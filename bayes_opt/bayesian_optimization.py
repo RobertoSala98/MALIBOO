@@ -126,7 +126,7 @@ class BayesianOptimization(Observable):
         self._random_state = ensure_rng(random_state)
         self._verbose = verbose
         self._bounds_transformer = bounds_transformer
-        self.output_path = os.getcwd() if output_path is None else os.path.join(output_path)
+        self._output_path = os.getcwd() if output_path is None else os.path.join(output_path)
         self._target_column = None if target_column is None else str(target_column)
 
         # Initialize dataset of observation, if provided
@@ -418,14 +418,14 @@ class BayesianOptimization(Observable):
         exact_x : list[dict]
             contains exact x_probe, in case the user passes a dataset as input
         """
-        os.makedirs(self.output_path, exist_ok=True)
+        os.makedirs(self._output_path, exist_ok=True)
         results = pd.DataFrame.from_dict(self.res)
-        results.to_csv(os.path.join(self.output_path, "results.csv"), index=False)
+        results.to_csv(os.path.join(self._output_path, "results.csv"), index=False)
         if exact_x:
             exact_points = pd.DataFrame.from_dict(exact_x)
-            exact_points.to_csv(os.path.join(self.output_path, "results_exact.csv"), index=False)
+            exact_points.to_csv(os.path.join(self._output_path, "results_exact.csv"), index=False)
 
-        print("Results successfully saved to " + self.output_path)
+        print("Results successfully saved to " + self._output_path)
 
     def set_bounds(self, new_bounds):
         """
