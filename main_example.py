@@ -13,13 +13,13 @@ def black_box_function_ml(x, y):
 
 seed = 1
 n0 = 2
-n_iter = 3
+n_iter = 5
 
 
 def perform_test(testfunc):
   print("Starting", testfunc.__name__, "...")
   testfunc()
-  print("Done\n\n")
+  print("Done\n")
 
 
 
@@ -56,8 +56,20 @@ def test04_free_ml():
                      ml_info={'target': 'blackbox', 'bounds': (2, 8)})
 
 
+def test05_dataset_Xy_ml():
+  optimizer = BO(f=None, pbounds={'x': (7,73), 'y': (7,73)},
+                 random_state=seed,
+                 dataset_path=os.path.join('datasets', 'test05.csv'),
+                 target_column='z',
+                 output_path=os.path.join('outputs' ,'test05')
+                 )
+  optimizer.maximize(init_points=n0, n_iter=n_iter, acq='ei_ml',
+                     ml_info={'target': 'z_pred', 'bounds': (0, 2.2)})
+
+
 if __name__ == '__main__':
   perform_test(test01_free)
   perform_test(test02_dataset_Xy)
   perform_test(test03_dataset_X)
   perform_test(test04_free_ml)
+  perform_test(test05_dataset_Xy_ml)
