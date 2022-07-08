@@ -484,10 +484,12 @@ class BayesianOptimization(Observable):
         try:
             y = self._space._target_dict_info[y_name]
         except KeyError:
-            if self._dataset is not None:
+            if self._dataset is None:
+                raise KeyError("Target function has no '{}' field".format(y_name))
+            elif y_name in self._dataset.columns:
                 y = self._dataset.loc[self.indexes, y_name]
             else:
-                raise KeyError("Target function has no '{}' field".format(y_name))
+                raise KeyError("Dataset has no '{}' column".format(y_name))
 
         # Initialize and train model
         model = Ridge()
