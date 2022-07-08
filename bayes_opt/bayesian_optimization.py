@@ -432,7 +432,7 @@ class BayesianOptimization(Observable):
         # If multiple, choose randomly
         return self._random_state.choice(approximations)
 
-    def save_res_to_csv(self, is_approximation, exact_x=None):
+    def save_res_to_csv(self, is_approximation, exact_x=[]):
         """
         A method to save results of the optimization to csv files located in results directory
 
@@ -445,15 +445,11 @@ class BayesianOptimization(Observable):
             contains exact x_probe
         """
         os.makedirs(self.output_path, exist_ok=True)
-
-        if is_approximation:
-            approximation_res = pd.DataFrame.from_dict(self.res)
-            approximation_res.to_csv(os.path.join(self.output_path, "results.csv"), index=False)
+        results = pd.DataFrame.from_dict(self.res)
+        results.to_csv(os.path.join(self.output_path, "results.csv"), index=False)
+        if is_approximation and exact_x:
             exact_points = pd.DataFrame.from_dict(exact_x)
             exact_points.to_csv(os.path.join(self.output_path, "results_exact.csv"), index=False)
-        else:
-            exact_res = pd.DataFrame.from_dict(self.res)
-            exact_res.to_csv(os.path.join(self.output_path, "results.csv"), index=False)
 
         print("Results successfully saved to " + self.output_path)
 
