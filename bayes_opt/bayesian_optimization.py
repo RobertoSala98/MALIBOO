@@ -96,14 +96,17 @@ class BayesianOptimization(Observable):
         If provided, the transformation is applied to the bounds.
 
     dataset_path: str, optional(default=None)
-            path of the dataset file specified by the user.
+        Path of the dataset file specified by the user.
 
     output_path: str, optional(default=None)
-            path to directory in which the results are written, if not specified by user it is the working directory
+        Path to directory in which the results are written. Default value is the working directory.
+
+    argument_columns: list of str, optional(default='all')
+        List of dataset columns which constitute the independent variable x.
 
     target_column: str, optional(default=None)
-            name of the column that will act as the target value of the optimization.
-            It only works if dataset_path is passed.
+        Name of the column that will act as the target value of the optimization.
+        It only works if dataset_path is passed.
 
     Methods
     -------
@@ -121,23 +124,12 @@ class BayesianOptimization(Observable):
 
     def __init__(self, f=None, pbounds=None, random_state=None, verbose=2,
                  bounds_transformer=None,
-                 dataset_path=None, output_path=None, target_column=None):
+                 dataset_path=None, output_path=None, argument_columns='all', target_column=None):
 
         # Check arguments and initialize them if not provided
-        if output_path is None:
-            self.output_path = os.getcwd()
-        else:
-            self.output_path = output_path
-
-        if dataset_path is None:
-            self._dataset = None
-        else:
-            self._dataset = pd.read_csv(dataset_path)
-
-        if target_column is None:
-            self._target_column = None
-        else:
-            self._target_column = target_column
+        self.output_path = os.getcwd() if output_path is None else output_path
+        self._dataset = None if dataset_path is None else pd.read_csv(dataset_path)
+        self._target_column = None if target_column is None else target_column
 
         # Check for error conditions
         if pbounds is None:
