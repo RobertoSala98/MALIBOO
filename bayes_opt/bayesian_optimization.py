@@ -378,39 +378,30 @@ class BayesianOptimization(Observable):
             x_array = x_probe
 
         min_distance = None
-        min_index = None
         approximations = []
 
-        if self._target_column is None:
-            # Find closest point to x_array in the dataset (case of dataset for X only)
-            for _, row in dataset.iterrows():
-                res = np.linalg.norm(x_array - row, 2)
-                if min_distance is None or res <= min_distance:
+        for idx, rowfull in dataset.iterrows():
+            row = rowfull[dataset.columns != self._target_column]  # works even if target col is None
+            dist = np.linalg.norm(x_array - row, 2)
+            if min_distance is None or dist <= min_distance:
+                if self._target_column is None:
+                    # Find closest point to x_array in the dataset (case of dataset for X only)
                     approx = self._space.array_to_params(row)
-                    if res == min_distance:
-                        approximations.append(approx)
-                    else:
-                        min_distance = res
-                        approximations = [approx]
-
-        else:
-            # Find closest point to x_array in the dataset, not considering the column of
-            # the target variable (case of dataset for both X and y)
-            for idx, rowfull in dataset.iterrows():
-                target_val = dataset.iloc[idx][self._target_column]
-                row = rowfull[dataset.columns != self._target_column]
-                res = np.linalg.norm(x_array - row, 2)
-                if min_distance is None or res <= min_distance:
-                    min_index = idx
+                else:
+                    # Find closest point to x_array in the dataset, not considering the column of
+                    # the target variable (case of dataset for both X and y)
+                    target_val = dataset.iloc[idx][self._target_column]
                     approx = {
                             "target": target_val,
                             "params": self._space.array_to_params(row)
                         }
-                    if res == min_distance:
-                        approximations.append(approx)
-                    else:
-                        min_distance = res
-                        approximations = [approx]
+                if dist == min_distance:
+                    # One of the tied best approximations
+                    approximations.append(approx)
+                else:
+                    # The one new best approximation
+                    min_distance = dist
+                    approximations = [approx]
 
         # If multiple, choose randomly
         return self._random_state.choice(approximations)
