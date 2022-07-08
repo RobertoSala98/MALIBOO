@@ -342,12 +342,13 @@ class BayesianOptimization(Observable):
                 if self._target_column is not None and approximation is not None:
                     # Dataset for X and for y: read point entirely from dataset without probe()
                     self.register(approximation["params"], approximation["target"])
-                elif approximation is not None:
-                    # Dataset for X only: evaluate approximated point
-                    self.probe(approximation, lazy=False)
                 else:
-                    # Dataset for X only, but there's no approximation: evaluate sampled point directly
-                    self.probe(x_probe, lazy=False)
+                    # Dataset for X only: evaluate approximated point
+                    if approximation is not None:
+                        self.probe(approximation, lazy=False)
+                    else:
+                        # No approximation found: evaluate sampled point directly
+                        self.probe(x_probe, lazy=False)
 
         if self._bounds_transformer:
             self.set_bounds(
