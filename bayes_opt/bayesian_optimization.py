@@ -101,8 +101,8 @@ class BayesianOptimization(Observable):
     output_path: str, optional(default=None)
         Path to directory in which the results are written. Default value is the working directory.
 
-    argument_columns: list of str, optional(default='all')
-        List of dataset columns which constitute the independent variable x.
+    optimization_columns: list of str, optional(default=None)
+        List of dataset columns which constitute the optimization variable x.
 
     target_column: str, optional(default=None)
         Name of the column that will act as the target value of the optimization.
@@ -124,12 +124,13 @@ class BayesianOptimization(Observable):
 
     def __init__(self, f=None, pbounds=None, random_state=None, verbose=2,
                  bounds_transformer=None,
-                 dataset_path=None, output_path=None, argument_columns='all', target_column=None):
+                 dataset_path=None, output_path=None, optimization_columns=None, target_column=None):
 
         # Check arguments and initialize them if not provided
         self.output_path = os.getcwd() if output_path is None else output_path
         self._dataset = None if dataset_path is None else pd.read_csv(dataset_path)
-        self._target_column = None if target_column is None else target_column
+        self._optimization_columns = optimization_columns
+        self._target_column = target_column
 
         # Check for error conditions
         if pbounds is None:
@@ -332,7 +333,8 @@ class BayesianOptimization(Observable):
                     exact_x_dict.append(dict(zip(self._space.keys, x_probe.T)))
                 except AttributeError:
                     exact_x_dict.append(x_probe)
-                approximation = self.get_approximation(self._dataset, x_probe)
+                cols = self.get_relevant_columns()
+                approximation = self.get_approximation(self._dataset[cols], x_probe)
 
                 if self._target_column is not None and approximation is not None:
                     # Dataset for X and for y: read point entirely from dataset without probe()
@@ -443,6 +445,18 @@ class BayesianOptimization(Observable):
     def set_gp_params(self, **params):
         """Set parameters to the internal Gaussian Process Regressor"""
         self._gp.set_params(**params)
+
+    def get_relevant_columns(self):
+        """
+        When a dataset is used, returns the columns to be used for the search of the approximation point
+        """
+        if self._optimization_columns is None:
+            cols = list(self._dataset.columns)
+        else:
+            cols = list(self._optimization_columns)
+            if self._target_column is not None and self._target_column not in cols:
+                cols.append(self._target_column)
+        return cols
 
     def get_ml_model(self, y_name):
         """
