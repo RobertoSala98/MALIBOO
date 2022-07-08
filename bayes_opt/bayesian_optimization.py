@@ -337,7 +337,7 @@ class BayesianOptimization(Observable):
                 except AttributeError:
                     exact_x_dict.append(x_probe)
                 cols = self.get_relevant_columns()
-                approximation = self.get_approximation(self._dataset[cols], x_probe)
+                _, approximation = self.get_approximation(self._dataset[cols], x_probe)
 
                 if self._target_column is not None and approximation is not None:
                     # Dataset for X and for y: read point entirely from dataset without probe()
@@ -383,6 +383,7 @@ class BayesianOptimization(Observable):
 
         min_distance = None
         approximations = []
+        approximations_idxs = []
 
         for idx, rowfull in dataset.iterrows():
             row = rowfull[dataset.columns != self._target_column]  # works even if target col is None
@@ -402,13 +403,16 @@ class BayesianOptimization(Observable):
                 if dist == min_distance:
                     # One of the tied best approximations
                     approximations.append(approx)
+                    approximations_idxs.append(idx)
                 else:
                     # The one new best approximation
                     min_distance = dist
                     approximations = [approx]
+                    approximations_idxs = [idx]
 
         # If multiple, choose randomly
-        return self._random_state.choice(approximations)
+        ret_idx = self._random_state.randint(0, len(approximations_idxs))
+        return approximations_idxs[ret_idx], approximations[ret_idx]
 
     def save_res_to_csv(self, exact_x=[]):
         """
