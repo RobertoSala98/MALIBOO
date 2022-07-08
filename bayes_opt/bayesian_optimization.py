@@ -412,14 +412,13 @@ class BayesianOptimization(Observable):
             # Find closest point to x_array in the dataset (case of dataset for X only)
             for _, row in dataset.iterrows():
                 res = np.linalg.norm(x_array - row, 2)
-                if min_distance is None:
-                    min_distance = res
-                    approximations = [self._space.array_to_params(row)]
-                elif res == min_distance:
-                    approximations.append(self._space.array_to_params(row))
-                elif res < min_distance:
-                    min_distance = res
-                    approximations = [self._space.array_to_params(row)]
+                if min_distance is None or res <= min_distance:
+                    approx = self._space.array_to_params(row)
+                    if res == min_distance:
+                        approximations.append(approx)
+                    else:
+                        min_distance = res
+                        approximations = [approx]
 
         else:
             # Find closest point to x_array in the dataset, not considering the column of
