@@ -315,6 +315,8 @@ class BayesianOptimization(Observable):
                                kappa_decay_delay=kappa_decay_delay,
                                ml_info=ml_info)
         iteration = 0
+        if self._dataset is not None:
+            self.indexes = []
         exact_x_dict = []
 
         while not self._queue.empty or iteration < n_iter:
@@ -337,7 +339,8 @@ class BayesianOptimization(Observable):
                 except AttributeError:
                     exact_x_dict.append(x_probe)
                 cols = self.get_relevant_columns()
-                _, approximation = self.get_approximation(self._dataset[cols], x_probe)
+                idx, approximation = self.get_approximation(self._dataset[cols], x_probe)
+                self.indexes.append(idx)
 
                 if self._target_column is not None and approximation is not None:
                     # Dataset for X and for y: read point entirely from dataset without probe()
@@ -478,7 +481,10 @@ class BayesianOptimization(Observable):
         try:
             y = self._space._target_dict_info[y_name]
         except KeyError:
-            raise KeyError("Target function has no '{}' field".format(y_name))
+            if self._dataset is not None:
+                y = self._dataset.loc[self.indexes, y_name]
+            else:
+                raise KeyError("Target function has no '{}' field".format(y_name))
 
         # Initialize and train model
         model = Ridge()
