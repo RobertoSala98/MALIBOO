@@ -1,5 +1,4 @@
 import os
-import random
 import warnings
 
 import numpy.linalg
@@ -460,7 +459,7 @@ class BayesianOptimization(Observable):
                         }]
 
         # If multiple, choose randomly
-        return random.choice(approximations)
+        return self._random_state.choice(approximations)
 
     def save_res_to_csv(self, is_approximation, exact_x=None):
         """
