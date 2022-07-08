@@ -311,10 +311,10 @@ class BayesianOptimization(Observable):
                                kappa_decay_delay=kappa_decay_delay,
                                ml_info=ml_info)
         iteration = 0
+        exact_x_dict = []
 
         # If user specifies a dataset, we take approximated points from it
         if self._dataset is not None:
-            exact_x_dict = []
             while not self._queue.empty or iteration < n_iter:
                 # Sample new point from GP
                 try:
@@ -347,8 +347,6 @@ class BayesianOptimization(Observable):
                     self.set_bounds(
                         self._bounds_transformer.transform(self._space))
 
-            self.save_res_to_csv(True, exact_x=exact_x_dict)
-
         # No dataset: we evaluate the target function directly
         else:
             while not self._queue.empty or iteration < n_iter:
@@ -367,8 +365,7 @@ class BayesianOptimization(Observable):
                     self.set_bounds(
                         self._bounds_transformer.transform(self._space))
 
-            self.save_res_to_csv(False)
-
+        self.save_res_to_csv(exact_x_dict)
         self.dispatch(Events.OPTIMIZATION_END)
 
     def get_approximation(self, dataset, x_probe):
@@ -432,22 +429,19 @@ class BayesianOptimization(Observable):
         # If multiple, choose randomly
         return self._random_state.choice(approximations)
 
-    def save_res_to_csv(self, is_approximation, exact_x=[]):
+    def save_res_to_csv(self, exact_x=[]):
         """
         A method to save results of the optimization to csv files located in results directory
 
         Parameters
         ----------
-
-        is_approximation: bool
-            true if the user passes a dataset as input
         exact_x : list[dict]
-            contains exact x_probe
+            contains exact x_probe, in case the user passes a dataset as input
         """
         os.makedirs(self.output_path, exist_ok=True)
         results = pd.DataFrame.from_dict(self.res)
         results.to_csv(os.path.join(self.output_path, "results.csv"), index=False)
-        if is_approximation and exact_x:
+        if exact_x:
             exact_points = pd.DataFrame.from_dict(exact_x)
             exact_points.to_csv(os.path.join(self.output_path, "results_exact.csv"), index=False)
 
