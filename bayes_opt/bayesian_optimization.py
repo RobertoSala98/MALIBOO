@@ -402,10 +402,8 @@ class BayesianOptimization(Observable):
             approximated x_probe, with corresponding target value, if target column is specified by the user
 
         """
-
         try:
             x_array = numpy.array(list(x_probe.values()))
-
         except AttributeError:
             x_array = x_probe
 
@@ -414,25 +412,21 @@ class BayesianOptimization(Observable):
         approximations = []
 
         if self._target_column is None:
-            # Find closest point to x_array in the dataset
-            for row in dataset.itertuples():
-
-                dataset_tuple = numpy.array(row[1:])
-
-                res = numpy.linalg.norm(x_array - dataset_tuple, 2)
-
+            # Find closest point to x_array in the dataset (case of dataset for X only)
+            for _, row in dataset.iterrows():
+                res = numpy.linalg.norm(x_array - row, 2)
                 if min_distance is None:
                     min_distance = res
-                    approximations = [self._space.array_to_params(dataset_tuple)]
+                    approximations = [self._space.array_to_params(row)]
                 elif res == min_distance:
-                    approximations.append(self._space.array_to_params(dataset_tuple))
+                    approximations.append(self._space.array_to_params(row))
                 elif res < min_distance:
                     min_distance = res
-                    approximations = [self._space.array_to_params(dataset_tuple)]
-            # If multiple, choose randomly
-            return random.choice(approximations)
+                    approximations = [self._space.array_to_params(row)]
+
         else:
-            # Find closest point to x_array in the dataset, not considering the column of the target variable
+            # Find closest point to x_array in the dataset, not considering the column of
+            # the target variable (case of dataset for both X and y)
             for row in dataset.loc[:, dataset.columns != self._target_column].itertuples():
 
                 dataset_tuple = numpy.array(row[1:])
@@ -464,8 +458,9 @@ class BayesianOptimization(Observable):
                             "target": dataset.iloc[min_index][self._target_column],
                             "params": self._space.array_to_params(dataset_tuple)
                         }]
-            # If multiple, choose randomly
-            return random.choice(approximations)
+
+        # If multiple, choose randomly
+        return random.choice(approximations)
 
     def save_res_to_csv(self, is_approximation, exact_x=None):
         """
