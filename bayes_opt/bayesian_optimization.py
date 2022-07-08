@@ -327,6 +327,7 @@ class BayesianOptimization(Observable):
         if self._dataset is not None:
             exact_x_dict = []
             while not self._queue.empty or iteration < n_iter:
+                # Sample new point from GP
                 try:
                     x_probe = next(self._queue)
                 except StopIteration:
@@ -334,15 +335,14 @@ class BayesianOptimization(Observable):
                     x_probe = self.suggest(util)
                     iteration += 1
 
+                # Register new point
                 try:
                     exact_x_dict.append(dict(zip(self._space.keys, x_probe.T)))
-
                 except AttributeError:
                     exact_x_dict.append(x_probe)
 
-                approximation = self.get_approximation(self._dataset, x_probe)
-
                 # Perform evaluation (dataset cases)
+                approximation = self.get_approximation(self._dataset, x_probe)
                 if self._target_column is not None and approximation is not None:
                     # Dataset for X and for y: read point entirely from dataset without probe()
                     self._space.register(approximation["params"], approximation["target"])
@@ -364,6 +364,7 @@ class BayesianOptimization(Observable):
         # No dataset: we evaluate the target function directly
         else:
             while not self._queue.empty or iteration < n_iter:
+                # Sample new point from GP
                 try:
                     x_probe = next(self._queue)
                 except StopIteration:
