@@ -358,7 +358,6 @@ class BayesianOptimization(Observable):
                     self.set_bounds(
                         self._bounds_transformer.transform(self._space))
 
-            self.dispatch(Events.OPTIMIZATION_END)
             self.save_res_to_csv(True, exact_x=exact_x_dict)
 
         # No dataset: we evaluate the target function directly
@@ -379,8 +378,9 @@ class BayesianOptimization(Observable):
                     self.set_bounds(
                         self._bounds_transformer.transform(self._space))
 
-            self.dispatch(Events.OPTIMIZATION_END)
             self.save_res_to_csv(False)
+
+        self.dispatch(Events.OPTIMIZATION_END)
 
     def get_approximation(self, dataset, x_probe):
         """
@@ -479,30 +479,18 @@ class BayesianOptimization(Observable):
         exact_x : list[dict]
             contains exact x_probe
         """
+        os.makedirs(self.output_path, exist_ok=True)
+
         if is_approximation:
-
-            try:
-                os.makedirs(self.output_path)
-            except FileExistsError:
-                pass
-
             approximation_res = pd.DataFrame.from_dict(self.res)
             approximation_res.to_csv(os.path.join(self.output_path, "results.csv"), index=False)
-
             exact_points = pd.DataFrame.from_dict(exact_x)
             exact_points.to_csv(os.path.join(self.output_path, "results_exact.csv"), index=False)
-            print("Results successfully saved to " + self.output_path)
-
         else:
-            try:
-                os.makedirs(self.output_path)
-            except FileExistsError:
-                pass
-
             exact_res = pd.DataFrame.from_dict(self.res)
             exact_res.to_csv(os.path.join(self.output_path, "results.csv"), index=False)
 
-            print("Results successfully saved to " + self.output_path)
+        print("Results successfully saved to " + self.output_path)
 
     def set_bounds(self, new_bounds):
         """
