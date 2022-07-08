@@ -359,6 +359,9 @@ class BayesianOptimization(Observable):
         self.save_res_to_csv(exact_x_dict)
         self.dispatch(Events.OPTIMIZATION_END)
 
+        # if self._dataset is not None:         # !DEBUG!
+        #     print("Indexes =", self.indexes)  # !DEBUG!
+
     def get_approximation(self, dataset, x_probe):
         """
         Method to get from the dataset passed by the user the nearest point (wrt to the euclidean distance) to the x_probe point
