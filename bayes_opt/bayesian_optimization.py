@@ -102,7 +102,8 @@ class BayesianOptimization(Observable):
         Path to directory in which the results are written. Default value is the working directory.
 
     optimization_columns: list of str, optional(default=None)
-        List of dataset columns which constitute the optimization variable x.
+        The list of columns which constitute the optimization variable x. It only works if
+        dataset_path is passed. Default value is all columns, except target_column if provided.
 
     target_column: str, optional(default=None)
         Name of the column that will act as the target value of the optimization.
@@ -127,23 +128,33 @@ class BayesianOptimization(Observable):
                  dataset_path=None, output_path=None, optimization_columns=None, target_column=None):
 
         # Check arguments and initialize them if not provided
-        self.output_path = os.getcwd() if output_path is None else output_path
+        self.output_path = os.getcwd() if output_path is None else os.path.join(output_path)
         self._dataset = None if dataset_path is None else pd.read_csv(dataset_path)
-        self._optimization_columns = optimization_columns
-        self._target_column = target_column
+        self._optimization_columns = None if optimization_columns is None else list(optimization_columns)
+        self._target_column = None if target_column is None else str(target_column)
+        self._random_state = ensure_rng(random_state)
 
         # Check for error conditions
         if pbounds is None:
-            raise ValueError("pbounds must be specified!")
-        self._random_state = ensure_rng(random_state)
-
+            raise ValueError("pbounds must be specified")
         if f is None and target_column is None:
-            raise ValueError("target column must be specified if no function is given!")
-        elif f is not None and target_column is not None:
-            raise Exception("You cannot specify both function and target column, one of them must be None!")
-
+            raise ValueError("Target column must be specified if no function is given")
+        if f is not None:
+            if optimization_columns is not None:
+                raise ValueError("Optimization columns cannot be provided if target function f is also provided")
+            if target_column is not None:
+                raise ValueError("Target column cannot be provided if target function f is also provided")
         if target_column is not None and dataset_path is None:
-            raise Exception("You must specify a dataset for the given target column!")
+            raise ValueError("You must specify a dataset for the given target column")
+        if dataset_path is not None:
+            if target_column is not None and target_column not in self._dataset:
+                raise ValueError("The specified target column '{}' is not present "
+                                 "in the dataset".format(target_column))
+            if optimization_columns is not None:
+                missing_cols = set(optimization_columns) - set(self._dataset.columns)
+                if missing_cols:
+                    raise ValueError("The specified optimization columns {} are missing "
+                                     "from the dataset".format(missing_cols))
 
         # Data structure containing the function to be optimized, the bounds of
         # its domain, and a record of the evaluations we have done so far
