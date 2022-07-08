@@ -1,8 +1,10 @@
+import numpy as np
 import os
+import pandas as pd
 import warnings
 
-import numpy.linalg
-import pandas as pd
+from sklearn.gaussian_process.kernels import Matern
+from sklearn.gaussian_process import GaussianProcessRegressor
 from sklearn.linear_model import Ridge
 from sklearn.metrics import mean_absolute_percentage_error as mape
 
@@ -10,10 +12,6 @@ from .target_space import TargetSpace
 from .event import Events, DEFAULT_EVENTS
 from .logger import _get_default_logger
 from .util import UtilityFunction, acq_max, ensure_rng
-
-from sklearn.gaussian_process.kernels import Matern
-from sklearn.gaussian_process import GaussianProcessRegressor
-
 
 class Queue:
     def __init__(self):
@@ -402,7 +400,7 @@ class BayesianOptimization(Observable):
 
         """
         try:
-            x_array = numpy.array(list(x_probe.values()))
+            x_array = np.array(list(x_probe.values()))
         except AttributeError:
             x_array = x_probe
 
@@ -413,7 +411,7 @@ class BayesianOptimization(Observable):
         if self._target_column is None:
             # Find closest point to x_array in the dataset (case of dataset for X only)
             for _, row in dataset.iterrows():
-                res = numpy.linalg.norm(x_array - row, 2)
+                res = np.linalg.norm(x_array - row, 2)
                 if min_distance is None:
                     min_distance = res
                     approximations = [self._space.array_to_params(row)]
@@ -426,36 +424,32 @@ class BayesianOptimization(Observable):
         else:
             # Find closest point to x_array in the dataset, not considering the column of
             # the target variable (case of dataset for both X and y)
-            for row in dataset.loc[:, dataset.columns != self._target_column].itertuples():
-
-                dataset_tuple = numpy.array(row[1:])
-
-                res = numpy.linalg.norm(x_array - dataset_tuple, 2)
+            for idx, row in dataset.loc[:, dataset.columns != self._target_column].iterrows():
+                res = np.linalg.norm(x_array - row, 2)
 
                 if min_distance is None:
-                    min_index = row[0]
+                    min_index = idx
                     min_distance = res
                     approximations = [
                         {
                             "target": dataset.iloc[min_index][self._target_column],
-                            "params": self._space.array_to_params(dataset_tuple)
+                            "params": self._space.array_to_params(row)
                         }]
                 elif res == min_distance:
-
-                    min_index = row[0]
+                    min_index = idx
                     min_distance = res
                     approximations.append(
                         {
                             "target": dataset.iloc[min_index][self._target_column],
-                            "params": self._space.array_to_params(dataset_tuple)
+                            "params": self._space.array_to_params(row)
                         })
                 elif res < min_distance:
-                    min_index = row[0]
+                    min_index = idx
                     min_distance = res
                     approximations = [
                         {
                             "target": dataset.iloc[min_index][self._target_column],
-                            "params": self._space.array_to_params(dataset_tuple)
+                            "params": self._space.array_to_params(row)
                         }]
 
         # If multiple, choose randomly
