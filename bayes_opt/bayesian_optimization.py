@@ -313,24 +313,26 @@ class BayesianOptimization(Observable):
         iteration = 0
         exact_x_dict = []
 
-        # If user specifies a dataset, we take approximated points from it
-        if self._dataset is not None:
-            while not self._queue.empty or iteration < n_iter:
-                # Sample new point from GP
-                try:
-                    x_probe = next(self._queue)
-                except StopIteration:
-                    util.update_params()
-                    x_probe = self.suggest(util)
-                    iteration += 1
+        while not self._queue.empty or iteration < n_iter:
+            # Sample new point from GP
+            try:
+                x_probe = next(self._queue)
+            except StopIteration:
+                util.update_params()
+                x_probe = self.suggest(util)
+                iteration += 1
 
-                # Register new point
+            # Register new point
+            if self._dataset is None:
+                # No dataset: we evaluate the target function directly
+                self.probe(x_probe, lazy=False)
+            else:
+                # If user specifies a dataset, we take approximated points from it
                 try:
                     exact_x_dict.append(dict(zip(self._space.keys, x_probe.T)))
                 except AttributeError:
                     exact_x_dict.append(x_probe)
-
-                # Perform evaluation (dataset cases)
+                # Find best approximation in the dataset
                 approximation = self.get_approximation(self._dataset, x_probe)
                 if self._target_column is not None and approximation is not None:
                     # Dataset for X and for y: read point entirely from dataset without probe()
@@ -343,28 +345,9 @@ class BayesianOptimization(Observable):
                     # Dataset for X only, but there's no approximation: evaluate sampled point directly
                     self.probe(x_probe, lazy=False)
 
-                if self._bounds_transformer:
-                    self.set_bounds(
-                        self._bounds_transformer.transform(self._space))
-
-        # No dataset: we evaluate the target function directly
-        else:
-            while not self._queue.empty or iteration < n_iter:
-                # Sample new point from GP
-                try:
-                    x_probe = next(self._queue)
-                except StopIteration:
-                    util.update_params()
-                    x_probe = self.suggest(util)
-                    iteration += 1
-
-                # Perform evaluation
-                self.probe(x_probe, lazy=False)
-
-                if self._bounds_transformer:
-                    self.set_bounds(
-                        self._bounds_transformer.transform(self._space))
-
+        if self._bounds_transformer:
+            self.set_bounds(
+                self._bounds_transformer.transform(self._space))
         self.save_res_to_csv(exact_x_dict)
         self.dispatch(Events.OPTIMIZATION_END)
 
