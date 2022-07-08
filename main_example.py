@@ -33,7 +33,7 @@ def test01_free():
 def test02_dataset_Xy():
   optimizer = BO(f=None, pbounds={'x': (999,2501), 'y': (1,50)},
                  random_state=seed,
-                 dataset_path=os.path.join('datasets', 'test02.csv'),
+                 dataset_path=os.path.join('datasets', 'test_xyz.csv'),
                  target_column='z',
                  output_path=os.path.join('outputs' ,'test02')
                  )
@@ -43,7 +43,7 @@ def test02_dataset_Xy():
 def test03_dataset_X():
   optimizer = BO(f=black_box_function, pbounds={'x': (999,2501), 'y': (1,50)},
                  random_state=seed,
-                 dataset_path=os.path.join('datasets', 'test02.csv'),
+                 dataset_path=os.path.join('datasets', 'test_xyz.csv'),
                  output_path=os.path.join('outputs' ,'test03'))
   optimizer.maximize(init_points=n0, n_iter=n_iter)
 
@@ -59,7 +59,7 @@ def test04_free_ml():
 def test05_dataset_Xy_ml():
   optimizer = BO(f=None, pbounds={'x': (7,73), 'y': (7,73)},
                  random_state=seed,
-                 dataset_path=os.path.join('datasets', 'test05.csv'),
+                 dataset_path=os.path.join('datasets', 'test_ml.csv'),
                  target_column='z',
                  output_path=os.path.join('outputs' ,'test05')
                  )
@@ -70,7 +70,7 @@ def test05_dataset_Xy_ml():
 def test06_dataset_X_ml():
   optimizer = BO(f=black_box_function_ml, pbounds={'x': (7,73), 'y': (7,73)},
                  random_state=seed,
-                 dataset_path=os.path.join('datasets', 'test05.csv'),
+                 dataset_path=os.path.join('datasets', 'test_ml.csv'),
                  output_path=os.path.join('outputs' ,'test06')
                  )
   optimizer.maximize(init_points=n0, n_iter=n_iter, acq='ei_ml',
