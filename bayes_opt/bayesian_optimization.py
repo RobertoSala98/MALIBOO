@@ -327,17 +327,16 @@ class BayesianOptimization(Observable):
                 # No dataset: we evaluate the target function directly
                 self.probe(x_probe, lazy=False)
             else:
-                # If user specifies a dataset, we take approximated points from it
+                # If user specifies a dataset, we take the best approximated point from it
                 try:
                     exact_x_dict.append(dict(zip(self._space.keys, x_probe.T)))
                 except AttributeError:
                     exact_x_dict.append(x_probe)
-                # Find best approximation in the dataset
                 approximation = self.get_approximation(self._dataset, x_probe)
+
                 if self._target_column is not None and approximation is not None:
                     # Dataset for X and for y: read point entirely from dataset without probe()
-                    self._space.register(approximation["params"], approximation["target"])
-                    self.dispatch(Events.OPTIMIZATION_STEP)
+                    self.register(approximation["params"], approximation["target"])
                 elif approximation is not None:
                     # Dataset for X only: evaluate approximated point
                     self.probe(approximation, lazy=False)
