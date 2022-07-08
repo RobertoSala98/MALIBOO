@@ -427,7 +427,7 @@ class BayesianOptimization(Observable):
             for idx, row in dataset.loc[:, dataset.columns != self._target_column].iterrows():
                 res = np.linalg.norm(x_array - row, 2)
 
-                if min_distance is None:
+                if min_distance is None or res < min_distance:
                     min_index = idx
                     min_distance = res
                     approximations = [
@@ -443,14 +443,6 @@ class BayesianOptimization(Observable):
                             "target": dataset.iloc[min_index][self._target_column],
                             "params": self._space.array_to_params(row)
                         })
-                elif res < min_distance:
-                    min_index = idx
-                    min_distance = res
-                    approximations = [
-                        {
-                            "target": dataset.iloc[min_index][self._target_column],
-                            "params": self._space.array_to_params(row)
-                        }]
 
         # If multiple, choose randomly
         return self._random_state.choice(approximations)
