@@ -95,15 +95,15 @@ class BayesianOptimization(Observable):
     bounds_transformer: DomainTransformer, optional(default=None)
         If provided, the transformation is applied to the bounds.
 
-    dataset_path: str, optional(default=None)
-        Path of the dataset file specified by the user.
+    dataset: str, file handle, or pandas.DataFrame, optional(default=None)
+        The dataset specified by the user, or a path/file handle of such file.
 
     output_path: str, optional(default=None)
         Path to directory in which the results are written. Default value is the working directory.
 
     target_column: str, optional(default=None)
         Name of the column that will act as the target value of the optimization.
-        It only works if dataset_path is passed.
+        It only works if dataset is passed.
 
     Methods
     -------
@@ -120,7 +120,7 @@ class BayesianOptimization(Observable):
     """
 
     def __init__(self, f=None, pbounds=None, random_state=None, verbose=2, bounds_transformer=None,
-                 dataset_path=None, output_path=None, target_column=None):
+                 dataset=None, output_path=None, target_column=None):
 
         # Initialize members from arguments
         self._random_state = ensure_rng(random_state)
@@ -130,7 +130,15 @@ class BayesianOptimization(Observable):
         self._target_column = None if target_column is None else str(target_column)
 
         # Initialize dataset of observations, if provided
-        self._dataset = None if dataset_path is None else pd.read_csv(dataset_path)
+        if dataset is None:
+            self._dataset = None
+        elif type(dataset) == pd.DataFrame:
+            self._dataset = dataset
+        else:
+            try:
+                self._dataset = pd.read_csv(dataset)
+            except:
+                raise ValueError("'dataset' must be a pandas.DataFrame or a (path to a) valid file")
 
         # Check arguments for error conditions
         if pbounds is None:
@@ -139,9 +147,9 @@ class BayesianOptimization(Observable):
             raise ValueError("Target column must be specified if no target function f is given")
         if f is not None and target_column is not None:
                 raise ValueError("Target column cannot be provided if target function f is also provided")
-        if target_column is not None and dataset_path is None:
+        if target_column is not None and dataset is None:
             raise ValueError("You must specify a dataset path for the given target column")
-        if dataset_path is not None:
+        if dataset is not None:
             if target_column is not None and target_column not in self._dataset:
                 raise ValueError("The specified target column '{}' is not present "
                                  "in the dataset".format(target_column))
@@ -154,7 +162,7 @@ class BayesianOptimization(Observable):
 
         self._optimization_columns = list(pbounds.keys())
 
-        if dataset_path is not None:
+        if dataset is not None:
             missing_cols = set(self._optimization_columns) - set(self._dataset.columns)
             if missing_cols:
                 raise ValueError("Columns {} indicated in pbounds are missing "
@@ -391,8 +399,10 @@ class BayesianOptimization(Observable):
         approximations = []
         approximations_idxs = []
 
-        for idx, rowfull in dataset.iterrows():
-            row = rowfull[dataset.columns != self._target_column]  # works even if target col is None
+        dataset_np = dataset.values  # recover numpy array for faster looping over rows
+        idx_cols = [dataset.columns.get_loc(c) for c in dataset.columns if c in dataset and c != self._target_column]  # works even if target col is None
+        for idx in range(dataset_np.shape[0]):
+            row = dataset_np[idx, idx_cols]
             dist = np.linalg.norm(x_array - row, 2)
             if min_distance is None or dist <= min_distance:
                 if self._target_column is None:
