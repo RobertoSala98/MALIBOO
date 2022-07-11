@@ -90,7 +90,7 @@ class UtilityFunction(object):
             for key in ('ml_target', 'ml_bounds'):  # 'target' and 'bounds' respectively in ml_info dict
                 key_in_dict = key.lstrip('ml_')
                 if key_in_dict not in ml_info:
-                    raise ValueError("'ml_info' option must have '{}' field".format(key))
+                    raise ValueError("'ml_info' option must have '{}' field".format(key_in_dict))
                 self.__setattr__(key, ml_info[key_in_dict])
         elif 'ml' in kind:
             raise ValueError("'ml_info' option must be provided if using '{}' acquisition".format(kind))
