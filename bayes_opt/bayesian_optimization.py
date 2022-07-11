@@ -122,14 +122,14 @@ class BayesianOptimization(Observable):
     def __init__(self, f=None, pbounds=None, random_state=None, verbose=2, bounds_transformer=None,
                  dataset_path=None, output_path=None, target_column=None):
 
-        # Initialize members from arguments if not provided
+        # Initialize members from arguments
         self._random_state = ensure_rng(random_state)
         self._verbose = verbose
         self._bounds_transformer = bounds_transformer
         self._output_path = os.getcwd() if output_path is None else os.path.join(output_path)
         self._target_column = None if target_column is None else str(target_column)
 
-        # Initialize dataset of observation, if provided
+        # Initialize dataset of observations, if provided
         self._dataset = None if dataset_path is None else pd.read_csv(dataset_path)
 
         # Check arguments for error conditions
