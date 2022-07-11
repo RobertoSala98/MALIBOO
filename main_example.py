@@ -4,7 +4,7 @@ from bayes_opt import BayesianOptimization as BO
 def black_box_function(x, y):
     return -x ** 2 - (y - 1) ** 2 + 1
 
-def black_box_function_ml(x, y):
+def black_box_function_dict(x, y):
     ret = {}
     ret['value'] = -x ** 2 - (y - 1) ** 2 + 1
     ret['field'] = "idk"
@@ -49,8 +49,8 @@ def test03_dataset_X():
 
 
 def test04_free_ml():
-  optimizer = BO(f=black_box_function_ml, pbounds={'x': (2, 4), 'y': (-3, 3)},
-                 random_state=seed,
+  optimizer = BO(f=black_box_function_dict,
+                 pbounds={'x': (2, 4), 'y': (-3, 3)}, random_state=seed,
                  output_path=os.path.join('outputs' ,'test04'))
   optimizer.maximize(init_points=n0, n_iter=n_iter, acq='ei_ml',
                      ml_info={'target': 'blackbox', 'bounds': (2, 8)})
@@ -68,7 +68,7 @@ def test05_dataset_Xy_ml():
 
 
 def test06_dataset_X_ml():
-  optimizer = BO(f=black_box_function_ml, pbounds={'x': (7,73), 'y': (7,73)},
+  optimizer = BO(f=black_box_function_dict, pbounds={'x': (7,73), 'y': (7,73)},
                  random_state=seed,
                  dataset_path=os.path.join('datasets', 'test_ml.csv'),
                  output_path=os.path.join('outputs' ,'test06')
