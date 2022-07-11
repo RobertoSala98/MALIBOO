@@ -399,8 +399,10 @@ class BayesianOptimization(Observable):
         approximations = []
         approximations_idxs = []
 
-        for idx, rowfull in dataset.iterrows():
-            row = rowfull[dataset.columns != self._target_column]  # works even if target col is None
+        dataset_np = dataset.values  # recover numpy array for faster looping over rows
+        idx_cols = [dataset.columns.get_loc(c) for c in dataset.columns if c in dataset and c != self._target_column]  # works even if target col is None
+        for idx in range(dataset_np.shape[0]):
+            row = dataset_np[idx, idx_cols]
             dist = np.linalg.norm(x_array - row, 2)
             if min_distance is None or dist <= min_distance:
                 if self._target_column is None:
