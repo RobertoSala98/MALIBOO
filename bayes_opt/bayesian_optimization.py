@@ -136,11 +136,11 @@ class BayesianOptimization(Observable):
         if pbounds is None:
             raise ValueError("pbounds must be specified")
         if f is None and target_column is None:
-            raise ValueError("Target column must be specified if no function is given")
+            raise ValueError("Target column must be specified if no target function f is given")
         if f is not None and target_column is not None:
                 raise ValueError("Target column cannot be provided if target function f is also provided")
         if target_column is not None and dataset_path is None:
-            raise ValueError("You must specify a dataset for the given target column")
+            raise ValueError("You must specify a dataset path for the given target column")
         if dataset_path is not None:
             if target_column is not None and target_column not in self._dataset:
                 raise ValueError("The specified target column '{}' is not present "
