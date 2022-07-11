@@ -75,25 +75,27 @@ def acq_max(ac, gp, y_max, bounds, random_state, n_warmup=10000, n_iter=10):
 class UtilityFunction(object):
     """
     An object to compute the acquisition functions.
+
+    See the maximize() function in bayesian_optimization.py for a description of the constructor arguments.
     """
 
-    def __init__(self, kind, kappa, xi, kappa_decay=1, kappa_decay_delay=0):
+    def __init__(self, kind, kappa, xi, kappa_decay=1, kappa_decay_delay=0, ml_info={}):
 
         self.kappa = kappa
         self._kappa_decay = kappa_decay
         self._kappa_decay_delay = kappa_decay_delay
-
         self.xi = xi
+        self.kind = kind
+        if ml_info:
+            for key in ('ml_target', 'ml_bounds'):  # 'target' and 'bounds' respectively in ml_info dict
+                key_in_dict = key.lstrip('ml_')
+                if key_in_dict not in ml_info:
+                    raise ValueError("'ml_info' option must have '{}' field".format(key_in_dict))
+                self.__setattr__(key, ml_info[key_in_dict])
+        elif 'ml' in kind:
+            raise ValueError("'ml_info' option must be provided if using '{}' acquisition".format(kind))
         
         self._iters_counter = 0
-
-        if kind not in ['ucb', 'ei', 'poi']:
-            err = "The utility function " \
-                  "{} has not been implemented, " \
-                  "please choose one of ucb, ei, or poi.".format(kind)
-            raise NotImplementedError(err)
-        else:
-            self.kind = kind
 
     def update_params(self):
         self._iters_counter += 1
@@ -106,8 +108,11 @@ class UtilityFunction(object):
             return self._ucb(x, gp, self.kappa)
         if self.kind == 'ei':
             return self._ei(x, gp, y_max, self.xi)
+        if self.kind == 'ei_ml':
+            return self._ei_ml(x, gp, y_max, self.xi, self.ml_model, self.ml_bounds)
         if self.kind == 'poi':
             return self._poi(x, gp, y_max, self.xi)
+        raise NotImplementedError("The utility function {} has not been implemented.".format(self.kind))
 
     @staticmethod
     def _ucb(x, gp, kappa):
@@ -126,6 +131,16 @@ class UtilityFunction(object):
         a = (mean - y_max - xi)
         z = a / std
         return a * norm.cdf(z) + std * norm.pdf(z)
+
+    @staticmethod
+    def _ei_ml(x, gp, y_max, xi, ml_model, ml_bounds):
+        ei = UtilityFunction._ei(x, gp, y_max, xi)
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            y_hat = ml_model.predict(x)
+        lb, ub = ml_bounds
+        indicator = np.array([lb <= y and y <= ub for y in y_hat])
+        return ei * indicator
 
     @staticmethod
     def _poi(x, gp, y_max, xi):

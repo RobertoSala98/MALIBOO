@@ -1,18 +1,17 @@
+import numpy as np
 import os
-import random
+import pandas as pd
 import warnings
 
-import numpy.linalg
-import pandas as pd
+from sklearn.gaussian_process.kernels import Matern
+from sklearn.gaussian_process import GaussianProcessRegressor
+from sklearn.linear_model import Ridge
+from sklearn.metrics import mean_absolute_percentage_error as mape
 
 from .target_space import TargetSpace
 from .event import Events, DEFAULT_EVENTS
 from .logger import _get_default_logger
 from .util import UtilityFunction, acq_max, ensure_rng
-
-from sklearn.gaussian_process.kernels import Matern
-from sklearn.gaussian_process import GaussianProcessRegressor
-
 
 class Queue:
     def __init__(self):
@@ -97,10 +96,14 @@ class BayesianOptimization(Observable):
         If provided, the transformation is applied to the bounds.
 
     dataset_path: str, optional(default=None)
-            path of the dataset file specified by the user.
+        Path of the dataset file specified by the user.
 
     output_path: str, optional(default=None)
-            path to directory in which the results are written, if not specified by user it is the working directory
+        Path to directory in which the results are written. Default value is the working directory.
+
+    target_column: str, optional(default=None)
+        Name of the column that will act as the target value of the optimization.
+        It only works if dataset_path is passed.
 
     Methods
     -------
@@ -116,43 +119,51 @@ class BayesianOptimization(Observable):
         Allows changing the lower and upper searching bounds
     """
 
-    def __init__(self, f=None, pbounds=None, random_state=None, verbose=2,
-                 bounds_transformer=None,
+    def __init__(self, f=None, pbounds=None, random_state=None, verbose=2, bounds_transformer=None,
                  dataset_path=None, output_path=None, target_column=None):
 
-        if output_path is None:
-            self.output_path = os.getcwd()
-        else:
-            self.output_path = output_path
-
-        if dataset_path is None:
-            self._dataset = None
-        else:
-            self._dataset = pd.read_csv(dataset_path)
-
-        if target_column is None:
-            self._target_column = None
-        else:
-            self._target_column = target_column
-
-        if pbounds is None:
-            raise ValueError("pbounds must be specified!")
+        # Initialize members from arguments
         self._random_state = ensure_rng(random_state)
+        self._verbose = verbose
+        self._bounds_transformer = bounds_transformer
+        self._output_path = os.getcwd() if output_path is None else os.path.join(output_path)
+        self._target_column = None if target_column is None else str(target_column)
 
+        # Initialize dataset of observations, if provided
+        self._dataset = None if dataset_path is None else pd.read_csv(dataset_path)
+
+        # Check arguments for error conditions
+        if pbounds is None:
+            raise ValueError("pbounds must be specified")
         if f is None and target_column is None:
-            raise ValueError("target column must be specified if no function is given!")
-        elif f is not None and target_column is not None:
-            raise Exception("You cannot specify both function and target column, one of them must be None!")
-
+            raise ValueError("Target column must be specified if no target function f is given")
+        if f is not None and target_column is not None:
+                raise ValueError("Target column cannot be provided if target function f is also provided")
         if target_column is not None and dataset_path is None:
-            raise Exception("You must specify a dataset for the given target column!")
+            raise ValueError("You must specify a dataset path for the given target column")
+        if dataset_path is not None:
+            if target_column is not None and target_column not in self._dataset:
+                raise ValueError("The specified target column '{}' is not present "
+                                 "in the dataset".format(target_column))
+        if self._bounds_transformer:
+            try:
+                self._bounds_transformer.initialize(self._space)
+            except (AttributeError, TypeError):
+                raise TypeError('The transformer must be an instance of '
+                                'DomainTransformer')
+
+        self._optimization_columns = list(pbounds.keys())
+
+        if dataset_path is not None:
+            missing_cols = set(self._optimization_columns) - set(self._dataset.columns)
+            if missing_cols:
+                raise ValueError("Columns {} indicated in pbounds are missing "
+                                 "from the dataset".format(missing_cols))
 
         # Data structure containing the function to be optimized, the bounds of
         # its domain, and a record of the evaluations we have done so far
         self._space = TargetSpace(f, pbounds, random_state)
-
         self._queue = Queue()
-
         # Internal GP regressor
         self._gp = GaussianProcessRegressor(
             kernel=Matern(nu=2.5),
@@ -161,16 +172,6 @@ class BayesianOptimization(Observable):
             n_restarts_optimizer=5,
             random_state=self._random_state,
         )
-
-        self._verbose = verbose
-        self._bounds_transformer = bounds_transformer
-
-        if self._bounds_transformer:
-            try:
-                self._bounds_transformer.initialize(self._space)
-            except (AttributeError, TypeError):
-                raise TypeError('The transformer must be an instance of '
-                                'DomainTransformer')
 
         super(BayesianOptimization, self).__init__(events=DEFAULT_EVENTS)
 
@@ -220,6 +221,9 @@ class BayesianOptimization(Observable):
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
             self._gp.fit(self._space.params, self._space.target)
+            # If requird, train ML model with all space parameters data collected so far
+            if 'ml' in utility_function.kind:
+                utility_function.ml_model = self.get_ml_model(y_name=utility_function.ml_target)
 
         # Finding argmax of the acquisition function.
         suggestion = acq_max(
@@ -255,6 +259,7 @@ class BayesianOptimization(Observable):
                  kappa_decay=1,
                  kappa_decay_delay=0,
                  xi=0.0,
+                 ml_info={},
                  **gp_params):
         """
         Probes the target space to find the parameters that yield the maximum
@@ -270,8 +275,8 @@ class BayesianOptimization(Observable):
             Number of iterations where the method attempts to find the maximum
             value.
 
-        acq: {'ucb', 'ei', 'poi'}
-            The acquisition method used.
+        acq: str
+            The acquisition method used. Among others:
                 * 'ucb' stands for the Upper Confidence Bounds method
                 * 'ei' is the Expected Improvement method
                 * 'poi' is the Probability Of Improvement criterion.
@@ -292,6 +297,11 @@ class BayesianOptimization(Observable):
         xi: float, optional(default=0.0)
             [unused]
 
+        ml_info: dict, optional(default={})
+            Information required for Machine Learning models. Namely, ml_info['target'] is the
+            name of the target quantity and ml_info['bounds'] is a tuple with its lower and
+            upper bounds.
+
         """
         self._prime_subscriptions()
         self.dispatch(Events.OPTIMIZATION_START)
@@ -302,64 +312,59 @@ class BayesianOptimization(Observable):
                                kappa=kappa,
                                xi=xi,
                                kappa_decay=kappa_decay,
-                               kappa_decay_delay=kappa_decay_delay)
+                               kappa_decay_delay=kappa_decay_delay,
+                               ml_info=ml_info)
         iteration = 0
-
-        # if user specifies a dataset it takes approximated points from it
         if self._dataset is not None:
-            exact_x_dict = []
-            while not self._queue.empty or iteration < n_iter:
-                try:
-                    x_probe = next(self._queue)
-                except StopIteration:
-                    util.update_params()
-                    x_probe = self.suggest(util)
-                    iteration += 1
+            self.indexes = []
+        exact_x_dict = []
 
+        while not self._queue.empty or iteration < n_iter:
+            # Sample new point from GP
+            try:
+                x_probe = next(self._queue)
+            except StopIteration:
+                util.update_params()
+                x_probe = self.suggest(util)
+                iteration += 1
+
+            # Register new point
+            if self._dataset is None:
+                # No dataset: we evaluate the target function directly
+                self.probe(x_probe, lazy=False)
+            else:
+                # If user specifies a dataset, we take the best approximated point from it
                 try:
                     exact_x_dict.append(dict(zip(self._space.keys, x_probe.T)))
-
                 except AttributeError:
                     exact_x_dict.append(x_probe)
+                cols = self.get_relevant_columns()
+                idx, approximation = self.get_approximation(self._dataset[cols], x_probe)
+                self.indexes.append(idx)
 
-                approximation = self.get_approximation(self._dataset, x_probe)
                 if self._target_column is not None and approximation is not None:
-
-                    self._space.register(approximation["params"], approximation["target"])
-                    self.dispatch(Events.OPTIMIZATION_STEP)
-
-                elif approximation is not None:
-                    self.probe(approximation, lazy=False)
+                    # Dataset for X and for y: read point entirely from dataset without probe()
+                    self.register(approximation["params"], approximation["target"])
                 else:
-                    self.probe(x_probe, lazy=False)
+                    # Dataset for X only: evaluate approximated point
+                    if approximation is not None:
+                        self.probe(approximation, lazy=False)
+                    else:
+                        # No approximation found: evaluate sampled point directly
+                        self.probe(x_probe, lazy=False)
 
-                if self._bounds_transformer:
-                    self.set_bounds(
-                        self._bounds_transformer.transform(self._space))
-            self.dispatch(Events.OPTIMIZATION_END)
-            self.save_res_to_csv(True, exact_x=exact_x_dict)
+        if self._bounds_transformer:
+            self.set_bounds(
+                self._bounds_transformer.transform(self._space))
+        self.save_res_to_csv(exact_x_dict)
+        self.dispatch(Events.OPTIMIZATION_END)
 
-        else:
-            while not self._queue.empty or iteration < n_iter:
-                try:
-                    x_probe = next(self._queue)
-                except StopIteration:
-                    util.update_params()
-                    x_probe = self.suggest(util)
-                    iteration += 1
-
-                self.probe(x_probe, lazy=False)
-
-                if self._bounds_transformer:
-                    self.set_bounds(
-                        self._bounds_transformer.transform(self._space))
-
-            self.dispatch(Events.OPTIMIZATION_END)
-            self.save_res_to_csv(False)
+        # if self._dataset is not None:         # !DEBUG!
+        #     print("Indexes =", self.indexes)  # !DEBUG!
 
     def get_approximation(self, dataset, x_probe):
         """
-        Method to get from the dataset passed by the user the nearest point to the x_probe point
+        Method to get from the dataset passed by the user the nearest point (wrt to the euclidean distance) to the x_probe point
 
         Parameters
         ----------
@@ -377,103 +382,61 @@ class BayesianOptimization(Observable):
             approximated x_probe, with corresponding target value, if target column is specified by the user
 
         """
-
         try:
-            x_array = numpy.array(list(x_probe.values()))
-
+            x_array = np.array(list(x_probe.values()))
         except AttributeError:
             x_array = x_probe
 
         min_distance = None
-        min_index = None
         approximations = []
+        approximations_idxs = []
 
-        if self._target_column is None:
-            for row in dataset.itertuples():
+        for idx, rowfull in dataset.iterrows():
+            row = rowfull[dataset.columns != self._target_column]  # works even if target col is None
+            dist = np.linalg.norm(x_array - row, 2)
+            if min_distance is None or dist <= min_distance:
+                if self._target_column is None:
+                    # Find closest point to x_array in the dataset (case of dataset for X only)
+                    approx = self._space.array_to_params(row)
+                else:
+                    # Find closest point to x_array in the dataset, not considering the column of
+                    # the target variable (case of dataset for both X and y)
+                    target_val = dataset.iloc[idx][self._target_column]
+                    approx = {
+                            "target": target_val,
+                            "params": self._space.array_to_params(row)
+                        }
+                if dist == min_distance:
+                    # One of the tied best approximations
+                    approximations.append(approx)
+                    approximations_idxs.append(idx)
+                else:
+                    # The one new best approximation
+                    min_distance = dist
+                    approximations = [approx]
+                    approximations_idxs = [idx]
 
-                dataset_tuple = numpy.array(row[1:])
+        # If multiple, choose randomly
+        ret_idx = self._random_state.randint(0, len(approximations_idxs))
+        return approximations_idxs[ret_idx], approximations[ret_idx]
 
-                res = numpy.linalg.norm(x_array - dataset_tuple, 2)
-
-                if min_distance is None:
-                    min_distance = res
-                    approximations = [self._space.array_to_params(dataset_tuple)]
-                elif res == min_distance:
-                    approximations.append(self._space.array_to_params(dataset_tuple))
-                elif res < min_distance:
-                    min_distance = res
-                    approximations = [self._space.array_to_params(dataset_tuple)]
-            return random.choice(approximations)
-        else:
-            for row in dataset.loc[:, dataset.columns != self._target_column].itertuples():
-
-                dataset_tuple = numpy.array(row[1:])
-
-                res = numpy.linalg.norm(x_array - dataset_tuple, 2)
-
-                if min_distance is None:
-                    min_index = row[0]
-                    min_distance = res
-                    approximations = [
-                        {
-                            "target": dataset.iloc[min_index][self._target_column],
-                            "params": self._space.array_to_params(dataset_tuple)
-                        }]
-                elif res == min_distance:
-
-                    min_index = row[0]
-                    min_distance = res
-                    approximations.append(
-                        {
-                            "target": dataset.iloc[min_index][self._target_column],
-                            "params": self._space.array_to_params(dataset_tuple)
-                        })
-                elif res < min_distance:
-                    min_index = row[0]
-                    min_distance = res
-                    approximations = [
-                        {
-                            "target": dataset.iloc[min_index][self._target_column],
-                            "params": self._space.array_to_params(dataset_tuple)
-                        }]
-            return random.choice(approximations)
-
-    def save_res_to_csv(self, is_approximation, exact_x=None):
+    def save_res_to_csv(self, exact_x=[]):
         """
         A method to save results of the optimization to csv files located in results directory
 
         Parameters
         ----------
-
-        is_approximation: bool
-            true if the user passes a dataset as input
         exact_x : list[dict]
-            contains exact x_probe
+            contains exact x_probe, in case the user passes a dataset as input
         """
-        if is_approximation:
-
-            try:
-                os.makedirs(self.output_path)
-            except FileExistsError:
-                pass
-
-            approximation_res = pd.DataFrame.from_dict(self.res)
-            approximation_res.to_csv(os.path.join(self.output_path, "results.csv"), index=False)
-
+        os.makedirs(self._output_path, exist_ok=True)
+        results = pd.DataFrame.from_dict(self.res)
+        results.to_csv(os.path.join(self._output_path, "results.csv"), index=False)
+        if exact_x:
             exact_points = pd.DataFrame.from_dict(exact_x)
-            exact_points.to_csv(os.path.join(self.output_path, "results_exact.csv"), index=False)
-            print("Results successfully saved to " + self.output_path)
+            exact_points.to_csv(os.path.join(self._output_path, "results_exact.csv"), index=False)
 
-        else:
-            try:
-                os.makedirs(self.output_path)
-            except FileExistsError:
-                pass
-
-            exact_res = pd.DataFrame.from_dict(self.res)
-            exact_res.to_csv(os.path.join(self.output_path, "results.csv"), index=False)
-
-            print("Results successfully saved to " + self.output_path)
+        print("Results successfully saved to " + self._output_path)
 
     def set_bounds(self, new_bounds):
         """
@@ -489,3 +452,48 @@ class BayesianOptimization(Observable):
     def set_gp_params(self, **params):
         """Set parameters to the internal Gaussian Process Regressor"""
         self._gp.set_params(**params)
+
+    def get_relevant_columns(self):
+        """
+        When a dataset is used, returns the columns to be used for the search of the approximation point
+        """
+        if self._optimization_columns is None:
+            cols = list(self._dataset.columns)
+        else:
+            cols = list(self._optimization_columns)
+            if self._target_column is not None and self._target_column not in cols:
+                cols.append(self._target_column)
+        return cols
+
+    def get_ml_model(self, y_name):
+        """
+        Returns Machine Learning model trained on current history
+
+        Parameters
+        ----------
+        y_name: str
+            Name of the dataset column that will act as the target of the regression
+
+        Returns
+        -------
+        model: sklearn.model object
+            The trained ML model
+        """
+        # Build training dataset for the ML model
+        X = pd.DataFrame(self._space._params, columns=self._space.keys)
+        try:
+            y = self._space._target_dict_info[y_name]
+        except KeyError:
+            if self._dataset is None:
+                raise KeyError("Target function has no '{}' field".format(y_name))
+            elif y_name in self._dataset.columns:
+                y = self._dataset.loc[self.indexes, y_name]
+            else:
+                raise KeyError("Dataset has no '{}' column".format(y_name))
+
+        # Initialize and train model
+        model = Ridge()
+        model.fit(X, y)
+        # print("Training MAPE =", mape(model.predict(X), y))  # !DEBUG!
+        # print("Coefficients =", model.coef_)  # !DEBUG!
+        return model
