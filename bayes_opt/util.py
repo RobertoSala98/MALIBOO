@@ -40,6 +40,7 @@ def acq_max(ac, gp, y_max, bounds, random_state, dataset=None, n_warmup=10000, n
 
     Returns
     -------
+    :return: idx,   The dataset index of the arg max of the acquisition function, or None if no dataset is used
     :return: x_max, The arg max of the acquisition function.
     """
 
@@ -50,11 +51,12 @@ def acq_max(ac, gp, y_max, bounds, random_state, dataset=None, n_warmup=10000, n
         x_tries = random_state.uniform(bounds[:, 0], bounds[:, 1],
                                        size=(n_warmup, bounds.shape[0]))
     ys = ac(x_tries, gp=gp, y_max=y_max)
-    x_max = x_tries[ys.argmax()]
+    idx = ys.argmax()
+    x_max = x_tries[idx]
     max_acq = ys.max()
 
     if dataset is not None:
-        return np.clip(x_max, bounds[:, 0], bounds[:, 1])
+        return idx, np.clip(x_max, bounds[:, 0], bounds[:, 1])
 
     # Explore the parameter space more throughly
     x_seeds = random_state.uniform(bounds[:, 0], bounds[:, 1],
@@ -65,7 +67,6 @@ def acq_max(ac, gp, y_max, bounds, random_state, dataset=None, n_warmup=10000, n
                        x_try.reshape(1, -1),
                        bounds=bounds,
                        method="L-BFGS-B")
-
 
         # See if success
         if not res.success:
@@ -78,7 +79,7 @@ def acq_max(ac, gp, y_max, bounds, random_state, dataset=None, n_warmup=10000, n
 
     # Clip output to make sure it lies within the bounds. Due to floating
     # point technicalities this is not always the case.
-    return np.clip(x_max, bounds[:, 0], bounds[:, 1])
+    return None, np.clip(x_max, bounds[:, 0], bounds[:, 1])
 
 
 class UtilityFunction(object):

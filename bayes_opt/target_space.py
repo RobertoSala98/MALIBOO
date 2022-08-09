@@ -227,6 +227,8 @@ class TargetSpace(object):
 
         Returns
         ----------
+        idx: int or None
+            index number of chosen point, or None if no dataset is used
         data: ndarray
             [num x dim] array points with dimensions corresponding to `self._keys`
 
@@ -241,13 +243,14 @@ class TargetSpace(object):
         # TODO: support integer, category, and basic scipy.optimize constraints
         if self.dataset is not None:
             # Recover random row from dataset
-            idx = self.random_state.choice(self.dataset.index, size=1)
+            idx = self.random_state.choice(self.dataset.index)
             data = self.dataset.loc[idx, self.keys].to_numpy()
         else:
+            idx = None
             data = np.empty((1, self.dim))
             for col, (lower, upper) in enumerate(self._bounds):
                 data.T[col] = self.random_state.uniform(lower, upper, size=1)
-        return self.array_to_params(data.ravel())
+        return idx, self.array_to_params(data.ravel())
 
     def max(self):
         """Get maximum target value found and corresponding parameters."""

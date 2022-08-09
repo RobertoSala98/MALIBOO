@@ -212,7 +212,7 @@ class BayesianOptimization(Observable):
                 utility_function.ml_model = self.get_ml_model(y_name=utility_function.ml_target)
 
         # Finding argmax of the acquisition function.
-        suggestion = acq_max(
+        idx, suggestion = acq_max(
             ac=utility_function.utility,
             gp=self._gp,
             y_max=self._space.target.max(),
@@ -221,7 +221,7 @@ class BayesianOptimization(Observable):
             dataset=self._space.dataset[self._space.keys].values if self._space.dataset is not None else None
         )
 
-        return self._space.array_to_params(suggestion)
+        return idx, self._space.array_to_params(suggestion)
 
     def _prime_queue(self, init_points):
         """Make sure there's something in the queue at the very beginning."""
@@ -309,10 +309,10 @@ class BayesianOptimization(Observable):
         while not self._queue.empty or iteration < n_iter:
             # Sample new point from GP
             try:
-                x_probe = next(self._queue)
+                idx, x_probe = next(self._queue)
             except StopIteration:
                 util.update_params()
-                x_probe = self.suggest(util)
+                idx, x_probe = self.suggest(util)
                 iteration += 1
 
             # Register new point
@@ -325,20 +325,18 @@ class BayesianOptimization(Observable):
                     exact_x_dict.append(dict(zip(self._space.keys, x_probe.T)))
                 except AttributeError:
                     exact_x_dict.append(x_probe)
-                cols = self._space.get_relevant_columns()
-                idx, approximation = self.get_approximation(self._space.dataset[cols], x_probe)
+
                 self.indexes.append(idx)
 
-                if self._space.target_column is not None and approximation is not None:
+                if self._space.target_column is not None and x_probe is not None:
                     # Dataset for X and for y: read point entirely from dataset without probe()
-                    self.register(approximation["params"], approximation["target"])
+                    self.register(x_probe, self._space.dataset.loc[idx, self._space.target_column])
                 else:
                     # Dataset for X only: evaluate approximated point
-                    if approximation is not None:
-                        self.probe(approximation, lazy=False)
-                    else:
-                        # No approximation found: evaluate sampled point directly
+                    if x_probe is not None:
                         self.probe(x_probe, lazy=False)
+                    else:
+                        raise ValueError("x_probe is None")
 
         if self._bounds_transformer:
             self.set_bounds(
