@@ -239,7 +239,8 @@ class BayesianOptimization(Observable):
             gp=self._gp,
             y_max=self._space.target.max(),
             bounds=self._space.bounds,
-            random_state=self._random_state
+            random_state=self._random_state,
+            dataset=self._dataset[self._optimization_columns].values if self._dataset is not None else None
         )
 
         return self._space.array_to_params(suggestion)
@@ -348,6 +349,8 @@ class BayesianOptimization(Observable):
                     exact_x_dict.append(x_probe)
                 cols = self.get_relevant_columns()
                 idx, approximation = self.get_approximation(self._dataset[cols], x_probe)
+                if np.any(x_probe != approximation["params"]):  # TODO remove
+                    exit(f"{x_probe} != {approximation['params']} !!!")
                 self.indexes.append(idx)
 
                 if self._target_column is not None and approximation is not None:

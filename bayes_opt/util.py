@@ -4,7 +4,7 @@ from scipy.stats import norm
 from scipy.optimize import minimize
 
 
-def acq_max(ac, gp, y_max, bounds, random_state, n_warmup=10000, n_iter=10):
+def acq_max(ac, gp, y_max, bounds, random_state, dataset=None, n_warmup=10000, n_iter=10):
     """
     A function to find the maximum of the acquisition function
 
@@ -29,6 +29,9 @@ def acq_max(ac, gp, y_max, bounds, random_state, n_warmup=10000, n_iter=10):
     :param random_state:
         instance of np.RandomState random number generator
 
+    :param dataset:
+        the dataset which constitutes the optimization domain, if any
+
     :param n_warmup:
         number of times to randomly sample the aquisition function
 
@@ -40,12 +43,18 @@ def acq_max(ac, gp, y_max, bounds, random_state, n_warmup=10000, n_iter=10):
     :return: x_max, The arg max of the acquisition function.
     """
 
-    # Warm up with random points
-    x_tries = random_state.uniform(bounds[:, 0], bounds[:, 1],
-                                   size=(n_warmup, bounds.shape[0]))
+    # Warm up with random points or dataset points
+    if dataset is not None:
+        x_tries = dataset
+    else:
+        x_tries = random_state.uniform(bounds[:, 0], bounds[:, 1],
+                                       size=(n_warmup, bounds.shape[0]))
     ys = ac(x_tries, gp=gp, y_max=y_max)
     x_max = x_tries[ys.argmax()]
     max_acq = ys.max()
+
+    if dataset is not None:
+        return np.clip(x_max, bounds[:, 0], bounds[:, 1])
 
     # Explore the parameter space more throughly
     x_seeds = random_state.uniform(bounds[:, 0], bounds[:, 1],
