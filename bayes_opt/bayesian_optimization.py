@@ -341,66 +341,6 @@ class BayesianOptimization(Observable):
         # if self._space.dataset is not None:         # !DEBUG!
         #     print("Indexes =", self.indexes)  # !DEBUG!
 
-    def get_approximation(self, dataset, x_probe):
-        """
-        Method to get from the dataset passed by the user the nearest point (wrt to the euclidean distance) to the x_probe point
-
-        Parameters
-        ----------
-
-        dataset: pandas.DataFrame
-            dataset specified by the user
-
-        x_probe: dict
-            point found by the optimization process
-
-        Returns
-        -------
-            approximations : dict[]
-
-            approximated x_probe, with corresponding target value, if target column is specified by the user
-
-        """
-        try:
-            x_array = np.array(list(x_probe.values()))
-        except AttributeError:
-            x_array = x_probe
-
-        min_distance = None
-        approximations = []
-        approximations_idxs = []
-
-        dataset_np = dataset.values  # recover numpy array for faster looping over rows
-        idx_cols = [dataset.columns.get_loc(c) for c in dataset.columns if c in dataset and c != self._space.target_column]  # works even if target col is None
-        for idx in range(dataset_np.shape[0]):
-            row = dataset_np[idx, idx_cols]
-            dist = np.linalg.norm(x_array - row, 2)
-            if min_distance is None or dist <= min_distance:
-                if self._space.target_column is None:
-                    # Find closest point to x_array in the dataset (case of dataset for X only)
-                    approx = self._space.array_to_params(row)
-                else:
-                    # Find closest point to x_array in the dataset, not considering the column of
-                    # the target variable (case of dataset for both X and y)
-                    target_val = dataset.iloc[idx][self._space.target_column]
-                    approx = {
-                            "target": target_val,
-                            "params": self._space.array_to_params(row)
-                        }
-                if dist == min_distance:
-                    # One of the tied best approximations
-                    approximations.append(approx)
-                    approximations_idxs.append(idx)
-                else:
-                    # The one new best approximation
-                    min_distance = dist
-                    approximations = [approx]
-                    approximations_idxs = [idx]
-
-        # If multiple, choose randomly
-        ret_idx = self._random_state.randint(0, len(approximations_idxs))
-        return approximations_idxs[ret_idx], approximations[ret_idx]
-
     def save_res_to_csv(self):
         """
         A method to save results of the optimization to csv files located in results directory

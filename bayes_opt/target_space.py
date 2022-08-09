@@ -351,12 +351,3 @@ class TargetSpace(object):
                              "from the dataset".format(missing_cols))
         if target_column is not None and target_column not in self._dataset:
             raise ValueError("The specified target column '{}' is not present in the dataset".format(target_column))
-
-    def get_relevant_columns(self):
-        """
-        When a dataset is used, returns the columns to be used for the search of the approximation point
-        """
-        cols = list(self._keys)
-        if self._target_column is not None and self._target_column not in cols:
-            cols.append(self._target_column)
-        return cols
