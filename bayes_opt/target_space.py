@@ -25,7 +25,8 @@ class TargetSpace(object):
     >>> assert self.max_point()['max_val'] == y
     """
 
-    def __init__(self, target_func=None, pbounds=None, random_state=None, dataset=None):
+    def __init__(self, target_func=None, pbounds=None, random_state=None,
+                 dataset=None, target_column=None):
         """
         Parameters
         ----------
@@ -39,23 +40,28 @@ class TargetSpace(object):
         random_state : int, RandomState, or None
             optionally specify a seed for a random number generator
 
-        dataset : pandas.DataFrame
+        dataset: str, file handle, or pandas.DataFrame, optional(default=None)
             The dataset which constitutes the optimization domain, if any.
+
+        target_column: str, optional(default=None)
+            Name of the column that will act as the target value of the optimization.
+            Only works if dataset is passed.
         """
         self.random_state = ensure_rng(random_state)
 
         # The function to be optimized
         self.target_func = target_func
 
-        # The dataset which constitutes the optimization domain, if any
-        self._dataset = dataset
+        # Get the name of the parameters, aka the optimization columns
+        self._keys = sorted(pbounds)
 
-        # Get the name of the parameters
-        self._keys = sorted(pbounds)  # optimization columns
+        # The dataset which constitutes the optimization domain, if any
+        self.initialize_dataset(dataset, target_column)
+
         # Create an array with parameters bounds
         self._bounds = np.array(
             [item[1] for item in sorted(pbounds.items(), key=lambda x: x[0])],
-            dtype=np.float
+            dtype=float
         )
 
         # preallocated memory for X and Y points
@@ -97,6 +103,10 @@ class TargetSpace(object):
     @property
     def dataset(self):
         return self._dataset
+
+    @property
+    def target_column(self):
+        return self._target_column
 
     def params_to_array(self, params):
         try:
@@ -304,3 +314,46 @@ class TargetSpace(object):
             return target[self._target_dict_key], target
         else:
             raise ValueError("Unrecognized return type '{}' in target function".format(type(target)))
+
+    def initialize_dataset(self, dataset=None, target_column=None):
+        """
+        dataset: str, file handle, or pandas.DataFrame, optional(default=None)
+            The dataset which constitutes the optimization domain, if any.
+
+        target_column: str, optional(default=None)
+            Name of the column that will act as the target value of the optimization.
+            Only works if dataset is passed.
+        """
+        if dataset is None:
+            self._dataset = None
+            return
+
+        if type(dataset) == pd.DataFrame:
+            self._dataset = dataset
+        else:
+            try:
+                self._dataset = pd.read_csv(dataset)
+            except:
+                raise ValueError("'dataset' must be a pandas.DataFrame or a (path to a) valid file")
+
+        # Set target column
+        self._target_column = target_column
+
+        # Check for missing columns
+        if not hasattr(self, '_keys'):
+            raise ValueError("self._keys must be set before initialize_dataset() is called")
+        missing_cols = set(self._keys) - set(self._dataset.columns)
+        if missing_cols:
+            raise ValueError("Columns {} indicated in pbounds are missing "
+                             "from the dataset".format(missing_cols))
+        if target_column is not None and target_column not in self._dataset:
+            raise ValueError("The specified target column '{}' is not present in the dataset".format(target_column))
+
+    def get_relevant_columns(self):
+        """
+        When a dataset is used, returns the columns to be used for the search of the approximation point
+        """
+        cols = list(self._keys)
+        if self._target_column is not None and self._target_column not in cols:
+            cols.append(self._target_column)
+        return cols

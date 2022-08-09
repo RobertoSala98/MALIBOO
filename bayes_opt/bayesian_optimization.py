@@ -103,7 +103,7 @@ class BayesianOptimization(Observable):
 
     target_column: str, optional(default=None)
         Name of the column that will act as the target value of the optimization.
-        It only works if dataset is passed.
+        Only works if dataset is passed.
 
     Methods
     -------
@@ -127,21 +127,8 @@ class BayesianOptimization(Observable):
         self._verbose = verbose
         self._bounds_transformer = bounds_transformer
         self._output_path = os.getcwd() if output_path is None else os.path.join(output_path)
-        self._target_column = None if target_column is None else str(target_column)
 
-        # Initialize dataset of observations, if provided
-        # TODO move dataset initialization to TargetSpace and remove all self._dataset here
-        if dataset is None:
-            self._dataset = None
-        elif type(dataset) == pd.DataFrame:
-            self._dataset = dataset
-        else:
-            try:
-                self._dataset = pd.read_csv(dataset)
-            except:
-                raise ValueError("'dataset' must be a pandas.DataFrame or a (path to a) valid file")
-
-        # Check arguments for error conditions
+        # Check for coherence among constructor arguments
         if pbounds is None:
             raise ValueError("pbounds must be specified")
         if f is None and target_column is None:
@@ -149,15 +136,11 @@ class BayesianOptimization(Observable):
         if f is not None and target_column is not None:
                 raise ValueError("Target column cannot be provided if target function f is also provided")
         if target_column is not None and dataset is None:
-            raise ValueError("You must specify a dataset path for the given target column")
-        if dataset is not None:
-            if target_column is not None and target_column not in self._dataset:
-                raise ValueError("The specified target column '{}' is not present "
-                                 "in the dataset".format(target_column))
+            raise ValueError("Dataset must be specified for the given target column")
 
         # Data structure containing the function to be optimized, the bounds of
         # its domain, and a record of the evaluations we have done so far
-        self._space = TargetSpace(f, pbounds, random_state, self._dataset)
+        self._space = TargetSpace(f, pbounds, random_state, dataset, target_column)
         self._queue = Queue()
 
         if self._bounds_transformer:
@@ -166,12 +149,6 @@ class BayesianOptimization(Observable):
             except (AttributeError, TypeError):
                 raise TypeError('The transformer must be an instance of '
                                 'DomainTransformer')
-
-        if dataset is not None:
-            missing_cols = set(self._space.keys) - set(self._dataset.columns)
-            if missing_cols:
-                raise ValueError("Columns {} indicated in pbounds are missing "
-                                 "from the dataset".format(missing_cols))
 
         # Internal GP regressor
         self._gp = GaussianProcessRegressor(
@@ -241,7 +218,7 @@ class BayesianOptimization(Observable):
             y_max=self._space.target.max(),
             bounds=self._space.bounds,
             random_state=self._random_state,
-            dataset=self._dataset[self._space.keys].values if self._dataset is not None else None
+            dataset=self._space.dataset[self._space.keys].values if self._space.dataset is not None else None
         )
 
         return self._space.array_to_params(suggestion)
@@ -325,7 +302,7 @@ class BayesianOptimization(Observable):
                                kappa_decay_delay=kappa_decay_delay,
                                ml_info=ml_info)
         iteration = 0
-        if self._dataset is not None:
+        if self._space.dataset is not None:
             self.indexes = []
         exact_x_dict = []
 
@@ -339,7 +316,7 @@ class BayesianOptimization(Observable):
                 iteration += 1
 
             # Register new point
-            if self._dataset is None:
+            if self._space.dataset is None:
                 # No dataset: we evaluate the target function directly
                 self.probe(x_probe, lazy=False)
             else:
@@ -348,11 +325,11 @@ class BayesianOptimization(Observable):
                     exact_x_dict.append(dict(zip(self._space.keys, x_probe.T)))
                 except AttributeError:
                     exact_x_dict.append(x_probe)
-                cols = self.get_relevant_columns()
-                idx, approximation = self.get_approximation(self._dataset[cols], x_probe)
+                cols = self._space.get_relevant_columns()
+                idx, approximation = self.get_approximation(self._space.dataset[cols], x_probe)
                 self.indexes.append(idx)
 
-                if self._target_column is not None and approximation is not None:
+                if self._space.target_column is not None and approximation is not None:
                     # Dataset for X and for y: read point entirely from dataset without probe()
                     self.register(approximation["params"], approximation["target"])
                 else:
@@ -369,7 +346,7 @@ class BayesianOptimization(Observable):
         self.save_res_to_csv(exact_x_dict)
         self.dispatch(Events.OPTIMIZATION_END)
 
-        # if self._dataset is not None:         # !DEBUG!
+        # if self._space.dataset is not None:         # !DEBUG!
         #     print("Indexes =", self.indexes)  # !DEBUG!
 
     def get_approximation(self, dataset, x_probe):
@@ -402,18 +379,18 @@ class BayesianOptimization(Observable):
         approximations_idxs = []
 
         dataset_np = dataset.values  # recover numpy array for faster looping over rows
-        idx_cols = [dataset.columns.get_loc(c) for c in dataset.columns if c in dataset and c != self._target_column]  # works even if target col is None
+        idx_cols = [dataset.columns.get_loc(c) for c in dataset.columns if c in dataset and c != self._space.target_column]  # works even if target col is None
         for idx in range(dataset_np.shape[0]):
             row = dataset_np[idx, idx_cols]
             dist = np.linalg.norm(x_array - row, 2)
             if min_distance is None or dist <= min_distance:
-                if self._target_column is None:
+                if self._space.target_column is None:
                     # Find closest point to x_array in the dataset (case of dataset for X only)
                     approx = self._space.array_to_params(row)
                 else:
                     # Find closest point to x_array in the dataset, not considering the column of
                     # the target variable (case of dataset for both X and y)
-                    target_val = dataset.iloc[idx][self._target_column]
+                    target_val = dataset.iloc[idx][self._space.target_column]
                     approx = {
                             "target": target_val,
                             "params": self._space.array_to_params(row)
@@ -465,18 +442,6 @@ class BayesianOptimization(Observable):
         """Set parameters to the internal Gaussian Process Regressor"""
         self._gp.set_params(**params)
 
-    def get_relevant_columns(self):
-        """
-        When a dataset is used, returns the columns to be used for the search of the approximation point
-        """
-        if self._space.keys is None:
-            cols = list(self._dataset.columns)
-        else:
-            cols = list(self._space.keys)
-            if self._target_column is not None and self._target_column not in cols:
-                cols.append(self._target_column)
-        return cols
-
     def get_ml_model(self, y_name):
         """
         Returns Machine Learning model trained on current history
@@ -496,10 +461,10 @@ class BayesianOptimization(Observable):
         try:
             y = self._space._target_dict_info[y_name]
         except KeyError:
-            if self._dataset is None:
+            if self._space.dataset is None:
                 raise KeyError("Target function has no '{}' field".format(y_name))
-            elif y_name in self._dataset.columns:
-                y = self._dataset.loc[self.indexes, y_name]
+            elif y_name in self._space.dataset.columns:
+                y = self._space.dataset.loc[self.indexes, y_name]
             else:
                 raise KeyError("Dataset has no '{}' column".format(y_name))
 
