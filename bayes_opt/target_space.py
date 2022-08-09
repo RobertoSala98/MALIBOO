@@ -69,8 +69,6 @@ class TargetSpace(object):
         self._target = np.empty(shape=(0))
         self._target_dict_info = pd.DataFrame()
         self._target_dict_key = 'value'
-        # keep track of points we have seen so far
-        self._cache = []
 
     def __len__(self):
         assert len(self._params) == len(self._target)
@@ -107,6 +105,10 @@ class TargetSpace(object):
     @property
     def target_column(self):
         return self._target_column
+
+    @property
+    def indexes(self):
+        return self._indexes
 
     def params_to_array(self, params):
         try:
@@ -150,10 +152,10 @@ class TargetSpace(object):
 
         Parameters
         ----------
-        x : ndarray
+        params : numpy.ndarray
             a single point, with len(x) == self.dim
 
-        y : float
+        target : float
             target function value
 
         Raises
@@ -180,9 +182,6 @@ class TargetSpace(object):
         x = self._as_array(params)
         value, info = self.extract_value_and_info(target)
 
-        # Insert data into queue
-        self._cache.append(dict(x=x, value=value))
-
         self._params = np.concatenate([self._params, x.reshape(1, -1)])
         self._target = np.concatenate([self._target, [value]])
         if info:  # The return value of the target function is a dict
@@ -198,10 +197,6 @@ class TargetSpace(object):
         """
         Evaulates a single point x, to obtain the value y and then records them
         as observations.
-
-        Notes
-        -----
-        If x has been previously seen returns a cached value of y.
 
         Parameters
         ----------
@@ -339,8 +334,9 @@ class TargetSpace(object):
             except:
                 raise ValueError("'dataset' must be a pandas.DataFrame or a (path to a) valid file")
 
-        # Set target column
+        # Set target column and index list
         self._target_column = target_column
+        self._indexes = []
 
         # Check for missing columns
         if not hasattr(self, '_keys'):

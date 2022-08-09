@@ -302,8 +302,6 @@ class BayesianOptimization(Observable):
                                kappa_decay_delay=kappa_decay_delay,
                                ml_info=ml_info)
         iteration = 0
-        if self._space.dataset is not None:
-            self.indexes = []
 
         while not self._queue.empty or iteration < n_iter:
             # Sample new point from GP
@@ -320,7 +318,7 @@ class BayesianOptimization(Observable):
                 self.probe(x_probe, lazy=False)
             else:
                 # If user has specified a dataset, x_probe is the best one found in it
-                self.indexes.append(idx)
+                self._space.indexes.append(idx)
 
                 if self._space.target_column is not None and x_probe is not None:
                     # Dataset for X and for y: read point entirely from dataset without probe()
@@ -337,9 +335,6 @@ class BayesianOptimization(Observable):
                 self._bounds_transformer.transform(self._space))
         self.save_res_to_csv()
         self.dispatch(Events.OPTIMIZATION_END)
-
-        # if self._space.dataset is not None:         # !DEBUG!
-        #     print("Indexes =", self.indexes)  # !DEBUG!
 
     def save_res_to_csv(self):
         """
@@ -388,7 +383,7 @@ class BayesianOptimization(Observable):
             if self._space.dataset is None:
                 raise KeyError("Target function has no '{}' field".format(y_name))
             elif y_name in self._space.dataset.columns:
-                y = self._space.dataset.loc[self.indexes, y_name]
+                y = self._space.dataset.loc[self._space.indexes, y_name]
             else:
                 raise KeyError("Dataset has no '{}' column".format(y_name))
 
