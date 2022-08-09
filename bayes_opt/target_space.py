@@ -25,7 +25,7 @@ class TargetSpace(object):
     >>> assert self.max_point()['max_val'] == y
     """
 
-    def __init__(self, target_func, pbounds, random_state=None):
+    def __init__(self, target_func=None, pbounds=None, random_state=None, dataset=None):
         """
         Parameters
         ----------
@@ -38,14 +38,20 @@ class TargetSpace(object):
 
         random_state : int, RandomState, or None
             optionally specify a seed for a random number generator
+
+        dataset : pandas.DataFrame
+            The dataset which constitutes the optimization domain, if any.
         """
         self.random_state = ensure_rng(random_state)
 
         # The function to be optimized
         self.target_func = target_func
 
+        # The dataset which constitutes the optimization domain, if any
+        self._dataset = dataset
+
         # Get the name of the parameters
-        self._keys = sorted(pbounds)
+        self._keys = sorted(pbounds)  # optimization columns
         # Create an array with parameters bounds
         self._bounds = np.array(
             [item[1] for item in sorted(pbounds.items(), key=lambda x: x[0])],
@@ -87,6 +93,10 @@ class TargetSpace(object):
     @property
     def bounds(self):
         return self._bounds
+
+    @property
+    def dataset(self):
+        return self._dataset
 
     def params_to_array(self, params):
         try:
@@ -219,10 +229,15 @@ class TargetSpace(object):
         array([[ 55.33253689,   0.54488318]])
         """
         # TODO: support integer, category, and basic scipy.optimize constraints
-        data = np.empty((1, self.dim))
-        for col, (lower, upper) in enumerate(self._bounds):
-            data.T[col] = self.random_state.uniform(lower, upper, size=1)
-        return data.ravel()
+        if self.dataset is not None:
+            # Recover random row from dataset
+            idx = self.random_state.choice(self.dataset.index, size=1)
+            data = self.dataset.loc[idx, self.keys].to_numpy()
+        else:
+            data = np.empty((1, self.dim))
+            for col, (lower, upper) in enumerate(self._bounds):
+                data.T[col] = self.random_state.uniform(lower, upper, size=1)
+        return self.array_to_params(data.ravel())
 
     def max(self):
         """Get maximum target value found and corresponding parameters."""

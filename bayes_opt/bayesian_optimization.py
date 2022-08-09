@@ -130,6 +130,7 @@ class BayesianOptimization(Observable):
         self._target_column = None if target_column is None else str(target_column)
 
         # Initialize dataset of observations, if provided
+        # TODO move dataset initialization to TargetSpace and remove all self._dataset here
         if dataset is None:
             self._dataset = None
         elif type(dataset) == pd.DataFrame:
@@ -153,6 +154,12 @@ class BayesianOptimization(Observable):
             if target_column is not None and target_column not in self._dataset:
                 raise ValueError("The specified target column '{}' is not present "
                                  "in the dataset".format(target_column))
+
+        # Data structure containing the function to be optimized, the bounds of
+        # its domain, and a record of the evaluations we have done so far
+        self._space = TargetSpace(f, pbounds, random_state, self._dataset)
+        self._queue = Queue()
+
         if self._bounds_transformer:
             try:
                 self._bounds_transformer.initialize(self._space)
@@ -160,18 +167,12 @@ class BayesianOptimization(Observable):
                 raise TypeError('The transformer must be an instance of '
                                 'DomainTransformer')
 
-        self._optimization_columns = list(pbounds.keys())
-
         if dataset is not None:
-            missing_cols = set(self._optimization_columns) - set(self._dataset.columns)
+            missing_cols = set(self._space.keys) - set(self._dataset.columns)
             if missing_cols:
                 raise ValueError("Columns {} indicated in pbounds are missing "
                                  "from the dataset".format(missing_cols))
 
-        # Data structure containing the function to be optimized, the bounds of
-        # its domain, and a record of the evaluations we have done so far
-        self._space = TargetSpace(f, pbounds, random_state)
-        self._queue = Queue()
         # Internal GP regressor
         self._gp = GaussianProcessRegressor(
             kernel=Matern(nu=2.5),
@@ -240,7 +241,7 @@ class BayesianOptimization(Observable):
             y_max=self._space.target.max(),
             bounds=self._space.bounds,
             random_state=self._random_state,
-            dataset=self._dataset[self._optimization_columns].values if self._dataset is not None else None
+            dataset=self._dataset[self._space.keys].values if self._dataset is not None else None
         )
 
         return self._space.array_to_params(suggestion)
@@ -349,8 +350,6 @@ class BayesianOptimization(Observable):
                     exact_x_dict.append(x_probe)
                 cols = self.get_relevant_columns()
                 idx, approximation = self.get_approximation(self._dataset[cols], x_probe)
-                if np.any(x_probe != approximation["params"]):  # TODO remove
-                    exit(f"{x_probe} != {approximation['params']} !!!")
                 self.indexes.append(idx)
 
                 if self._target_column is not None and approximation is not None:
@@ -470,10 +469,10 @@ class BayesianOptimization(Observable):
         """
         When a dataset is used, returns the columns to be used for the search of the approximation point
         """
-        if self._optimization_columns is None:
+        if self._space.keys is None:
             cols = list(self._dataset.columns)
         else:
-            cols = list(self._optimization_columns)
+            cols = list(self._space.keys)
             if self._target_column is not None and self._target_column not in cols:
                 cols.append(self._target_column)
         return cols
