@@ -304,7 +304,6 @@ class BayesianOptimization(Observable):
         iteration = 0
         if self._space.dataset is not None:
             self.indexes = []
-        exact_x_dict = []
 
         while not self._queue.empty or iteration < n_iter:
             # Sample new point from GP
@@ -320,12 +319,7 @@ class BayesianOptimization(Observable):
                 # No dataset: we evaluate the target function directly
                 self.probe(x_probe, lazy=False)
             else:
-                # If user specifies a dataset, we take the best approximated point from it
-                try:
-                    exact_x_dict.append(dict(zip(self._space.keys, x_probe.T)))
-                except AttributeError:
-                    exact_x_dict.append(x_probe)
-
+                # If user has specified a dataset, x_probe is the best one found in it
                 self.indexes.append(idx)
 
                 if self._space.target_column is not None and x_probe is not None:
@@ -341,7 +335,7 @@ class BayesianOptimization(Observable):
         if self._bounds_transformer:
             self.set_bounds(
                 self._bounds_transformer.transform(self._space))
-        self.save_res_to_csv(exact_x_dict)
+        self.save_res_to_csv()
         self.dispatch(Events.OPTIMIZATION_END)
 
         # if self._space.dataset is not None:         # !DEBUG!
@@ -407,21 +401,13 @@ class BayesianOptimization(Observable):
         ret_idx = self._random_state.randint(0, len(approximations_idxs))
         return approximations_idxs[ret_idx], approximations[ret_idx]
 
-    def save_res_to_csv(self, exact_x=[]):
+    def save_res_to_csv(self):
         """
         A method to save results of the optimization to csv files located in results directory
-
-        Parameters
-        ----------
-        exact_x : list[dict]
-            contains exact x_probe, in case the user passes a dataset as input
         """
         os.makedirs(self._output_path, exist_ok=True)
         results = pd.DataFrame.from_dict(self.res)
         results.to_csv(os.path.join(self._output_path, "results.csv"), index=False)
-        if exact_x:
-            exact_points = pd.DataFrame.from_dict(exact_x)
-            exact_points.to_csv(os.path.join(self._output_path, "results_exact.csv"), index=False)
 
         print("Results successfully saved to " + self._output_path)
 
