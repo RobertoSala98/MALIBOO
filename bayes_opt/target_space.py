@@ -57,11 +57,8 @@ class TargetSpace(object):
         self._target = np.empty(shape=(0))
         self._target_dict_info = pd.DataFrame()
         self._target_dict_key = 'value'
-        # keep track of unique points we have seen so far
-        self._cache = {}
-
-    def __contains__(self, x):
-        return _hashable(x) in self._cache
+        # keep track of points we have seen so far
+        self._cache = []
 
     def __len__(self):
         assert len(self._params) == len(self._target)
@@ -163,9 +160,8 @@ class TargetSpace(object):
         x = self._as_array(params)
         value, info = self.extract_value_and_info(target)
 
-        if x not in self:
-            # Insert data into unique dictionary
-            self._cache[_hashable(x.ravel())] = value
+        # Insert data into queue
+        self._cache.append(dict(x=x, value=value))
 
         self._params = np.concatenate([self._params, x.reshape(1, -1)])
         self._target = np.concatenate([self._target, [value]])
