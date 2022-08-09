@@ -337,6 +337,12 @@ class TargetSpace(object):
             except:
                 raise ValueError("'dataset' must be a pandas.DataFrame or a (path to a) valid file")
 
+        # Check for banned column names
+        banned_columns = ('index', 'params', 'target', 'value')
+        for col in banned_columns:
+            if col in self._dataset.columns:
+                raise ValueError("Column name '{}' is not allowed in a dataset, please change it".format(col))
+
         # Set target column and check for missing columns
         self._target_column = target_column
         if not hasattr(self, '_keys'):
