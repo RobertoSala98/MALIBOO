@@ -58,6 +58,9 @@ class TargetSpace(object):
         # The dataset which constitutes the optimization domain, if any
         self.initialize_dataset(dataset, target_column)
 
+        # List of dataset indexes of points, or None if no dataset is used
+        self._indexes = []
+
         # Create an array with parameters bounds
         self._bounds = np.array(
             [item[1] for item in sorted(pbounds.items(), key=lambda x: x[0])],
@@ -334,11 +337,8 @@ class TargetSpace(object):
             except:
                 raise ValueError("'dataset' must be a pandas.DataFrame or a (path to a) valid file")
 
-        # Set target column and index list
+        # Set target column and check for missing columns
         self._target_column = target_column
-        self._indexes = []
-
-        # Check for missing columns
         if not hasattr(self, '_keys'):
             raise ValueError("self._keys must be set before initialize_dataset() is called")
         missing_cols = set(self._keys) - set(self._dataset.columns)

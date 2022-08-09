@@ -312,14 +312,14 @@ class BayesianOptimization(Observable):
                 idx, x_probe = self.suggest(util)
                 iteration += 1
 
+            self._space.indexes.append(idx)
+
             # Register new point
             if self._space.dataset is None:
                 # No dataset: we evaluate the target function directly
                 self.probe(x_probe, lazy=False)
             else:
                 # If user has specified a dataset, x_probe is the best one found in it
-                self._space.indexes.append(idx)
-
                 if self._space.target_column is not None and x_probe is not None:
                     # Dataset for X and for y: read point entirely from dataset without probe()
                     self.register(x_probe, self._space.dataset.loc[idx, self._space.target_column])
@@ -342,7 +342,9 @@ class BayesianOptimization(Observable):
         """
         os.makedirs(self._output_path, exist_ok=True)
         results = pd.DataFrame.from_dict(self.res)
-        results.to_csv(os.path.join(self._output_path, "results.csv"), index=False)
+        results['index'] = self._space.indexes
+        results.set_index('index', inplace=True)
+        results.to_csv(os.path.join(self._output_path, "results.csv"), index=True)
 
         print("Results successfully saved to " + self._output_path)
 
