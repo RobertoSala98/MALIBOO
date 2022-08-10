@@ -55,14 +55,16 @@ def acq_max(ac, gp, y_max, bounds, random_state, dataset=None, n_warmup=10000, n
     ys = ac(x_tries, gp=gp, y_max=y_max)
     idx = ys.argmax()
     x_max = x_tries[idx]
-    max_acq = ys.max()  # TODO
 
     if dataset is not None:
+        # Clip output to make sure it lies within the bounds. Due to floating
+        # point technicalities this is not always the case.
         return idx, np.clip(x_max, bounds[:, 0], bounds[:, 1])
 
     # Explore the parameter space more throughly
     x_seeds = random_state.uniform(bounds[:, 0], bounds[:, 1],
                                    size=(n_iter, bounds.shape[0]))
+    max_acq = ys[idx]
     for x_try in x_seeds:
         # Find the minimum of minus the acquisition function
         res = minimize(lambda x: -ac(x.reshape(1, -1), gp=gp, y_max=y_max),
@@ -73,7 +75,6 @@ def acq_max(ac, gp, y_max, bounds, random_state, dataset=None, n_warmup=10000, n
         # See if success
         if not res.success:
             continue
-
         # Store it if better than previous minimum(maximum).
         if max_acq is None or -np.squeeze(res.fun) >= max_acq:
             x_max = res.x
@@ -114,6 +115,9 @@ class UtilityFunction(object):
 
         if self._kappa_decay < 1 and self._iters_counter > self._kappa_decay_delay:
             self.kappa *= self._kappa_decay
+
+    def set_ml_model(self, model):
+        self.ml_model = model
 
     def utility(self, x, gp, y_max):
         if self.kind == 'ucb':

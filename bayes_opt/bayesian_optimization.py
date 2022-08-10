@@ -209,7 +209,8 @@ class BayesianOptimization(Observable):
             self._gp.fit(self._space.params, self._space.target)
             # If requird, train ML model with all space parameters data collected so far
             if 'ml' in utility_function.kind:
-                utility_function.ml_model = self.get_ml_model(y_name=utility_function.ml_target)
+                model = self.get_ml_model(y_name=utility_function.ml_target)
+                utility_function.set_ml_model(model)
 
         # Finding argmax of the acquisition function.
         idx, suggestion = acq_max(
