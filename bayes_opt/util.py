@@ -61,9 +61,11 @@ def acq_max(ac, gp, y_max, bounds, random_state, n_warmup=10000, n_iter=10,
     x_max = x_tries[idx]
 
     if dataset is not None:
-        # Note that the returned index is no longer relative to the local 'dataset',
-        # but is the true index of the selected value
-        return original_idxs[idx], np.clip(x_max, bounds[:, 0], bounds[:, 1])
+        if original_idxs is not None:
+            # The returned index is no longer relative to the local 'dataset',
+            # but is the true index of the selected value
+            idx = original_idxs[idx]
+        return idx, np.clip(x_max, bounds[:, 0], bounds[:, 1])
 
     # Explore the parameter space more throughly
     x_seeds = random_state.uniform(bounds[:, 0], bounds[:, 1],

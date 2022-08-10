@@ -242,7 +242,7 @@ class BayesianOptimization(Observable):
             original_idxs=indexes_acq
         )
 
-        if self.dataset is not None and self.memory_queue_len > 0:
+        if self.dataset is not None:
             self.update_memory_queue(dataset_values, suggestion)
 
         return idx, self._space.array_to_params(suggestion)
@@ -254,6 +254,9 @@ class BayesianOptimization(Observable):
 
         for _ in range(init_points):
             self._queue.add(self._space.random_sample())
+            ## TODO add:
+            # if self.dataset is not None:
+            #     self.update_memory_queue(self.dataset.values, self._space.params_to_array(x_init))
 
     def _prime_subscriptions(self):
         if not any([len(subs) for subs in self._events.values()]):
@@ -319,14 +322,15 @@ class BayesianOptimization(Observable):
             values which have already been chosen in the last memory_queue_len iterations
             will not be considered
         """
+        # Initialize the memory queue, a list of lists of forbidden indexes for the current iteration
+        self.memory_queue_len = memory_queue_len
+        self.memory_queue_indexes = []
+
+        # Initialize other stuff
         self._prime_subscriptions()
         self.dispatch(Events.OPTIMIZATION_START)
         self._prime_queue(init_points)
         self.set_gp_params(**gp_params)
-
-        # Initialize the memory queue, a list of lists of forbidden indexes for the current iteration
-        self.memory_queue_len = memory_queue_len
-        self.memory_queue_indexes = []
 
         util = UtilityFunction(kind=acq,
                                kappa=kappa,
@@ -443,6 +447,8 @@ class BayesianOptimization(Observable):
         x_new: numpy.ndarray
             The lasted selected point, which is to be included in the memory queue
         """
+        if self.memory_queue_len == 0:
+            return
 
         self.memory_queue_indexes.append([])
 
