@@ -205,7 +205,8 @@ class BayesianOptimization(Observable):
     def suggest(self, utility_function):
         """Most promising point to probe next"""
         if len(self._space) == 0:
-            return self._space.array_to_params(self._space.random_sample())
+            idx, x_rand = self._space.random_sample()
+            return idx, self._space.array_to_params(x_rand)
 
         # Sklearn's GP throws a large number of warnings at times, but
         # we don't really need to see them here.
