@@ -215,6 +215,7 @@ class BayesianOptimization(Observable):
 
         if self._space.dataset is None:
             dataset_acq = None
+            indexes_acq = None
         else:
             dataset_values = self._space.dataset[self._space.keys].values
             # Flatten memory queue (a list of indexes lists) to one single list
@@ -224,6 +225,7 @@ class BayesianOptimization(Observable):
             mask[idxs] = 0
             # Create dataset to be passed to acq_max()
             dataset_acq = dataset_values[mask]
+            indexes_acq = self._space.dataset.index[mask]
 
         # Find argmax of the acquisition function
         idx, suggestion = acq_max(
@@ -232,7 +234,8 @@ class BayesianOptimization(Observable):
             y_max=self._space.target.max(),
             bounds=self._space.bounds,
             random_state=self._random_state,
-            dataset=dataset_acq
+            dataset=dataset_acq,
+            original_idxs=indexes_acq
         )
 
         if self._space.dataset is not None and self.memory_queue_len > 0:

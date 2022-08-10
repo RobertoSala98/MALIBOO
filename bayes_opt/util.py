@@ -4,7 +4,8 @@ from scipy.stats import norm
 from scipy.optimize import minimize
 
 
-def acq_max(ac, gp, y_max, bounds, random_state, dataset=None, n_warmup=10000, n_iter=10):
+def acq_max(ac, gp, y_max, bounds, random_state, n_warmup=10000, n_iter=10,
+            dataset=None, original_idxs=None):
     """
     A function to find the maximum of the acquisition function
 
@@ -29,14 +30,17 @@ def acq_max(ac, gp, y_max, bounds, random_state, dataset=None, n_warmup=10000, n
     random_state: numpy.RandomState object
         Instance of a random number generator
 
-    dataset: numpy.ndarray, optional(default=None)
-        The dataset, if any, which constitutes the optimization domain
-
     n_warmup: int, optional(default=10000)
         Number of times to randomly sample the aquisition function
 
     n_iter: int, optional(default=10)
         Number of times to run scipy.minimize
+
+    dataset: numpy.ndarray, optional(default=None)
+        The (possibly reduced) domain dataset, if any, on which the maximum is to be found
+
+    original_idxs: pandas.DataFrame.Index, optional(default=None)
+        Original indexes of the entire dataset, which is possibly larger than 'dataset'
 
     Returns
     -------
@@ -53,13 +57,13 @@ def acq_max(ac, gp, y_max, bounds, random_state, dataset=None, n_warmup=10000, n
         x_tries = random_state.uniform(bounds[:, 0], bounds[:, 1],
                                        size=(n_warmup, bounds.shape[0]))
     ys = ac(x_tries, gp=gp, y_max=y_max)
-    idx = ys.argmax()
+    idx = ys.argmax()  # this index is relative to the local 'dataset' if used
     x_max = x_tries[idx]
 
     if dataset is not None:
-        # Clip output to make sure it lies within the bounds. Due to floating
-        # point technicalities this is not always the case.
-        return idx, np.clip(x_max, bounds[:, 0], bounds[:, 1])
+        # Note that the returned index is no longer relative to the local 'dataset',
+        # but is the true index of the selected value
+        return original_idxs[idx], np.clip(x_max, bounds[:, 0], bounds[:, 1])
 
     # Explore the parameter space more throughly
     x_seeds = random_state.uniform(bounds[:, 0], bounds[:, 1],
