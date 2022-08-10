@@ -103,7 +103,7 @@ class BayesianOptimization(Observable):
 
     target_column: str, optional(default=None)
         Name of the column that will act as the target value of the optimization.
-        It only works if dataset is passed.
+        Only works if dataset is passed.
 
     Methods
     -------
@@ -127,20 +127,8 @@ class BayesianOptimization(Observable):
         self._verbose = verbose
         self._bounds_transformer = bounds_transformer
         self._output_path = os.getcwd() if output_path is None else os.path.join(output_path)
-        self._target_column = None if target_column is None else str(target_column)
 
-        # Initialize dataset of observations, if provided
-        if dataset is None:
-            self._dataset = None
-        elif type(dataset) == pd.DataFrame:
-            self._dataset = dataset
-        else:
-            try:
-                self._dataset = pd.read_csv(dataset)
-            except:
-                raise ValueError("'dataset' must be a pandas.DataFrame or a (path to a) valid file")
-
-        # Check arguments for error conditions
+        # Check for coherence among constructor arguments
         if pbounds is None:
             raise ValueError("pbounds must be specified")
         if f is None and target_column is None:
@@ -148,11 +136,13 @@ class BayesianOptimization(Observable):
         if f is not None and target_column is not None:
                 raise ValueError("Target column cannot be provided if target function f is also provided")
         if target_column is not None and dataset is None:
-            raise ValueError("You must specify a dataset path for the given target column")
-        if dataset is not None:
-            if target_column is not None and target_column not in self._dataset:
-                raise ValueError("The specified target column '{}' is not present "
-                                 "in the dataset".format(target_column))
+            raise ValueError("Dataset must be specified for the given target column")
+
+        # Data structure containing the function to be optimized, the bounds of
+        # its domain, and a record of the evaluations we have done so far
+        self._space = TargetSpace(f, pbounds, random_state, dataset, target_column)
+        self._queue = Queue()
+
         if self._bounds_transformer:
             try:
                 self._bounds_transformer.initialize(self._space)
@@ -160,18 +150,6 @@ class BayesianOptimization(Observable):
                 raise TypeError('The transformer must be an instance of '
                                 'DomainTransformer')
 
-        self._optimization_columns = list(pbounds.keys())
-
-        if dataset is not None:
-            missing_cols = set(self._optimization_columns) - set(self._dataset.columns)
-            if missing_cols:
-                raise ValueError("Columns {} indicated in pbounds are missing "
-                                 "from the dataset".format(missing_cols))
-
-        # Data structure containing the function to be optimized, the bounds of
-        # its domain, and a record of the evaluations we have done so far
-        self._space = TargetSpace(f, pbounds, random_state)
-        self._queue = Queue()
         # Internal GP regressor
         self._gp = GaussianProcessRegressor(
             kernel=Matern(nu=2.5),
@@ -231,18 +209,20 @@ class BayesianOptimization(Observable):
             self._gp.fit(self._space.params, self._space.target)
             # If requird, train ML model with all space parameters data collected so far
             if 'ml' in utility_function.kind:
-                utility_function.ml_model = self.get_ml_model(y_name=utility_function.ml_target)
+                model = self.get_ml_model(y_name=utility_function.ml_target)
+                utility_function.set_ml_model(model)
 
         # Finding argmax of the acquisition function.
-        suggestion = acq_max(
+        idx, suggestion = acq_max(
             ac=utility_function.utility,
             gp=self._gp,
             y_max=self._space.target.max(),
             bounds=self._space.bounds,
-            random_state=self._random_state
+            random_state=self._random_state,
+            dataset=self._space.dataset[self._space.keys].values if self._space.dataset is not None else None
         )
 
-        return self._space.array_to_params(suggestion)
+        return idx, self._space.array_to_params(suggestion)
 
     def _prime_queue(self, init_points):
         """Make sure there's something in the queue at the very beginning."""
@@ -323,134 +303,56 @@ class BayesianOptimization(Observable):
                                kappa_decay_delay=kappa_decay_delay,
                                ml_info=ml_info)
         iteration = 0
-        if self._dataset is not None:
-            self.indexes = []
-        exact_x_dict = []
 
         while not self._queue.empty or iteration < n_iter:
             # Sample new point from GP
             try:
-                x_probe = next(self._queue)
+                idx, x_probe = next(self._queue)
             except StopIteration:
                 util.update_params()
-                x_probe = self.suggest(util)
+                idx, x_probe = self.suggest(util)
                 iteration += 1
 
+            if x_probe is None:
+                raise ValueError("No point found")
+
+            self._space.indexes.append(idx)
+
             # Register new point
-            if self._dataset is None:
+            if self._space.dataset is None:
                 # No dataset: we evaluate the target function directly
                 self.probe(x_probe, lazy=False)
             else:
-                # If user specifies a dataset, we take the best approximated point from it
-                try:
-                    exact_x_dict.append(dict(zip(self._space.keys, x_probe.T)))
-                except AttributeError:
-                    exact_x_dict.append(x_probe)
-                cols = self.get_relevant_columns()
-                idx, approximation = self.get_approximation(self._dataset[cols], x_probe)
-                self.indexes.append(idx)
-
-                if self._target_column is not None and approximation is not None:
+                # If user has specified a dataset, x_probe is the best one found in it
+                if self._space.target_column is not None:
                     # Dataset for X and for y: read point entirely from dataset without probe()
-                    self.register(approximation["params"], approximation["target"])
+                    target_value = self._space.dataset.loc[idx, self._space.target_column]
+                    self.register(x_probe, target_value)
                 else:
                     # Dataset for X only: evaluate approximated point
-                    if approximation is not None:
-                        self.probe(approximation, lazy=False)
-                    else:
-                        # No approximation found: evaluate sampled point directly
-                        self.probe(x_probe, lazy=False)
+                    self.probe(x_probe, lazy=False)
 
         if self._bounds_transformer:
             self.set_bounds(
                 self._bounds_transformer.transform(self._space))
-        self.save_res_to_csv(exact_x_dict)
+        self.save_res_to_csv()
         self.dispatch(Events.OPTIMIZATION_END)
 
-        # if self._dataset is not None:         # !DEBUG!
-        #     print("Indexes =", self.indexes)  # !DEBUG!
-
-    def get_approximation(self, dataset, x_probe):
+    def save_res_to_csv(self):
         """
-        Method to get from the dataset passed by the user the nearest point (wrt to the euclidean distance) to the x_probe point
-
-        Parameters
-        ----------
-
-        dataset: pandas.DataFrame
-            dataset specified by the user
-
-        x_probe: dict
-            point found by the optimization process
-
-        Returns
-        -------
-            approximations : dict[]
-
-            approximated x_probe, with corresponding target value, if target column is specified by the user
-
-        """
-        try:
-            x_array = np.array(list(x_probe.values()))
-        except AttributeError:
-            x_array = x_probe
-
-        min_distance = None
-        approximations = []
-        approximations_idxs = []
-
-        dataset_np = dataset.values  # recover numpy array for faster looping over rows
-        idx_cols = [dataset.columns.get_loc(c) for c in dataset.columns if c in dataset and c != self._target_column]  # works even if target col is None
-        for idx in range(dataset_np.shape[0]):
-            row = dataset_np[idx, idx_cols]
-            dist = np.linalg.norm(x_array - row, 2)
-            if min_distance is None or dist <= min_distance:
-                if self._target_column is None:
-                    # Find closest point to x_array in the dataset (case of dataset for X only)
-                    approx = self._space.array_to_params(row)
-                else:
-                    # Find closest point to x_array in the dataset, not considering the column of
-                    # the target variable (case of dataset for both X and y)
-                    target_val = dataset.iloc[idx][self._target_column]
-                    approx = {
-                            "target": target_val,
-                            "params": self._space.array_to_params(row)
-                        }
-                if dist == min_distance:
-                    # One of the tied best approximations
-                    approximations.append(approx)
-                    approximations_idxs.append(idx)
-                else:
-                    # The one new best approximation
-                    min_distance = dist
-                    approximations = [approx]
-                    approximations_idxs = [idx]
-
-        # If multiple, choose randomly
-        ret_idx = self._random_state.randint(0, len(approximations_idxs))
-        return approximations_idxs[ret_idx], approximations[ret_idx]
-
-    def save_res_to_csv(self, exact_x=[]):
-        """
-        A method to save results of the optimization to csv files located in results directory
-
-        Parameters
-        ----------
-        exact_x : list[dict]
-            contains exact x_probe, in case the user passes a dataset as input
+        Save results of the optimization to csv files located in results directory
         """
         os.makedirs(self._output_path, exist_ok=True)
         results = pd.DataFrame.from_dict(self.res)
-        results.to_csv(os.path.join(self._output_path, "results.csv"), index=False)
-        if exact_x:
-            exact_points = pd.DataFrame.from_dict(exact_x)
-            exact_points.to_csv(os.path.join(self._output_path, "results_exact.csv"), index=False)
+        results['index'] = self._space.indexes
+        results.set_index('index', inplace=True)
+        results.to_csv(os.path.join(self._output_path, "results.csv"), index=True)
 
         print("Results successfully saved to " + self._output_path)
 
     def set_bounds(self, new_bounds):
         """
-        A method that allows changing the lower and upper searching bounds
+        Change the lower and upper searching bounds
 
         Parameters
         ----------
@@ -462,18 +364,6 @@ class BayesianOptimization(Observable):
     def set_gp_params(self, **params):
         """Set parameters to the internal Gaussian Process Regressor"""
         self._gp.set_params(**params)
-
-    def get_relevant_columns(self):
-        """
-        When a dataset is used, returns the columns to be used for the search of the approximation point
-        """
-        if self._optimization_columns is None:
-            cols = list(self._dataset.columns)
-        else:
-            cols = list(self._optimization_columns)
-            if self._target_column is not None and self._target_column not in cols:
-                cols.append(self._target_column)
-        return cols
 
     def get_ml_model(self, y_name):
         """
@@ -494,12 +384,12 @@ class BayesianOptimization(Observable):
         try:
             y = self._space._target_dict_info[y_name]
         except KeyError:
-            if self._dataset is None:
-                raise KeyError("Target function has no '{}' field".format(y_name))
-            elif y_name in self._dataset.columns:
-                y = self._dataset.loc[self.indexes, y_name]
+            if self._space.dataset is None:
+                raise KeyError("Target function return values must have '{}' field".format(y_name))
+            elif y_name in self._space.dataset.columns:
+                y = self._space.dataset.loc[self._space.indexes, y_name]
             else:
-                raise KeyError("Dataset has no '{}' column".format(y_name))
+                raise KeyError("Dataset must have '{}' column".format(y_name))
 
         # Initialize and train model
         model = Ridge()

@@ -25,31 +25,46 @@ class TargetSpace(object):
     >>> assert self.max_point()['max_val'] == y
     """
 
-    def __init__(self, target_func, pbounds, random_state=None):
+    def __init__(self, target_func=None, pbounds=None, random_state=None,
+                 dataset=None, target_column=None):
         """
         Parameters
         ----------
-        target_func : function
-            Function to be maximized.
+        target_func : function, optional(default=None)
+            Target function to be maximized.
 
         pbounds : dict
             Dictionary with parameters names as keys and a tuple with minimum
             and maximum values.
 
-        random_state : int, RandomState, or None
-            optionally specify a seed for a random number generator
+        random_state : int, RandomState, or None, optional(default=None)
+            Optionally specify a seed for a random number generator
+
+        dataset: str, file handle, or pandas.DataFrame, optional(default=None)
+            The dataset, if any, which constitutes the optimization domain and possibly
+            the list of target values
+
+        target_column: str, optional(default=None)
+            Name of the column that will act as the target value of the optimization.
+            Only works if dataset is passed.
         """
-        self.random_state = ensure_rng(random_state)
+        if pbounds is None:
+            raise ValueError("pbounds must be specified")
 
-        # The function to be optimized
-        self.target_func = target_func
-
-        # Get the name of the parameters
+        # Get the name of the parameters, aka the optimization columns
         self._keys = sorted(pbounds)
+
+        # Initialize other members
+        self.random_state = ensure_rng(random_state)
+        self.target_func = target_func
+        self.initialize_dataset(dataset, target_column)
+        # List of dataset indexes of points, or Nones if no dataset is used
+        self._indexes = []
+
         # Create an array with parameters bounds
         self._bounds = np.array(
             [item[1] for item in sorted(pbounds.items(), key=lambda x: x[0])],
-            dtype=np.float
+            dtype=float
         )
 
         # preallocated memory for X and Y points
@@ -57,11 +72,6 @@ class TargetSpace(object):
         self._target = np.empty(shape=(0))
         self._target_dict_info = pd.DataFrame()
         self._target_dict_key = 'value'
-        # keep track of unique points we have seen so far
-        self._cache = {}
-
-    def __contains__(self, x):
-        return _hashable(x) in self._cache
 
     def __len__(self):
         assert len(self._params) == len(self._target)
@@ -90,6 +100,18 @@ class TargetSpace(object):
     @property
     def bounds(self):
         return self._bounds
+
+    @property
+    def dataset(self):
+        return self._dataset
+
+    @property
+    def target_column(self):
+        return self._target_column
+
+    @property
+    def indexes(self):
+        return self._indexes
 
     def params_to_array(self, params):
         try:
@@ -133,10 +155,10 @@ class TargetSpace(object):
 
         Parameters
         ----------
-        x : ndarray
+        params : numpy.ndarray
             a single point, with len(x) == self.dim
 
-        y : float
+        target : float
             target function value
 
         Raises
@@ -163,10 +185,6 @@ class TargetSpace(object):
         x = self._as_array(params)
         value, info = self.extract_value_and_info(target)
 
-        if x not in self:
-            # Insert data into unique dictionary
-            self._cache[_hashable(x.ravel())] = value
-
         self._params = np.concatenate([self._params, x.reshape(1, -1)])
         self._target = np.concatenate([self._target, [value]])
         if info:  # The return value of the target function is a dict
@@ -182,10 +200,6 @@ class TargetSpace(object):
         """
         Evaulates a single point x, to obtain the value y and then records them
         as observations.
-
-        Notes
-        -----
-        If x has been previously seen returns a cached value of y.
 
         Parameters
         ----------
@@ -211,6 +225,8 @@ class TargetSpace(object):
 
         Returns
         ----------
+        idx: int or None
+            index number of chosen point, or None if no dataset is used
         data: ndarray
             [num x dim] array points with dimensions corresponding to `self._keys`
 
@@ -223,10 +239,16 @@ class TargetSpace(object):
         array([[ 55.33253689,   0.54488318]])
         """
         # TODO: support integer, category, and basic scipy.optimize constraints
-        data = np.empty((1, self.dim))
-        for col, (lower, upper) in enumerate(self._bounds):
-            data.T[col] = self.random_state.uniform(lower, upper, size=1)
-        return data.ravel()
+        if self.dataset is not None:
+            # Recover random row from dataset
+            idx = self.random_state.choice(self.dataset.index)
+            data = self.dataset.loc[idx, self.keys].to_numpy()
+        else:
+            idx = None
+            data = np.empty((1, self.dim))
+            for col, (lower, upper) in enumerate(self._bounds):
+                data.T[col] = self.random_state.uniform(lower, upper, size=1)
+        return idx, self.array_to_params(data.ravel())
 
     def max(self):
         """Get maximum target value found and corresponding parameters."""
@@ -293,3 +315,45 @@ class TargetSpace(object):
             return target[self._target_dict_key], target
         else:
             raise ValueError("Unrecognized return type '{}' in target function".format(type(target)))
+
+    def initialize_dataset(self, dataset=None, target_column=None):
+        """
+        Checks and loads the dataset as well as other utilities
+
+        Parameters
+        ----------
+        dataset: str, file handle, or pandas.DataFrame, optional(default=None)
+            The dataset which constitutes the optimization domain, if any.
+
+        target_column: str, optional(default=None)
+            Name of the column that will act as the target value of the optimization.
+            Only works if dataset is passed.
+        """
+        if dataset is None:
+            self._dataset = None
+            return
+
+        if type(dataset) == pd.DataFrame:
+            self._dataset = dataset
+        else:
+            try:
+                self._dataset = pd.read_csv(dataset)
+            except:
+                raise ValueError("Dataset must be a pandas.DataFrame or a (path to a) valid file")
+
+        # Check for banned column names
+        banned_columns = ('index', 'params', 'target', 'value')
+        for col in banned_columns:
+            if col in self._dataset.columns:
+                raise ValueError("Column name '{}' is not allowed in a dataset, please change it".format(col))
+
+        # Set target column and check for missing columns
+        self._target_column = target_column
+        if not hasattr(self, '_keys'):
+            raise ValueError("self._keys must be set before initialize_dataset() is called")
+        missing_cols = set(self._keys) - set(self._dataset.columns)
+        if missing_cols:
+            raise ValueError("Columns {} indicated in pbounds are missing "
+                             "from the dataset".format(missing_cols))
+        if target_column is not None and target_column not in self._dataset:
+            raise ValueError("The specified target column '{}' is not present in the dataset".format(target_column))
