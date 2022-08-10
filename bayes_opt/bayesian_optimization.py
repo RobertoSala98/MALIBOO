@@ -174,6 +174,10 @@ class BayesianOptimization(Observable):
     def res(self):
         return self._space.res()
 
+    @property
+    def dataset(self):
+        return self._space.dataset
+
     def register(self, params, target):
         """Expect observation with known target"""
         self._space.register(params, target)
@@ -213,11 +217,11 @@ class BayesianOptimization(Observable):
                 model = self.get_ml_model(y_name=utility_function.ml_target)
                 utility_function.set_ml_model(model)
 
-        if self._space.dataset is None:
+        if self.dataset is None:
             dataset_acq = None
             indexes_acq = None
         else:
-            dataset_values = self._space.dataset[self._space.keys].values
+            dataset_values = self.dataset[self._space.keys].values
             # Flatten memory queue (a list of indexes lists) to one single list
             idxs = list(itertools.chain.from_iterable(self.memory_queue_indexes))
             # Create mask to select rows whose index is not included in idxs
@@ -225,7 +229,7 @@ class BayesianOptimization(Observable):
             mask[idxs] = 0
             # Create dataset to be passed to acq_max()
             dataset_acq = dataset_values[mask]
-            indexes_acq = self._space.dataset.index[mask]
+            indexes_acq = self.dataset.index[mask]
 
         # Find argmax of the acquisition function
         idx, suggestion = acq_max(
@@ -238,7 +242,7 @@ class BayesianOptimization(Observable):
             original_idxs=indexes_acq
         )
 
-        if self._space.dataset is not None and self.memory_queue_len > 0:
+        if self.dataset is not None and self.memory_queue_len > 0:
             self.update_memory_queue(dataset_values, suggestion)
 
         return idx, self._space.array_to_params(suggestion)
@@ -347,14 +351,14 @@ class BayesianOptimization(Observable):
             self._space.indexes.append(idx)
 
             # Register new point
-            if self._space.dataset is None:
+            if self.dataset is None:
                 # No dataset: we evaluate the target function directly
                 self.probe(x_probe, lazy=False)
             else:
                 # If user has specified a dataset, x_probe is the best one found in it
                 if self._space.target_column is not None:
                     # Dataset for X and for y: read point entirely from dataset without probe()
-                    target_value = self._space.dataset.loc[idx, self._space.target_column]
+                    target_value = self.dataset.loc[idx, self._space.target_column]
                     self.register(x_probe, target_value)
                 else:
                     # Dataset for X only: evaluate approximated point
@@ -412,10 +416,10 @@ class BayesianOptimization(Observable):
         try:
             y = self._space._target_dict_info[y_name]
         except KeyError:
-            if self._space.dataset is None:
+            if self.dataset is None:
                 raise KeyError("Target function return values must have '{}' field".format(y_name))
-            elif y_name in self._space.dataset.columns:
-                y = self._space.dataset.loc[self._space.indexes, y_name]
+            elif y_name in self.dataset.columns:
+                y = self.dataset.loc[self._space.indexes, y_name]
             else:
                 raise KeyError("Dataset must have '{}' column".format(y_name))
 
