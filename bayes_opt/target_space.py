@@ -30,35 +30,35 @@ class TargetSpace(object):
         """
         Parameters
         ----------
-        target_func : function
-            Function to be maximized.
+        target_func : function, optional(default=None)
+            Target function to be maximized.
 
         pbounds : dict
             Dictionary with parameters names as keys and a tuple with minimum
             and maximum values.
 
-        random_state : int, RandomState, or None
-            optionally specify a seed for a random number generator
+        random_state : int, RandomState, or None, optional(default=None)
+            Optionally specify a seed for a random number generator
 
         dataset: str, file handle, or pandas.DataFrame, optional(default=None)
-            The dataset which constitutes the optimization domain, if any.
+            The dataset, if any, which constitutes the optimization domain and possibly
+            the list of target values
 
         target_column: str, optional(default=None)
             Name of the column that will act as the target value of the optimization.
             Only works if dataset is passed.
         """
-        self.random_state = ensure_rng(random_state)
-
-        # The function to be optimized
-        self.target_func = target_func
+        if pbounds is None:
+            raise ValueError("pbounds must be specified")
 
         # Get the name of the parameters, aka the optimization columns
         self._keys = sorted(pbounds)
 
-        # The dataset which constitutes the optimization domain, if any
+        # Initialize other members
+        self.random_state = ensure_rng(random_state)
+        self.target_func = target_func
         self.initialize_dataset(dataset, target_column)
-
-        # List of dataset indexes of points, or None if no dataset is used
+        # List of dataset indexes of points, or Nones if no dataset is used
         self._indexes = []
 
         # Create an array with parameters bounds
@@ -318,6 +318,10 @@ class TargetSpace(object):
 
     def initialize_dataset(self, dataset=None, target_column=None):
         """
+        Checks and loads the dataset as well as other utilities
+
+        Parameters
+        ----------
         dataset: str, file handle, or pandas.DataFrame, optional(default=None)
             The dataset which constitutes the optimization domain, if any.
 
@@ -335,7 +339,7 @@ class TargetSpace(object):
             try:
                 self._dataset = pd.read_csv(dataset)
             except:
-                raise ValueError("'dataset' must be a pandas.DataFrame or a (path to a) valid file")
+                raise ValueError("Dataset must be a pandas.DataFrame or a (path to a) valid file")
 
         # Check for banned column names
         banned_columns = ('index', 'params', 'target', 'value')

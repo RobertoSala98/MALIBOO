@@ -14,34 +14,36 @@ def acq_max(ac, gp, y_max, bounds, random_state, dataset=None, n_warmup=10000, n
 
     Parameters
     ----------
-    :param ac:
-        The acquisition function object that return its point-wise value.
+    ac: function
+        The acquisition function object that return its point-wise value
 
-    :param gp:
-        A gaussian process fitted to the relevant data.
+    gp: sklearn.gaussian_process.GaussianProcessRegressor object
+        A gaussian process fitted to the relevant data
 
-    :param y_max:
-        The current maximum known value of the target function.
+    y_max: float
+        The current maximum known value of the target function
 
-    :param bounds:
-        The variables bounds to limit the search of the acq max.
+    bounds: dict
+        The variables bounds to limit the search of the acq max
 
-    :param random_state:
-        instance of np.RandomState random number generator
+    random_state: numpy.RandomState object
+        Instance of a random number generator
 
-    :param dataset:
-        the dataset which constitutes the optimization domain, if any
+    dataset: numpy.ndarray, optional(default=None)
+        The dataset, if any, which constitutes the optimization domain
 
-    :param n_warmup:
-        number of times to randomly sample the aquisition function
+    n_warmup: int, optional(default=10000)
+        Number of times to randomly sample the aquisition function
 
-    :param n_iter:
-        number of times to run scipy.minimize
+    n_iter: int, optional(default=10)
+        Number of times to run scipy.minimize
 
     Returns
     -------
-    :return: idx,   The dataset index of the arg max of the acquisition function, or None if no dataset is used
-    :return: x_max, The arg max of the acquisition function.
+    idx
+        The dataset index of the arg max of the acquisition function, or None if no dataset is used
+    x_max
+        The arg max of the acquisition function
     """
 
     # Warm up with random points or dataset points
@@ -53,7 +55,7 @@ def acq_max(ac, gp, y_max, bounds, random_state, dataset=None, n_warmup=10000, n
     ys = ac(x_tries, gp=gp, y_max=y_max)
     idx = ys.argmax()
     x_max = x_tries[idx]
-    max_acq = ys.max()
+    max_acq = ys.max()  # TODO
 
     if dataset is not None:
         return idx, np.clip(x_max, bounds[:, 0], bounds[:, 1])

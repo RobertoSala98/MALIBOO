@@ -312,6 +312,9 @@ class BayesianOptimization(Observable):
                 idx, x_probe = self.suggest(util)
                 iteration += 1
 
+            if x_probe is None:
+                raise ValueError("No point found")
+
             self._space.indexes.append(idx)
 
             # Register new point
@@ -320,15 +323,13 @@ class BayesianOptimization(Observable):
                 self.probe(x_probe, lazy=False)
             else:
                 # If user has specified a dataset, x_probe is the best one found in it
-                if self._space.target_column is not None and x_probe is not None:
+                if self._space.target_column is not None:
                     # Dataset for X and for y: read point entirely from dataset without probe()
-                    self.register(x_probe, self._space.dataset.loc[idx, self._space.target_column])
+                    target_value = self._space.dataset.loc[idx, self._space.target_column]
+                    self.register(x_probe, target_value)
                 else:
                     # Dataset for X only: evaluate approximated point
-                    if x_probe is not None:
-                        self.probe(x_probe, lazy=False)
-                    else:
-                        raise ValueError("x_probe is None")
+                    self.probe(x_probe, lazy=False)
 
         if self._bounds_transformer:
             self.set_bounds(
@@ -338,7 +339,7 @@ class BayesianOptimization(Observable):
 
     def save_res_to_csv(self):
         """
-        A method to save results of the optimization to csv files located in results directory
+        Save results of the optimization to csv files located in results directory
         """
         os.makedirs(self._output_path, exist_ok=True)
         results = pd.DataFrame.from_dict(self.res)
@@ -350,7 +351,7 @@ class BayesianOptimization(Observable):
 
     def set_bounds(self, new_bounds):
         """
-        A method that allows changing the lower and upper searching bounds
+        Change the lower and upper searching bounds
 
         Parameters
         ----------
@@ -383,11 +384,11 @@ class BayesianOptimization(Observable):
             y = self._space._target_dict_info[y_name]
         except KeyError:
             if self._space.dataset is None:
-                raise KeyError("Target function has no '{}' field".format(y_name))
+                raise KeyError("Target function return values must have '{}' field".format(y_name))
             elif y_name in self._space.dataset.columns:
                 y = self._space.dataset.loc[self._space.indexes, y_name]
             else:
-                raise KeyError("Dataset has no '{}' column".format(y_name))
+                raise KeyError("Dataset must have '{}' column".format(y_name))
 
         # Initialize and train model
         model = Ridge()
