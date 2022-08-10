@@ -197,6 +197,7 @@ class BayesianOptimization(Observable):
             maximize(). Otherwise it will evaluate it at the moment.
         """
         if lazy:
+            # TODO actually, an (index, params) tuple should be passed to add()
             self._queue.add(params)
         else:
             self._space.probe(params)
@@ -254,10 +255,11 @@ class BayesianOptimization(Observable):
             init_points = max(init_points, 1)
 
         for _ in range(init_points):
-            self._queue.add(self._space.random_sample())
-            ## TODO add:
-            # if self.dataset is not None:
-            #     self.update_memory_queue(self.dataset.values, self._space.params_to_array(x_init))
+            idx, x_init = self._space.random_sample()
+            self._queue.add((idx, x_init))
+            if self.dataset is not None:
+                self.update_memory_queue(self.dataset[self._space.keys].values,
+                                         self._space.params_to_array(x_init))
 
     def _prime_subscriptions(self):
         if not any([len(subs) for subs in self._events.values()]):
