@@ -435,15 +435,15 @@ class BayesianOptimization(Observable):
 
         x_new: numpy.ndarray
             The lasted selected point, which is to be included in the memory queue
-      """
+        """
 
-      self.memory_queue_indexes.append([])
+        self.memory_queue_indexes.append([])
 
-      # Place indexes of data equal to x_new in memory queue
-      for i in range(dataset.shape[0]):
-          if np.array_equal(dataset[i], x_new):
-              self.memory_queue_indexes[-1].append(i)
+        # Place indexes of data equal to x_new in memory queue
+        for i in range(dataset.shape[0]):
+            if np.array_equal(dataset[i], x_new):
+                self.memory_queue_indexes[-1].append(i)
 
-      # Remove oldest entry if exceeding max length
-      if len(self.memory_queue_indexes) > self.memory_queue_len:
-          self.memory_queue_indexes.pop(0)
+        # Remove oldest entry if exceeding max length
+        if len(self.memory_queue_indexes) > self.memory_queue_len:
+            self.memory_queue_indexes.pop(0)
