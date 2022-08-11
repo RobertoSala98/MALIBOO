@@ -223,7 +223,7 @@ class BayesianOptimization(Observable):
             dataset_acq = None
         else:
             # Flatten memory queue (a list of indexes lists) to one single list
-            idxs = list(itertools.chain.from_iterable(self.memory_queue_indexes))
+            idxs = list(itertools.chain.from_iterable(self.memory_queue))
             # Create mask to select rows whose index is not included in idxs
             mask = np.ones(self.dataset.shape[0], np.bool)
             mask[idxs] = 0
@@ -323,7 +323,7 @@ class BayesianOptimization(Observable):
         """
         # Initialize the memory queue, a list of lists of forbidden indexes for the current iteration
         self.memory_queue_len = memory_queue_len
-        self.memory_queue_indexes = []
+        self.memory_queue = []
 
         # Initialize other stuff
         self._prime_subscriptions()
@@ -435,7 +435,7 @@ class BayesianOptimization(Observable):
 
     def update_memory_queue(self, dataset, x_new):
         """
-        Updates self.memory_queue_indexes, the list of dataset entries which cannot be selected
+        Updates self.memory_queue, the list of dataset entries which cannot be selected
         in the current iteration. The list is always no larger than memory_queue_len elements.
 
         Parameters
@@ -449,13 +449,13 @@ class BayesianOptimization(Observable):
         if self.memory_queue_len == 0:
             return
 
-        self.memory_queue_indexes.append([])
+        self.memory_queue.append([])
 
         # Place indexes of data equal to x_new in memory queue
         for i in range(dataset.shape[0]):
             if np.array_equal(dataset[i], x_new):
-                self.memory_queue_indexes[-1].append(i)
+                self.memory_queue[-1].append(i)
 
         # Remove oldest entry if exceeding max length
-        if len(self.memory_queue_indexes) > self.memory_queue_len:
-            self.memory_queue_indexes.pop(0)
+        if len(self.memory_queue) > self.memory_queue_len:
+            self.memory_queue.pop(0)
