@@ -63,7 +63,7 @@ def acq_max(ac, gp, y_max, bounds, random_state, n_warmup=10000, n_iter=10, data
     if dataset is not None:
         # idx becomes the true dataset index of the selected point, rather than being relative to x_tries
         idx = dataset.index[idx]
-        return idx, np.clip(x_max, bounds[:, 0], bounds[:, 1])
+        return idx, x_max
 
     # Explore the parameter space more throughly
     x_seeds = random_state.uniform(bounds[:, 0], bounds[:, 1],
