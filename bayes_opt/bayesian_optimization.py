@@ -241,7 +241,7 @@ class BayesianOptimization(Observable):
         )
 
         if self.dataset is not None:
-            self.update_memory_queue(self.dataset[self._space.keys].values, suggestion)
+            self.update_memory_queue(self.dataset[self._space.keys], suggestion)
 
         return idx, self._space.array_to_params(suggestion)
 
@@ -254,7 +254,7 @@ class BayesianOptimization(Observable):
             idx, x_init = self._space.random_sample()
             self._queue.add((idx, x_init))
             if self.dataset is not None:
-                self.update_memory_queue(self.dataset[self._space.keys].values,
+                self.update_memory_queue(self.dataset[self._space.keys],
                                          self._space.params_to_array(x_init))
 
     def _prime_subscriptions(self):
@@ -440,7 +440,7 @@ class BayesianOptimization(Observable):
 
         Parameters
         ----------
-        dataset: numpy.ndarray
+        dataset: pandas.DataFrame
             The dataset on which to perform filtering
 
         x_new: numpy.ndarray
@@ -450,10 +450,11 @@ class BayesianOptimization(Observable):
             return
 
         self.memory_queue.append([])
+        dataset_vals = dataset.values
 
         # Place indexes of data equal to x_new in memory queue
-        for i in range(dataset.shape[0]):
-            if np.array_equal(dataset[i], x_new):
+        for i in range(dataset_vals.shape[0]):
+            if np.array_equal(dataset_vals[i], x_new):
                 self.memory_queue[-1].append(i)
 
         # Remove oldest entry if exceeding max length
