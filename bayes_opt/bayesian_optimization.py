@@ -221,17 +221,14 @@ class BayesianOptimization(Observable):
 
         if self.dataset is None:
             dataset_acq = None
-            indexes_acq = None
         else:
-            dataset_values = self.dataset[self._space.keys].values
             # Flatten memory queue (a list of indexes lists) to one single list
             idxs = list(itertools.chain.from_iterable(self.memory_queue_indexes))
             # Create mask to select rows whose index is not included in idxs
-            mask = np.ones(dataset_values.shape[0], np.bool)
+            mask = np.ones(self.dataset.shape[0], np.bool)
             mask[idxs] = 0
             # Create dataset to be passed to acq_max()
-            dataset_acq = dataset_values[mask]
-            indexes_acq = self.dataset.index[mask]
+            dataset_acq = self.dataset.loc[mask, self._space.keys]
 
         # Find argmax of the acquisition function
         idx, suggestion = acq_max(
@@ -240,12 +237,11 @@ class BayesianOptimization(Observable):
             y_max=self._space.target.max(),
             bounds=self._space.bounds,
             random_state=self._random_state,
-            dataset=dataset_acq,
-            original_idxs=indexes_acq
+            dataset=dataset_acq
         )
 
         if self.dataset is not None:
-            self.update_memory_queue(dataset_values, suggestion)
+            self.update_memory_queue(self.dataset[self._space.keys].values, suggestion)
 
         return idx, self._space.array_to_params(suggestion)
 

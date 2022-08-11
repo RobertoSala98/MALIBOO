@@ -4,8 +4,7 @@ from scipy.stats import norm
 from scipy.optimize import minimize
 
 
-def acq_max(ac, gp, y_max, bounds, random_state, n_warmup=10000, n_iter=10,
-            dataset=None, original_idxs=None):
+def acq_max(ac, gp, y_max, bounds, random_state, n_warmup=10000, n_iter=10, dataset=None):
     """
     A function to find the maximum of the acquisition function
 
@@ -36,11 +35,8 @@ def acq_max(ac, gp, y_max, bounds, random_state, n_warmup=10000, n_iter=10,
     n_iter: int, optional(default=10)
         Number of times to run scipy.minimize
 
-    dataset: numpy.ndarray, optional(default=None)
+    dataset: pandas.DataFrame, optional(default=None)
         The (possibly reduced) domain dataset, if any, on which the maximum is to be found
-
-    original_idxs: pandas.DataFrame.Index, optional(default=None)
-        Original indexes of the entire dataset, which is possibly larger than 'dataset'
 
     Returns
     -------
@@ -52,19 +48,17 @@ def acq_max(ac, gp, y_max, bounds, random_state, n_warmup=10000, n_iter=10,
 
     # Warm up with random points or dataset points
     if dataset is not None:
-        x_tries = dataset
+        x_tries = dataset.values
     else:
         x_tries = random_state.uniform(bounds[:, 0], bounds[:, 1],
                                        size=(n_warmup, bounds.shape[0]))
     ys = ac(x_tries, gp=gp, y_max=y_max)
-    idx = ys.argmax()  # this index is relative to the local 'dataset' if used
+    idx = ys.argmax()  # this index is relative to the local x_tries values matrix
     x_max = x_tries[idx]
 
     if dataset is not None:
-        if original_idxs is not None:
-            # The returned index is no longer relative to the local 'dataset',
-            # but is the true index of the selected value
-            idx = original_idxs[idx]
+        # idx becomes the true dataset index of the selected point, rather than being relative to x_tries
+        idx = dataset.index[idx]
         return idx, np.clip(x_max, bounds[:, 0], bounds[:, 1])
 
     # Explore the parameter space more throughly
