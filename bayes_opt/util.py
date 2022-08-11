@@ -4,7 +4,8 @@ from scipy.stats import norm
 from scipy.optimize import minimize
 
 
-def acq_max(ac, gp, y_max, bounds, random_state, n_warmup=10000, n_iter=10, dataset=None):
+def acq_max(ac, gp, y_max, bounds, random_state, n_warmup=10000, n_iter=10, dataset=None,
+            debug=False):
     """
     A function to find the maximum of the acquisition function
 
@@ -37,6 +38,9 @@ def acq_max(ac, gp, y_max, bounds, random_state, n_warmup=10000, n_iter=10, data
 
     dataset: pandas.DataFrame, optional(default=None)
         The (possibly reduced) domain dataset, if any, on which the maximum is to be found
+
+    debug: bool, optional(default=False)
+        Whether or not to print detailed debugging information
 
     Returns
     -------
@@ -92,8 +96,9 @@ class UtilityFunction(object):
     See the maximize() function in bayesian_optimization.py for a description of the constructor arguments.
     """
 
-    def __init__(self, kind, kappa, xi, kappa_decay=1, kappa_decay_delay=0, ml_info={}):
+    def __init__(self, kind, kappa, xi, kappa_decay=1, kappa_decay_delay=0, ml_info={}, debug=False):
 
+        self._debug = debug
         self.kappa = kappa
         self._kappa_decay = kappa_decay
         self._kappa_decay_delay = kappa_decay_delay

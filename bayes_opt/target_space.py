@@ -26,7 +26,7 @@ class TargetSpace(object):
     """
 
     def __init__(self, target_func=None, pbounds=None, random_state=None,
-                 dataset=None, target_column=None):
+                 dataset=None, target_column=None, debug=False):
         """
         Parameters
         ----------
@@ -47,6 +47,9 @@ class TargetSpace(object):
         target_column: str, optional(default=None)
             Name of the column that will act as the target value of the optimization.
             Only works if dataset is passed.
+
+        debug: bool, optional(default=False)
+            Whether or not to print detailed debugging information
         """
         if pbounds is None:
             raise ValueError("pbounds must be specified")
@@ -61,6 +64,7 @@ class TargetSpace(object):
         )
 
         # Initialize other members
+        self._debug = debug
         self.random_state = ensure_rng(random_state)
         self.target_func = target_func
         self.initialize_dataset(dataset, target_column)

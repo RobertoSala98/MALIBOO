@@ -106,6 +106,9 @@ class BayesianOptimization(Observable):
         Name of the column that will act as the target value of the optimization.
         Only works if dataset is passed.
 
+    debug: bool, optional(default=False)
+        Whether or not to print detailed debugging information
+
     Methods
     -------
     probe()
@@ -121,11 +124,12 @@ class BayesianOptimization(Observable):
     """
 
     def __init__(self, f=None, pbounds=None, random_state=None, verbose=2, bounds_transformer=None,
-                 dataset=None, output_path=None, target_column=None):
+                 dataset=None, output_path=None, target_column=None, debug=False):
 
         # Initialize members from arguments
         self._random_state = ensure_rng(random_state)
         self._verbose = verbose
+        self._debug = debug
         self._bounds_transformer = bounds_transformer
         self._output_path = os.getcwd() if output_path is None else os.path.join(output_path)
 
@@ -141,7 +145,8 @@ class BayesianOptimization(Observable):
 
         # Data structure containing the function to be optimized, the bounds of
         # its domain, and a record of the evaluations we have done so far
-        self._space = TargetSpace(f, pbounds, random_state, dataset, target_column)
+        self._space = TargetSpace(target_func=f, pbounds=pbounds, random_state=random_state, dataset=dataset,
+                                  target_column=target_column, debug=debug)
         self._queue = Queue()
 
         if self._bounds_transformer:
@@ -336,7 +341,8 @@ class BayesianOptimization(Observable):
                                xi=xi,
                                kappa_decay=kappa_decay,
                                kappa_decay_delay=kappa_decay_delay,
-                               ml_info=ml_info)
+                               ml_info=ml_info,
+                               debug=self._debug)
         iteration = 0
 
         while not self._queue.empty or iteration < n_iter:
