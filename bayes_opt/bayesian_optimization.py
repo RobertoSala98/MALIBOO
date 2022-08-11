@@ -332,6 +332,7 @@ class BayesianOptimization(Observable):
             will not be considered
         """
         # Initialize the memory queue, a list of lists of forbidden indexes for the current iteration
+        if self._debug: print("Starting maximize()")
         self.memory_queue_len = memory_queue_len
         self.memory_queue = []
 
@@ -351,8 +352,6 @@ class BayesianOptimization(Observable):
         iteration = 0
 
         while not self._queue.empty or iteration < n_iter:
-            if self._debug: print("Starting iteration", iteration)
-
             # Sample new point from GP
             try:
                 idx, x_probe = next(self._queue)
@@ -360,7 +359,7 @@ class BayesianOptimization(Observable):
             except StopIteration:
                 util.update_params()
                 idx, x_probe = self.suggest(util)
-                if self._debug: print("Suggested point: index {}, value {}".format(idx, x_probe))
+                if self._debug: print("Iteration {}, suggested point: index {}, value {}".format(iteration, idx, x_probe))
                 iteration += 1
 
             if x_probe is None:

@@ -117,7 +117,9 @@ class UtilityFunction(object):
         self._kappa_decay_delay = kappa_decay_delay
         self.xi = xi
         self.kind = kind
+        self._iters_counter = 0
         if ml_info:
+            if self._debug: print("Initializing UtilityFunction with ml_info =", ml_info)
             for key in ('ml_target', 'ml_bounds'):  # 'target' and 'bounds' respectively in ml_info dict
                 key_in_dict = key.lstrip('ml_')
                 if key_in_dict not in ml_info:
@@ -125,8 +127,7 @@ class UtilityFunction(object):
                 self.__setattr__(key, ml_info[key_in_dict])
         elif 'ml' in kind:
             raise ValueError("'ml_info' option must be provided if using '{}' acquisition".format(kind))
-        
-        self._iters_counter = 0
+        if self._debug: print("UtilityFunction initialization completed")
 
     def update_params(self):
         self._iters_counter += 1
