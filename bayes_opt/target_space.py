@@ -51,21 +51,20 @@ class TargetSpace(object):
         if pbounds is None:
             raise ValueError("pbounds must be specified")
 
-        # Get the name of the parameters, aka the optimization columns
+        # Get the name of the parameters, aka the optimization variables/columns
         self._keys = sorted(pbounds)
-
-        # Initialize other members
-        self.random_state = ensure_rng(random_state)
-        self.target_func = target_func
-        self.initialize_dataset(dataset, target_column)
-        # List of dataset indexes of points, or Nones if no dataset is used
-        self._indexes = []
 
         # Create an array with parameters bounds
         self._bounds = np.array(
             [item[1] for item in sorted(pbounds.items(), key=lambda x: x[0])],
             dtype=float
         )
+
+        # Initialize other members
+        self.random_state = ensure_rng(random_state)
+        self.target_func = target_func
+        self.initialize_dataset(dataset, target_column)
+        self._indexes = []  # dataset indexes of points, or Nones if no dataset is used
 
         # preallocated memory for X and Y points
         self._params = np.empty(shape=(0, self.dim))
@@ -348,13 +347,21 @@ class TargetSpace(object):
             if col in self._dataset.columns:
                 raise ValueError("Column name '{}' is not allowed in a dataset, please change it".format(col))
 
+        # Check for relevant class members
+        for attr in ('_bounds', '_keys'):
+            if not hasattr(self, attr):
+                raise ValueError("'self.{}' must be set before initialize_dataset() is called".format(attr))
+
         # Set target column and check for missing columns
         self._target_column = target_column
-        if not hasattr(self, '_keys'):
-            raise ValueError("self._keys must be set before initialize_dataset() is called")
         missing_cols = set(self._keys) - set(self._dataset.columns)
         if missing_cols:
             raise ValueError("Columns {} indicated in pbounds are missing "
                              "from the dataset".format(missing_cols))
         if target_column is not None and target_column not in self._dataset:
             raise ValueError("The specified target column '{}' is not present in the dataset".format(target_column))
+
+        # Check that bounds are respected by the corresponding dataset columns
+        for key, (lb, ub) in zip(self._keys, self._bounds):
+            if self.dataset[key].min() < lb or self.dataset[key].max() >= ub:
+                raise ValueError("Dataset values for '{}' column are not consistent with bounds".format(key))
