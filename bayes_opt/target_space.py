@@ -70,8 +70,8 @@ class TargetSpace(object):
         # Initialize other members
         self.random_state = ensure_rng(random_state)
         self.target_func = target_func
-        self.initialize_dataset(dataset, target_column)
         self._indexes = []  # dataset indexes of points, or Nones if no dataset is used
+        self.initialize_dataset(dataset, target_column)
 
         # preallocated memory for X and Y points
         self._params = np.empty(shape=(0, self.dim))
