@@ -7,6 +7,9 @@ from bayes_opt import BayesianOptimization as BO
 def black_box_function(x, y):
     return -x ** 2 - (y - 1) ** 2 + 1
 
+def black_box_function_1D(y):
+    return -y ** 2
+
 def black_box_function_dict(x, y):
     ret = {}
     ret['value'] = -x ** 2 - (y - 1) ** 2 + 1
@@ -80,6 +83,24 @@ def test06_dataset_X_ml():
                      ml_info={'target': 'z_pred', 'bounds': (0, 2.2)})
 
 
+def test07_dataset_Xy_queue():
+  optimizer = BO(f=None, pbounds={'y': (1,50)}, random_state=seed,
+                 dataset=os.path.join('datasets', 'test_xyz.csv'),
+                 target_column='z',
+                 output_path=os.path.join('outputs' ,'test07')
+                 )
+  optimizer.maximize(init_points=n0, n_iter=n_iter, memory_queue_len=3)
+
+
+def test08_dataset_X_queue():
+  optimizer = BO(f=black_box_function_1D, pbounds={'y': (1,50)},
+                 random_state=seed,
+                 dataset=os.path.join('datasets', 'test_xyz.csv'),
+                 output_path=os.path.join('outputs' ,'test08')
+                 )
+  optimizer.maximize(init_points=n0, n_iter=n_iter, memory_queue_len=3)
+
+
 if __name__ == '__main__':
   perform_test(test01_free)
   perform_test(test02_dataset_Xy)
@@ -87,3 +108,5 @@ if __name__ == '__main__':
   perform_test(test04_free_ml)
   perform_test(test05_dataset_Xy_ml)
   perform_test(test06_dataset_X_ml)
+  perform_test(test07_dataset_Xy_queue)
+  perform_test(test08_dataset_X_queue)

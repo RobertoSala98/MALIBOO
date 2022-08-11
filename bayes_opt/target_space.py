@@ -318,7 +318,8 @@ class TargetSpace(object):
 
     def initialize_dataset(self, dataset=None, target_column=None):
         """
-        Checks and loads the dataset as well as other utilities
+        Checks and loads the dataset as well as other utilities. The dataset loaded in this class by
+        this method is constant and will not change throughout the optimization procedure.
 
         Parameters
         ----------

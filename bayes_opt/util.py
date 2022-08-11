@@ -4,7 +4,7 @@ from scipy.stats import norm
 from scipy.optimize import minimize
 
 
-def acq_max(ac, gp, y_max, bounds, random_state, dataset=None, n_warmup=10000, n_iter=10):
+def acq_max(ac, gp, y_max, bounds, random_state, n_warmup=10000, n_iter=10, dataset=None):
     """
     A function to find the maximum of the acquisition function
 
@@ -29,14 +29,14 @@ def acq_max(ac, gp, y_max, bounds, random_state, dataset=None, n_warmup=10000, n
     random_state: numpy.RandomState object
         Instance of a random number generator
 
-    dataset: numpy.ndarray, optional(default=None)
-        The dataset, if any, which constitutes the optimization domain
-
     n_warmup: int, optional(default=10000)
         Number of times to randomly sample the aquisition function
 
     n_iter: int, optional(default=10)
         Number of times to run scipy.minimize
+
+    dataset: pandas.DataFrame, optional(default=None)
+        The (possibly reduced) domain dataset, if any, on which the maximum is to be found
 
     Returns
     -------
@@ -48,17 +48,17 @@ def acq_max(ac, gp, y_max, bounds, random_state, dataset=None, n_warmup=10000, n
 
     # Warm up with random points or dataset points
     if dataset is not None:
-        x_tries = dataset
+        x_tries = dataset.values
     else:
         x_tries = random_state.uniform(bounds[:, 0], bounds[:, 1],
                                        size=(n_warmup, bounds.shape[0]))
     ys = ac(x_tries, gp=gp, y_max=y_max)
-    idx = ys.argmax()
+    idx = ys.argmax()  # this index is relative to the local x_tries values matrix
     x_max = x_tries[idx]
 
     if dataset is not None:
-        # Clip output to make sure it lies within the bounds. Due to floating
-        # point technicalities this is not always the case.
+        # idx becomes the true dataset index of the selected point, rather than being relative to x_tries
+        idx = dataset.index[idx]
         return idx, np.clip(x_max, bounds[:, 0], bounds[:, 1])
 
     # Explore the parameter space more throughly

@@ -1,3 +1,4 @@
+import itertools
 import numpy as np
 import os
 import pandas as pd
@@ -173,6 +174,10 @@ class BayesianOptimization(Observable):
     def res(self):
         return self._space.res()
 
+    @property
+    def dataset(self):
+        return self._space.dataset
+
     def register(self, params, target):
         """Expect observation with known target"""
         self._space.register(params, target)
@@ -192,6 +197,7 @@ class BayesianOptimization(Observable):
             maximize(). Otherwise it will evaluate it at the moment.
         """
         if lazy:
+            # TODO actually, an (index, params) tuple should be passed to add()
             self._queue.add(params)
         else:
             self._space.probe(params)
@@ -200,7 +206,8 @@ class BayesianOptimization(Observable):
     def suggest(self, utility_function):
         """Most promising point to probe next"""
         if len(self._space) == 0:
-            return self._space.array_to_params(self._space.random_sample())
+            idx, x_rand = self._space.random_sample()
+            return idx, self._space.array_to_params(x_rand)
 
         # Sklearn's GP throws a large number of warnings at times, but
         # we don't really need to see them here.
@@ -212,15 +219,29 @@ class BayesianOptimization(Observable):
                 model = self.get_ml_model(y_name=utility_function.ml_target)
                 utility_function.set_ml_model(model)
 
-        # Finding argmax of the acquisition function.
+        if self.dataset is None:
+            dataset_acq = None
+        else:
+            # Flatten memory queue (a list of indexes lists) to one single list
+            idxs = list(itertools.chain.from_iterable(self.memory_queue))
+            # Create mask to select rows whose index is not included in idxs
+            mask = np.ones(self.dataset.shape[0], np.bool)
+            mask[idxs] = 0
+            # Create dataset to be passed to acq_max()
+            dataset_acq = self.dataset.loc[mask, self._space.keys]
+
+        # Find argmax of the acquisition function
         idx, suggestion = acq_max(
             ac=utility_function.utility,
             gp=self._gp,
             y_max=self._space.target.max(),
             bounds=self._space.bounds,
             random_state=self._random_state,
-            dataset=self._space.dataset[self._space.keys].values if self._space.dataset is not None else None
+            dataset=dataset_acq
         )
+
+        if self.dataset is not None:
+            self.update_memory_queue(self.dataset[self._space.keys], suggestion)
 
         return idx, self._space.array_to_params(suggestion)
 
@@ -230,7 +251,11 @@ class BayesianOptimization(Observable):
             init_points = max(init_points, 1)
 
         for _ in range(init_points):
-            self._queue.add(self._space.random_sample())
+            idx, x_init = self._space.random_sample()
+            self._queue.add((idx, x_init))
+            if self.dataset is not None:
+                self.update_memory_queue(self.dataset[self._space.keys],
+                                         self._space.params_to_array(x_init))
 
     def _prime_subscriptions(self):
         if not any([len(subs) for subs in self._events.values()]):
@@ -248,6 +273,7 @@ class BayesianOptimization(Observable):
                  kappa_decay_delay=0,
                  xi=0.0,
                  ml_info={},
+                 memory_queue_len=0,
                  **gp_params):
         """
         Probes the target space to find the parameters that yield the maximum
@@ -290,7 +316,16 @@ class BayesianOptimization(Observable):
             name of the target quantity and ml_info['bounds'] is a tuple with its lower and
             upper bounds.
 
+        memory_queue_len: int, optional(default=0)
+            Length of FIFO memory queue. If used alongside a dataset, at each iteration,
+            values which have already been chosen in the last memory_queue_len iterations
+            will not be considered
         """
+        # Initialize the memory queue, a list of lists of forbidden indexes for the current iteration
+        self.memory_queue_len = memory_queue_len
+        self.memory_queue = []
+
+        # Initialize other stuff
         self._prime_subscriptions()
         self.dispatch(Events.OPTIMIZATION_START)
         self._prime_queue(init_points)
@@ -319,14 +354,14 @@ class BayesianOptimization(Observable):
             self._space.indexes.append(idx)
 
             # Register new point
-            if self._space.dataset is None:
+            if self.dataset is None:
                 # No dataset: we evaluate the target function directly
                 self.probe(x_probe, lazy=False)
             else:
                 # If user has specified a dataset, x_probe is the best one found in it
                 if self._space.target_column is not None:
                     # Dataset for X and for y: read point entirely from dataset without probe()
-                    target_value = self._space.dataset.loc[idx, self._space.target_column]
+                    target_value = self.dataset.loc[idx, self._space.target_column]
                     self.register(x_probe, target_value)
                 else:
                     # Dataset for X only: evaluate approximated point
@@ -384,10 +419,10 @@ class BayesianOptimization(Observable):
         try:
             y = self._space._target_dict_info[y_name]
         except KeyError:
-            if self._space.dataset is None:
+            if self.dataset is None:
                 raise KeyError("Target function return values must have '{}' field".format(y_name))
-            elif y_name in self._space.dataset.columns:
-                y = self._space.dataset.loc[self._space.indexes, y_name]
+            elif y_name in self.dataset.columns:
+                y = self.dataset.loc[self._space.indexes, y_name]
             else:
                 raise KeyError("Dataset must have '{}' column".format(y_name))
 
@@ -397,3 +432,31 @@ class BayesianOptimization(Observable):
         # print("Training MAPE =", mape(model.predict(X), y))  # !DEBUG!
         # print("Coefficients =", model.coef_)  # !DEBUG!
         return model
+
+    def update_memory_queue(self, dataset, x_new):
+        """
+        Updates self.memory_queue, the list of dataset entries which cannot be selected
+        in the current iteration. The list is always no larger than memory_queue_len elements.
+
+        Parameters
+        ----------
+        dataset: pandas.DataFrame
+            The dataset on which to perform filtering
+
+        x_new: numpy.ndarray
+            The lasted selected point, which is to be included in the memory queue
+        """
+        if self.memory_queue_len == 0:
+            return
+
+        self.memory_queue.append([])
+        dataset_vals = dataset.values
+
+        # Place indexes of data equal to x_new in memory queue
+        for i in range(dataset_vals.shape[0]):
+            if np.array_equal(dataset_vals[i], x_new):
+                self.memory_queue[-1].append(i)
+
+        # Remove oldest entry if exceeding max length
+        if len(self.memory_queue) > self.memory_queue_len:
+            self.memory_queue.pop(0)
