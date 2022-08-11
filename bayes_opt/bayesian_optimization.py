@@ -360,18 +360,13 @@ class BayesianOptimization(Observable):
             self._space.indexes.append(idx)
 
             # Register new point
-            if self.dataset is None:
-                # No dataset: we evaluate the target function directly
+            if self.dataset is None or self._space.target_column is None:
+                # No dataset, or dataset for X only: we evaluate the target function directly
                 self.probe(x_probe, lazy=False)
             else:
-                # If user has specified a dataset, x_probe is the best one found in it
-                if self._space.target_column is not None:
-                    # Dataset for X and for y: read point entirely from dataset without probe()
-                    target_value = self.dataset.loc[idx, self._space.target_column]
-                    self.register(x_probe, target_value)
-                else:
-                    # Dataset for X only: evaluate approximated point
-                    self.probe(x_probe, lazy=False)
+                # Dataset for both X and y: register point entirely from dataset without probe()
+                target_value = self.dataset.loc[idx, self._space.target_column]
+                self.register(x_probe, target_value)
 
         if self._bounds_transformer:
             self.set_bounds(
