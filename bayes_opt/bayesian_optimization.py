@@ -167,6 +167,8 @@ class BayesianOptimization(Observable):
 
         super(BayesianOptimization, self).__init__(events=DEFAULT_EVENTS)
 
+        if self._debug: print("BayesianOptimization initialization completed")
+
     @property
     def space(self):
         return self._space
@@ -242,7 +244,8 @@ class BayesianOptimization(Observable):
             y_max=self._space.target.max(),
             bounds=self._space.bounds,
             random_state=self._random_state,
-            dataset=dataset_acq
+            dataset=dataset_acq,
+            debug=self._debug
         )
 
         if self.dataset is not None:
@@ -254,6 +257,8 @@ class BayesianOptimization(Observable):
         """Make sure there's something in the queue at the very beginning."""
         if self._queue.empty and self._space.empty:
             init_points = max(init_points, 1)
+
+        if self._debug: print("_prime_queue(): initializing", init_points, "random points")
 
         for _ in range(init_points):
             idx, x_init = self._space.random_sample()
@@ -346,12 +351,16 @@ class BayesianOptimization(Observable):
         iteration = 0
 
         while not self._queue.empty or iteration < n_iter:
+            if self._debug: print("Starting iteration", iteration)
+
             # Sample new point from GP
             try:
                 idx, x_probe = next(self._queue)
+                if self._debug: print("Selected point from queue: index {}, value {}".format(idx, x_probe))
             except StopIteration:
                 util.update_params()
                 idx, x_probe = self.suggest(util)
+                if self._debug: print("Suggested point: index {}, value {}".format(idx, x_probe))
                 iteration += 1
 
             if x_probe is None:
@@ -362,9 +371,11 @@ class BayesianOptimization(Observable):
             # Register new point
             if self.dataset is None or self._space.target_column is None:
                 # No dataset, or dataset for X only: we evaluate the target function directly
+                if self._debug: print("No dataset, or dataset for X only: evaluating target function")
                 self.probe(x_probe, lazy=False)
             else:
                 # Dataset for both X and y: register point entirely from dataset without probe()
+                if self._debug: print("Dataset Xy: registering dataset point")
                 target_value = self.dataset.loc[idx, self._space.target_column]
                 self.register(x_probe, target_value)
 
@@ -417,6 +428,7 @@ class BayesianOptimization(Observable):
         """
         # Build training dataset for the ML model
         X = pd.DataFrame(self._space._params, columns=self._space.keys)
+        if self._debug: print("Dataset for ML model has shape", X.shape)
         try:
             y = self._space._target_dict_info[y_name]
         except KeyError:
@@ -430,8 +442,14 @@ class BayesianOptimization(Observable):
         # Initialize and train model
         model = Ridge()
         model.fit(X, y)
-        # print("Training MAPE =", mape(model.predict(X), y))  # !DEBUG!
-        # print("Coefficients =", model.coef_)  # !DEBUG!
+
+        if self._debug:
+            try:
+                print("Trained ML model:")
+                print("Training MAPE =", mape(model.predict(X), y))
+                print("Coefficients =", model.coef_)
+            except:
+                pass
         return model
 
     def update_memory_queue(self, dataset, x_new):
@@ -448,6 +466,7 @@ class BayesianOptimization(Observable):
             The lasted selected point, which is to be included in the memory queue
         """
         if self.memory_queue_len == 0:
+            if self._debug: print("No memory queue to be updated")
             return
 
         self.memory_queue.append([])
@@ -461,3 +480,9 @@ class BayesianOptimization(Observable):
         # Remove oldest entry if exceeding max length
         if len(self.memory_queue) > self.memory_queue_len:
             self.memory_queue.pop(0)
+            if self._debug: print("Exceeded memory queue length {}, removing first entry".format(self.memory_queue_len))
+
+        if self._debug:
+            print("Updated memory queue:", self.memory_queue)
+            counts = [len(_) for _ in self.memory_queue]
+            print("Counts in memory queue: {} (total: {})".format(counts, sum(counts)))
