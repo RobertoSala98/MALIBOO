@@ -197,7 +197,8 @@ class TargetSpace(object):
             else:
                 # Append new point to member
                 self._target_dict_info = pd.concat((self._target_dict_info, pd.DataFrame(info, index=[0])), ignore_index=True)
-            # print(self._target_dict_info)  # !DEBUG!
+
+        return value
 
     def probe(self, params):
         """
@@ -218,9 +219,8 @@ class TargetSpace(object):
 
         params = dict(zip(self._keys, x))
         target = self.target_func(**params)
-        self.register(x, target)
-        ret, _ = self.extract_value_and_info(target)
-        return ret
+        target_value = self.register(x, target)
+        return target_value
 
     def random_sample(self):
         """
