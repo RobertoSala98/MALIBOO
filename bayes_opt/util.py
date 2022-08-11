@@ -4,7 +4,8 @@ from scipy.stats import norm
 from scipy.optimize import minimize
 
 
-def acq_max(ac, gp, y_max, bounds, random_state, n_warmup=10000, n_iter=10, dataset=None):
+def acq_max(ac, gp, y_max, bounds, random_state, n_warmup=10000, n_iter=10, dataset=None,
+            debug=False):
     """
     A function to find the maximum of the acquisition function
 
@@ -21,7 +22,7 @@ def acq_max(ac, gp, y_max, bounds, random_state, n_warmup=10000, n_iter=10, data
         A gaussian process fitted to the relevant data
 
     y_max: float
-        The current maximum known value of the target function
+        The current maximum known (aka incumbent) value of the target function
 
     bounds: dict
         The variables bounds to limit the search of the acq max
@@ -38,6 +39,9 @@ def acq_max(ac, gp, y_max, bounds, random_state, n_warmup=10000, n_iter=10, data
     dataset: pandas.DataFrame, optional(default=None)
         The (possibly reduced) domain dataset, if any, on which the maximum is to be found
 
+    debug: bool, optional(default=False)
+        Whether or not to print detailed debugging information
+
     Returns
     -------
     idx
@@ -47,24 +51,35 @@ def acq_max(ac, gp, y_max, bounds, random_state, n_warmup=10000, n_iter=10, data
     """
 
     # Warm up with random points or dataset points
+    if debug: print("Starting acq_max()\nIncumbent target: y_max =", y_max)
     if dataset is not None:
+        if debug: print("Dataset passed to initial grid has shape", dataset.shape)
         x_tries = dataset.values
     else:
+        if debug: print("No dataset, initial grid will be random with shape {}".format((n_warmup, bounds.shape[0])))
         x_tries = random_state.uniform(bounds[:, 0], bounds[:, 1],
                                        size=(n_warmup, bounds.shape[0]))
     ys = ac(x_tries, gp=gp, y_max=y_max)
+    if debug: print("Acquisition evaluated successfully on grid")
     idx = ys.argmax()  # this index is relative to the local x_tries values matrix
     x_max = x_tries[idx]
+    if debug: print("Grid index idx =", idx)
 
     if dataset is not None:
         # idx becomes the true dataset index of the selected point, rather than being relative to x_tries
         idx = dataset.index[idx]
-        return idx, np.clip(x_max, bounds[:, 0], bounds[:, 1])
+        if debug: print("End of acq_max(): maximizer of utility is data[{}] = {}".format(idx, x_max))
+        return idx, x_max
+
+    max_acq = ys[idx]
+    if debug: print("Best point on initial grid is ac({}) = {}".format(x_max, max_acq))
 
     # Explore the parameter space more throughly
     x_seeds = random_state.uniform(bounds[:, 0], bounds[:, 1],
                                    size=(n_iter, bounds.shape[0]))
-    max_acq = ys[idx]
+
+    if debug: print("Calling minimize() with", len(x_seeds), "different starting seeds")
+
     for x_try in x_seeds:
         # Find the minimum of minus the acquisition function
         res = minimize(lambda x: -ac(x.reshape(1, -1), gp=gp, y_max=y_max),
@@ -80,6 +95,8 @@ def acq_max(ac, gp, y_max, bounds, random_state, n_warmup=10000, n_iter=10, data
             x_max = res.x
             max_acq = -np.squeeze(res.fun)
 
+    if debug: print("End of acq_max(): maximizer of utility is ac({}) = {}".format(x_max, max_acq))
+
     # Clip output to make sure it lies within the bounds. Due to floating
     # point technicalities this is not always the case.
     return None, np.clip(x_max, bounds[:, 0], bounds[:, 1])
@@ -92,14 +109,17 @@ class UtilityFunction(object):
     See the maximize() function in bayesian_optimization.py for a description of the constructor arguments.
     """
 
-    def __init__(self, kind, kappa, xi, kappa_decay=1, kappa_decay_delay=0, ml_info={}):
+    def __init__(self, kind, kappa, xi, kappa_decay=1, kappa_decay_delay=0, ml_info={}, debug=False):
 
+        self._debug = debug
         self.kappa = kappa
         self._kappa_decay = kappa_decay
         self._kappa_decay_delay = kappa_decay_delay
         self.xi = xi
         self.kind = kind
+        self._iters_counter = 0
         if ml_info:
+            if self._debug: print("Initializing UtilityFunction with ml_info =", ml_info)
             for key in ('ml_target', 'ml_bounds'):  # 'target' and 'bounds' respectively in ml_info dict
                 key_in_dict = key.lstrip('ml_')
                 if key_in_dict not in ml_info:
@@ -107,8 +127,7 @@ class UtilityFunction(object):
                 self.__setattr__(key, ml_info[key_in_dict])
         elif 'ml' in kind:
             raise ValueError("'ml_info' option must be provided if using '{}' acquisition".format(kind))
-        
-        self._iters_counter = 0
+        if self._debug: print("UtilityFunction initialization completed")
 
     def update_params(self):
         self._iters_counter += 1

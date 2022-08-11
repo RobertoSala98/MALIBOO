@@ -106,6 +106,9 @@ class BayesianOptimization(Observable):
         Name of the column that will act as the target value of the optimization.
         Only works if dataset is passed.
 
+    debug: bool, optional(default=False)
+        Whether or not to print detailed debugging information
+
     Methods
     -------
     probe()
@@ -121,11 +124,12 @@ class BayesianOptimization(Observable):
     """
 
     def __init__(self, f=None, pbounds=None, random_state=None, verbose=2, bounds_transformer=None,
-                 dataset=None, output_path=None, target_column=None):
+                 dataset=None, output_path=None, target_column=None, debug=False):
 
         # Initialize members from arguments
         self._random_state = ensure_rng(random_state)
         self._verbose = verbose
+        self._debug = debug
         self._bounds_transformer = bounds_transformer
         self._output_path = os.getcwd() if output_path is None else os.path.join(output_path)
 
@@ -141,7 +145,8 @@ class BayesianOptimization(Observable):
 
         # Data structure containing the function to be optimized, the bounds of
         # its domain, and a record of the evaluations we have done so far
-        self._space = TargetSpace(f, pbounds, random_state, dataset, target_column)
+        self._space = TargetSpace(target_func=f, pbounds=pbounds, random_state=random_state, dataset=dataset,
+                                  target_column=target_column, debug=debug)
         self._queue = Queue()
 
         if self._bounds_transformer:
@@ -161,6 +166,8 @@ class BayesianOptimization(Observable):
         )
 
         super(BayesianOptimization, self).__init__(events=DEFAULT_EVENTS)
+
+        if self._debug: print("BayesianOptimization initialization completed")
 
     @property
     def space(self):
@@ -237,7 +244,8 @@ class BayesianOptimization(Observable):
             y_max=self._space.target.max(),
             bounds=self._space.bounds,
             random_state=self._random_state,
-            dataset=dataset_acq
+            dataset=dataset_acq,
+            debug=self._debug
         )
 
         if self.dataset is not None:
@@ -249,6 +257,8 @@ class BayesianOptimization(Observable):
         """Make sure there's something in the queue at the very beginning."""
         if self._queue.empty and self._space.empty:
             init_points = max(init_points, 1)
+
+        if self._debug: print("_prime_queue(): initializing", init_points, "random points")
 
         for _ in range(init_points):
             idx, x_init = self._space.random_sample()
@@ -322,6 +332,7 @@ class BayesianOptimization(Observable):
             will not be considered
         """
         # Initialize the memory queue, a list of lists of forbidden indexes for the current iteration
+        if self._debug: print("Starting maximize()")
         self.memory_queue_len = memory_queue_len
         self.memory_queue = []
 
@@ -336,16 +347,19 @@ class BayesianOptimization(Observable):
                                xi=xi,
                                kappa_decay=kappa_decay,
                                kappa_decay_delay=kappa_decay_delay,
-                               ml_info=ml_info)
+                               ml_info=ml_info,
+                               debug=self._debug)
         iteration = 0
 
         while not self._queue.empty or iteration < n_iter:
             # Sample new point from GP
             try:
                 idx, x_probe = next(self._queue)
+                if self._debug: print("Selected point from queue: index {}, value {}".format(idx, x_probe))
             except StopIteration:
                 util.update_params()
                 idx, x_probe = self.suggest(util)
+                if self._debug: print("Iteration {}, suggested point: index {}, value {}".format(iteration, idx, x_probe))
                 iteration += 1
 
             if x_probe is None:
@@ -354,18 +368,15 @@ class BayesianOptimization(Observable):
             self._space.indexes.append(idx)
 
             # Register new point
-            if self.dataset is None:
-                # No dataset: we evaluate the target function directly
+            if self.dataset is None or self._space.target_column is None:
+                # No dataset, or dataset for X only: we evaluate the target function directly
+                if self._debug: print("No dataset, or dataset for X only: evaluating target function")
                 self.probe(x_probe, lazy=False)
             else:
-                # If user has specified a dataset, x_probe is the best one found in it
-                if self._space.target_column is not None:
-                    # Dataset for X and for y: read point entirely from dataset without probe()
-                    target_value = self.dataset.loc[idx, self._space.target_column]
-                    self.register(x_probe, target_value)
-                else:
-                    # Dataset for X only: evaluate approximated point
-                    self.probe(x_probe, lazy=False)
+                # Dataset for both X and y: register point entirely from dataset without probe()
+                if self._debug: print("Dataset Xy: registering dataset point")
+                target_value = self.dataset.loc[idx, self._space.target_column]
+                self.register(x_probe, target_value)
 
         if self._bounds_transformer:
             self.set_bounds(
@@ -416,6 +427,7 @@ class BayesianOptimization(Observable):
         """
         # Build training dataset for the ML model
         X = pd.DataFrame(self._space._params, columns=self._space.keys)
+        if self._debug: print("Dataset for ML model has shape", X.shape)
         try:
             y = self._space._target_dict_info[y_name]
         except KeyError:
@@ -429,8 +441,14 @@ class BayesianOptimization(Observable):
         # Initialize and train model
         model = Ridge()
         model.fit(X, y)
-        # print("Training MAPE =", mape(model.predict(X), y))  # !DEBUG!
-        # print("Coefficients =", model.coef_)  # !DEBUG!
+
+        if self._debug:
+            try:
+                print("Trained ML model:")
+                print("Training MAPE =", mape(model.predict(X), y))
+                print("Coefficients =", model.coef_)
+            except:
+                pass
         return model
 
     def update_memory_queue(self, dataset, x_new):
@@ -447,6 +465,7 @@ class BayesianOptimization(Observable):
             The lasted selected point, which is to be included in the memory queue
         """
         if self.memory_queue_len == 0:
+            if self._debug: print("No memory queue to be updated")
             return
 
         self.memory_queue.append([])
@@ -460,3 +479,9 @@ class BayesianOptimization(Observable):
         # Remove oldest entry if exceeding max length
         if len(self.memory_queue) > self.memory_queue_len:
             self.memory_queue.pop(0)
+            if self._debug: print("Exceeded memory queue length {}, removing first entry".format(self.memory_queue_len))
+
+        if self._debug:
+            print("Updated memory queue:", self.memory_queue)
+            counts = [len(_) for _ in self.memory_queue]
+            print("Counts in memory queue: {} (total: {})".format(counts, sum(counts)))

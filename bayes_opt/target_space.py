@@ -26,7 +26,7 @@ class TargetSpace(object):
     """
 
     def __init__(self, target_func=None, pbounds=None, random_state=None,
-                 dataset=None, target_column=None):
+                 dataset=None, target_column=None, debug=False):
         """
         Parameters
         ----------
@@ -47,19 +47,17 @@ class TargetSpace(object):
         target_column: str, optional(default=None)
             Name of the column that will act as the target value of the optimization.
             Only works if dataset is passed.
+
+        debug: bool, optional(default=False)
+            Whether or not to print detailed debugging information
         """
         if pbounds is None:
             raise ValueError("pbounds must be specified")
 
-        # Get the name of the parameters, aka the optimization columns
-        self._keys = sorted(pbounds)
+        self._debug = debug
 
-        # Initialize other members
-        self.random_state = ensure_rng(random_state)
-        self.target_func = target_func
-        self.initialize_dataset(dataset, target_column)
-        # List of dataset indexes of points, or Nones if no dataset is used
-        self._indexes = []
+        # Get the name of the parameters, aka the optimization variables/columns
+        self._keys = sorted(pbounds)
 
         # Create an array with parameters bounds
         self._bounds = np.array(
@@ -67,11 +65,21 @@ class TargetSpace(object):
             dtype=float
         )
 
+        if self._debug: print("Initializing TargetSpace with bounds:", pbounds)
+
+        # Initialize other members
+        self.random_state = ensure_rng(random_state)
+        self.target_func = target_func
+        self._indexes = []  # dataset indexes of points, or Nones if no dataset is used
+        self.initialize_dataset(dataset, target_column)
+
         # preallocated memory for X and Y points
         self._params = np.empty(shape=(0, self.dim))
         self._target = np.empty(shape=(0))
         self._target_dict_info = pd.DataFrame()
         self._target_dict_key = 'value'
+
+        if self._debug: print("TargetSpace initialization completed")
 
     def __len__(self):
         assert len(self._params) == len(self._target)
@@ -182,6 +190,7 @@ class TargetSpace(object):
         >>> len(space)
         1
         """
+        if self._debug: print("Registering params", params, "and target value", target)
         x = self._as_array(params)
         value, info = self.extract_value_and_info(target)
 
@@ -194,7 +203,9 @@ class TargetSpace(object):
             else:
                 # Append new point to member
                 self._target_dict_info = pd.concat((self._target_dict_info, pd.DataFrame(info, index=[0])), ignore_index=True)
-            # print(self._target_dict_info)  # !DEBUG!
+
+        if self._debug: print("Point registered successfully")
+        return value
 
     def probe(self, params):
         """
@@ -211,13 +222,14 @@ class TargetSpace(object):
         y : float
             target function value.
         """
+        if self._debug: print("Probing point", params)
         x = self._as_array(params)
 
         params = dict(zip(self._keys, x))
         target = self.target_func(**params)
-        self.register(x, target)
-        ret, _ = self.extract_value_and_info(target)
-        return ret
+        target_value = self.register(x, target)
+        if self._debug: print("Probed target value:", target_value)
+        return target_value
 
     def random_sample(self):
         """
@@ -243,11 +255,13 @@ class TargetSpace(object):
             # Recover random row from dataset
             idx = self.random_state.choice(self.dataset.index)
             data = self.dataset.loc[idx, self.keys].to_numpy()
+            if self._debug: print("Randomly sampled dataset point: index {}, value {}".format(idx, data))
         else:
             idx = None
             data = np.empty((1, self.dim))
             for col, (lower, upper) in enumerate(self._bounds):
                 data.T[col] = self.random_state.uniform(lower, upper, size=1)
+            if self._debug: print("Uniform randomly sampled point: value {}".format(data))
         return idx, self.array_to_params(data.ravel())
 
     def max(self):
@@ -307,11 +321,13 @@ class TargetSpace(object):
             The full input dictionary, or an empty dictionary if target was purely numeric
         """
         if isinstance(target, Number):
+            if self._debug: print("Extracting info: target", target, "is scalar")
             return target, {}
         elif isinstance(target, dict):
             if self._target_dict_key not in target:
                 raise ValueError("If target function is a dictionary, it must "
                                  "contain the '{}' field".format(self._target_dict_key))
+            if self._debug: print("Extracting info: target is a dict with value", target[self._target_dict_key])
             return target[self._target_dict_key], target
         else:
             raise ValueError("Unrecognized return type '{}' in target function".format(type(target)))
@@ -332,6 +348,7 @@ class TargetSpace(object):
         """
         if dataset is None:
             self._dataset = None
+            if self._debug: print("initialize_dataset(): dataset is None")
             return
 
         if type(dataset) == pd.DataFrame:
@@ -342,19 +359,29 @@ class TargetSpace(object):
             except:
                 raise ValueError("Dataset must be a pandas.DataFrame or a (path to a) valid file")
 
+        if self._debug: print("Shape of initialized dataset is", self._dataset.shape)
+
         # Check for banned column names
         banned_columns = ('index', 'params', 'target', 'value')
         for col in banned_columns:
             if col in self._dataset.columns:
                 raise ValueError("Column name '{}' is not allowed in a dataset, please change it".format(col))
 
+        # Check for relevant class members
+        for attr in ('_bounds', '_keys'):
+            if not hasattr(self, attr):
+                raise ValueError("'self.{}' must be set before initialize_dataset() is called".format(attr))
+
         # Set target column and check for missing columns
         self._target_column = target_column
-        if not hasattr(self, '_keys'):
-            raise ValueError("self._keys must be set before initialize_dataset() is called")
         missing_cols = set(self._keys) - set(self._dataset.columns)
         if missing_cols:
             raise ValueError("Columns {} indicated in pbounds are missing "
                              "from the dataset".format(missing_cols))
         if target_column is not None and target_column not in self._dataset:
             raise ValueError("The specified target column '{}' is not present in the dataset".format(target_column))
+
+        # Check that bounds are respected by the corresponding dataset columns
+        for key, (lb, ub) in zip(self._keys, self._bounds):
+            if self.dataset[key].min() < lb or self.dataset[key].max() >= ub:
+                raise ValueError("Dataset values for '{}' column are not consistent with bounds".format(key))
