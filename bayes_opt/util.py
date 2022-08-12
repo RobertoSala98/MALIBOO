@@ -241,8 +241,8 @@ class UtilityFunction(object):
         Gmin, Gmax = bounds
         mean_Gmax = P(x) * Gmax + Q(x)
         mean_Gmin = P(x) * Gmin + Q(x)
-        prob_ub = norm.cdf( (mean_Gmax - mu) / std )
-        prob_lb = norm.cdf( (mean_Gmin - mu) / std )
+        prob_ub = norm.cdf( (mean_Gmax - mean) / std )
+        prob_lb = norm.cdf( (mean_Gmin - mean) / std )
 
         return ei * (prob_ub - prob_lb)
 
