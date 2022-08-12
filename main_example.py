@@ -22,7 +22,7 @@ def target_func_dict(x, y):
 seed = 1
 n0 = 2
 n_iter = 5
-debug = True
+debug = None
 
 
 
