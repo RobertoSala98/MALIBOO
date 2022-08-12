@@ -383,3 +383,16 @@ class TargetSpace(object):
         for key, (lb, ub) in zip(self._keys, self._bounds):
             if self.dataset[key].min() < lb or self.dataset[key].max() >= ub:
                 raise ValueError("Dataset values for '{}' column are not consistent with bounds".format(key))
+
+    def find_point_in_dataset(self, params):
+        """TODO"""
+        dataset_vals = self._dataset[self._keys].values
+        x = self.params_to_array(params)
+
+        # Find matching rows and choose randomly one of them
+        matches = np.where((dataset_vals == x).all(axis=1))[0]
+        idx = self.random_state.choice(matches)
+        target_val = self.dataset.loc[idx, self._target_column]
+        if self._debug: print("Located {} as data[{}], with target value {}".format(x, idx, target_val))
+
+        return idx, target_val

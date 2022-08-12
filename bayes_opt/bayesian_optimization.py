@@ -363,8 +363,6 @@ class BayesianOptimization(Observable):
             if x_probe is None:
                 raise ValueError("No point found")
 
-            self._space.indexes.append(idx)
-
             # Register new point
             if self.dataset is None or self._space.target_column is None:
                 # No dataset, or dataset for X only: we evaluate the target function directly
@@ -373,8 +371,13 @@ class BayesianOptimization(Observable):
             else:
                 # Dataset for both X and y: register point entirely from dataset without probe()
                 if self._debug: print("Dataset Xy: registering dataset point")
-                target_value = self.dataset.loc[idx, self._space.target_column]
+                if idx is None:
+                    idx, target_value = self._space.find_point_in_dataset(x_probe)
+                else:
+                    target_value = self.dataset.loc[idx, self._space.target_column]
                 self.register(x_probe, target_value)
+
+            self._space.indexes.append(idx)
 
         if self._bounds_transformer:
             self.set_bounds(
