@@ -120,6 +120,7 @@ class UtilityFunction(object):
         self._iters_counter = 0
 
         self.initialize_ml_params(ml_info, kind)
+        self.initialize_eic_params(eic_info, kind)
 
         if self._debug: print("UtilityFunction initialization completed")
 
@@ -136,8 +137,37 @@ class UtilityFunction(object):
         for key in ('target', 'bounds'):
             if key not in ml_info:
                 raise ValueError("'ml_info' dict must have '{}' field".format(key))
-            key_in_class = 'ml_' + key
-            self.__setattr__(key_in_class, ml_info[key])  # setting 'ml_target' and 'ml_bounds'
+            self.__setattr__('ml_' + key, ml_info[key])  # setting 'ml_target' and 'ml_bounds'
+
+    def initialize_eic_params(self, eic_info, kind):
+        if not eic_info:
+            if 'eic' in kind:
+                raise ValueError("'eic_info' dict must be provided if using '{}' acquisition".format(kind))
+            if self._debug: print("eic_info is empty")
+            return
+
+        if self._debug: print("Initializing UtilityFunction with eic_info =", eic_info)
+
+        # Check for needed fields and initialize them to the class
+        if 'bounds' not in eic_info:
+            raise ValueError("'eic_info' dict must have 'bounds' field")
+        self.eic_bounds = eic_info['bounds']
+
+        # Check for other needed fields, provide default values if not present, and initialize them to the class
+        if 'P_func' not in eic_info:
+            if self._debug: print("Using default P_func, P(x) == 1")
+            def P_func_default(x):
+                return 1.0
+            eic_info['P_func'] = P_func_default
+
+        if 'Q_func' not in eic_info:
+            if self._debug: print("Using default Q_func, Q(x) == 0")
+            def Q_func_default(x):
+                return 0.0
+            eic_info['Q_func'] = Q_func_default
+
+        self.eic_P_func = eic_info['P_func']
+        self.eic_Q_func = eic_info['Q_func']
 
     def update_params(self):
         self._iters_counter += 1
@@ -156,7 +186,7 @@ class UtilityFunction(object):
         if self.kind == 'ei_ml':
             return self._ei_ml(x, gp, y_max, self.xi, self.ml_model, self.ml_bounds)
         if self.kind == 'eic':
-            return self._eic(x, gp, y_max, self.xi, ...)  # TODO
+            return self._eic(x, gp, y_max, self.xi, self.eic_bounds, self.eic_P_func, self.eic_Q_func)
         if self.kind == 'poi':
             return self._poi(x, gp, y_max, self.xi)
         raise NotImplementedError("The utility function {} has not been implemented.".format(self.kind))
@@ -180,23 +210,23 @@ class UtilityFunction(object):
         return a * norm.cdf(z) + std * norm.pdf(z)
 
     @staticmethod
-    def _ei_ml(x, gp, y_max, xi, ml_model, ml_bounds):
+    def _ei_ml(x, gp, y_max, xi, ml_model, bounds):
         ei = UtilityFunction._ei(x, gp, y_max, xi)
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
             y_hat = ml_model.predict(x)
-        lb, ub = ml_bounds
+        lb, ub = bounds
         indicator = np.array([lb <= y and y <= ub for y in y_hat])
         return ei * indicator
 
     @staticmethod
-    def _eic(x, gp, y_max, xi, Gmin, Gmax, P, Q):
+    def _eic(x, gp, y_max, xi, bounds, P, Q):
         """
         Compute Expected Improvement with Constraints.
 
         Given the target function f(x) = P(x) g(x) + Q(x), with P, Q fixed and P >= 0,
         this function multiplies the regular Expected Improvement with the probability
-        that Gmin <= g(x) <= Gmax.
+        that Gmin <= g(x) <= Gmax, with Gmin = bounds[0] and Gmax = bounds[1].
         """
         # Compute regular Expected Improvement
         with warnings.catch_warnings():
@@ -208,6 +238,7 @@ class UtilityFunction(object):
         ei = a * norm.cdf(z) + std * norm.pdf(z)
 
         # Compute probability of x respecting the constraint
+        Gmin, Gmax = bounds
         mean_Gmax = P(x) * Gmax + Q(x)
         mean_Gmin = P(x) * Gmin + Q(x)
         prob_ub = norm.cdf( (mean_Gmax - mu) / std )
