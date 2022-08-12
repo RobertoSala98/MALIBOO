@@ -128,8 +128,7 @@ def test11_free_eic_custom_PQ(output_path):
   def my_Q(x):
       return 5.0
   optimizer = BO(f=target_func, pbounds={'x': (2, 4), 'y': (-3, 3)},
-                 random_state=seed,
-                 output_path=output_path, debug=debug)
+                 random_state=seed, output_path=output_path, debug=debug)
   optimizer.maximize(init_points=n0, n_iter=n_iter, acq='eic',
                      eic_info={'bounds': (-3.2, -3.0), 'P_func': my_P,
                                                        'Q_func': my_Q})
