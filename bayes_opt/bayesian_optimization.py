@@ -499,7 +499,7 @@ class BayesianOptimization(Observable):
         """
         self.probe(x_init, idx=idx, lazy=True)
 
-    def add_initial_points(self, XX_init, idx=None):
+    def add_initial_points(self, XX_init, idx=None, ignore_df_index=True):
         """
         Add given point(s) as initial probing points
 
@@ -511,6 +511,12 @@ class BayesianOptimization(Observable):
         idx: int or None, optional (default=None)
             Dataset index, if any, of the given point. Only used if only one point is given,
             i.e. if `XX_init` is a dict or only has one entry
+
+        ignore_df_index: bool, optional (default=True)
+            If XX_init is a `pandas.DataFrame`, whether to use or not its index as a
+            collection of true dataset indexes. Use False ONLY if the index of the given
+            `DataFrame` is SPECIFICALLY set to match the true dataset indexes, otherwise
+            keep True. This parameter is ignored if XX_init is not a `DataFrame`.
         """
         if type(XX_init) == dict:
             self._add_initial_point_dict(XX_init, idx)
@@ -519,8 +525,13 @@ class BayesianOptimization(Observable):
             for x in XX_init:
                 self._add_initial_point_dict(x, idx)
         elif type(XX_init) == pd.DataFrame:
-            idx = idx if XX_init.shape[0] == 1 else None
-            for idx, row in XX_init.iterrows():
-                self._add_initial_point_dict(row.to_dict(), idx)
+            for i, row in XX_init.iterrows():
+                if not ignore_df_index:
+                    idx_arg = i
+                elif XX_init.shape[0] == 1:
+                    idx_arg = idx
+                else:
+                    idx_arg = None
+                self._add_initial_point_dict(row.to_dict(), idx_arg)
         else:
             raise ValueError("Unrecognized type {} in add_initial_points()".format(type(XX_init)))
