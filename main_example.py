@@ -133,31 +133,31 @@ def test11_free_eic_custom_PQ(output_path):
                                                        'Q_func': my_Q})
 
 
-def test12_free_init_points(output_path):
+def test12_free_init_points_tuple(output_path):
   optimizer = BO(f=target_func, pbounds={'x': (2, 4), 'y': (-3, 3)},
                  random_state=seed, output_path=output_path, debug=debug)
-  optimizer.probe({'x': 3.1, 'y': 0.7}, lazy=True)
-  optimizer.probe({'x': 2.2, 'y': -2.8}, lazy=True)
+  init_points = ({'x': 3.1, 'y': 0.7}, {'x': 2.2, 'y': -2.8})
+  optimizer.add_initial_points(init_points)
   optimizer.maximize(init_points=0, n_iter=n_iter)
 
 
-def test13_dataset_Xy_init_points(output_path):
+def test13_dataset_Xy_init_points_dicts(output_path):
   optimizer = BO(f=None, pbounds={'x': (999,2501), 'y': (1,50)},
                  random_state=seed,
                  dataset=os.path.join('datasets', 'test_xyz.csv'),
                  target_column='z', output_path=output_path, debug=debug)
-  optimizer.probe(dict(x=1000, y=6),  lazy=True)  # z=971359, idx=197
-  optimizer.probe(dict(x=2500, y=38), lazy=True)  # z=1544285, idx=12
+  optimizer.add_initial_points(dict(x=1000, y=6))   # z=971359, idx=197
+  optimizer.add_initial_points(dict(x=2500, y=38))  # z=1544285, idx=12
   optimizer.maximize(init_points=0, n_iter=n_iter)
 
 
-def test14_dataset_X_init_points(output_path):
+def test14_dataset_X_init_points_df(output_path):
   optimizer = BO(f=target_func, pbounds={'x': (999,2501), 'y': (1,50)},
                  random_state=seed,
                  dataset=os.path.join('datasets', 'test_xyz.csv'),
                  output_path=output_path, debug=debug)
-  optimizer.probe(dict(x=1000, y=6), lazy=True)
-  optimizer.probe(dict(x=2500, y=38), lazy=True)
+  init_points = pd.DataFrame([dict(x=1000, y=6), dict(x=2500, y=38)])
+  optimizer.add_initial_points(init_points)
   optimizer.maximize(init_points=0, n_iter=n_iter)
 
 
@@ -173,6 +173,6 @@ if __name__ == '__main__':
   perform_test(test09_free_eic_default)
   perform_test(test10_dataset_Xy_eic_default)
   perform_test(test11_free_eic_custom_PQ)
-  perform_test(test12_free_init_points)
-  perform_test(test13_dataset_Xy_init_points)
-  perform_test(test14_dataset_X_init_points)
+  perform_test(test12_free_init_points_tuple)
+  perform_test(test13_dataset_Xy_init_points_dicts)
+  perform_test(test14_dataset_X_init_points_df)
