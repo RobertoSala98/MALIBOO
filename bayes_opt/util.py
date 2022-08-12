@@ -109,7 +109,7 @@ class UtilityFunction(object):
     See the maximize() function in bayesian_optimization.py for a description of the constructor arguments.
     """
 
-    def __init__(self, kind, kappa, xi, kappa_decay=1, kappa_decay_delay=0, ml_info={}, debug=False):
+    def __init__(self, kind, kappa, xi, kappa_decay=1, kappa_decay_delay=0, ml_info={}, eic_info={}, debug=False):
 
         self._debug = debug
         self.kappa = kappa
@@ -118,6 +118,7 @@ class UtilityFunction(object):
         self.xi = xi
         self.kind = kind
         self._iters_counter = 0
+
         if ml_info:
             if self._debug: print("Initializing UtilityFunction with ml_info =", ml_info)
             for key in ('ml_target', 'ml_bounds'):  # 'target' and 'bounds' respectively in ml_info dict

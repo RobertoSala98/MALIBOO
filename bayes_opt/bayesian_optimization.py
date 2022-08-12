@@ -283,6 +283,7 @@ class BayesianOptimization(Observable):
                  kappa_decay_delay=0,
                  xi=0.0,
                  ml_info={},
+                 eic_info={},
                  memory_queue_len=0,
                  **gp_params):
         """
@@ -348,6 +349,7 @@ class BayesianOptimization(Observable):
                                kappa_decay=kappa_decay,
                                kappa_decay_delay=kappa_decay_delay,
                                ml_info=ml_info,
+                               eic_info=eic_info,
                                debug=self._debug)
         iteration = 0
 
