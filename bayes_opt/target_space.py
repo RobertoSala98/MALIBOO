@@ -202,13 +202,16 @@ class TargetSpace(object):
         if self._debug: print("Point registered successfully")
         return value
 
-    def probe(self, params):
+    def probe(self, idx, params):
         """
         Evaulates a single point x, to obtain the value y and then records them
         as observations.
 
         Parameters
         ----------
+        idx: int or None
+            Index number of the point to be probed, or None if no dataset is used
+
         params: dict
             A single point, with len(x) == self.dim
 
@@ -217,7 +220,7 @@ class TargetSpace(object):
         target_value: float
             Target function value.
         """
-        if self._debug: print("Probing point", params)
+        if self._debug: print("Probing point: index {}, value {}".format(idx, params))
         x = self._as_array(params)
 
         params = dict(zip(self._keys, x))

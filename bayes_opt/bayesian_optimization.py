@@ -177,7 +177,7 @@ class BayesianOptimization(Observable):
         self._space.register(params, target)
         self.dispatch(Events.OPTIMIZATION_STEP)
 
-    def probe(self, params, lazy=True):
+    def probe(self, idx, params, lazy=True):
         """
         Evaluates the function on the given points. Useful to guide the optimizer.
 
@@ -186,15 +186,18 @@ class BayesianOptimization(Observable):
         params: dict or list
             The parameters where the optimizer will evaluate the function.
 
+        idx: int or None
+            Index number of the point to be probed, or None if no dataset is used
+
         lazy: bool, optional (default=True)
             If True, the optimizer will evaluate the points when calling
             maximize(). Otherwise it will evaluate it at the moment.
         """
         if lazy:
             # TODO actually, an (index, params) tuple should be passed to add()
-            self._queue.add(params)
+            self._queue.add((idx, params))
         else:
-            self._space.probe(params)
+            self._space.probe(idx, params)
             self.dispatch(Events.OPTIMIZATION_STEP)
 
     def suggest(self, utility_function):
@@ -367,7 +370,7 @@ class BayesianOptimization(Observable):
             if self.dataset is None or self._space.target_column is None:
                 # No dataset, or dataset for X only: we evaluate the target function directly
                 if self._debug: print("No dataset, or dataset for X only: evaluating target function")
-                self.probe(x_probe, lazy=False)
+                self.probe(idx, x_probe, lazy=False)
             else:
                 # Dataset for both X and y: register point entirely from dataset without probe()
                 if self._debug: print("Dataset Xy: registering dataset point")
