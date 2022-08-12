@@ -5,14 +5,13 @@ from .util import ensure_rng
 
 
 def _hashable(x):
-    """ ensure that an point is hashable by a python dict """
+    """Ensure that an point is hashable by a Python dict"""
     return tuple(map(float, x))
 
 
 class TargetSpace(object):
     """
     Holds the param-space coordinates (X) and target values (Y)
-    Allows for constant-time appends while ensuring no duplicates are added
 
     Example
     -------
@@ -30,25 +29,25 @@ class TargetSpace(object):
         """
         Parameters
         ----------
-        target_func : function, optional(default=None)
+        target_func: function, optional (default=None)
             Target function to be maximized.
 
-        pbounds : dict
+        pbounds: dict
             Dictionary with parameters names as keys and a tuple with minimum
             and maximum values.
 
-        random_state : int, RandomState, or None, optional(default=None)
+        random_state: int, RandomState, or None, optional (default=None)
             Optionally specify a seed for a random number generator
 
-        dataset: str, file handle, or pandas.DataFrame, optional(default=None)
+        dataset: str, file handle, or pandas.DataFrame, optional (default=None)
             The dataset, if any, which constitutes the optimization domain and possibly
             the list of target values
 
-        target_column: str, optional(default=None)
+        target_column: str, optional (default=None)
             Name of the column that will act as the target value of the optimization.
             Only works if dataset is passed.
 
-        debug: bool, optional(default=False)
+        debug: bool, optional (default=False)
             Whether or not to print detailed debugging information
         """
         if pbounds is None:
@@ -163,20 +162,16 @@ class TargetSpace(object):
 
         Parameters
         ----------
-        params : numpy.ndarray
-            a single point, with len(x) == self.dim
+        params: dict
+            A single point, with len(x) == self.dim
 
-        target : float
-            target function value
+        target: float
+            Target function value
 
-        Raises
-        ------
-        KeyError:
-            if the point is not unique
-
-        Notes
-        -----
-        runs in ammortized constant time
+        Returns
+        -------
+        value: float
+            The registered target value
 
         Example
         -------
@@ -214,13 +209,13 @@ class TargetSpace(object):
 
         Parameters
         ----------
-        x : ndarray
-            a single point, with len(x) == self.dim
+        params: dict
+            A single point, with len(x) == self.dim
 
         Returns
         -------
-        y : float
-            target function value.
+        target_value: float
+            Target function value.
         """
         if self._debug: print("Probing point", params)
         x = self._as_array(params)
@@ -238,8 +233,8 @@ class TargetSpace(object):
         Returns
         ----------
         idx: int or None
-            index number of chosen point, or None if no dataset is used
-        data: ndarray
+            Index number of chosen point, or None if no dataset is used
+        data: numpy.ndarray
             [num x dim] array points with dimensions corresponding to `self._keys`
 
         Example
@@ -292,7 +287,7 @@ class TargetSpace(object):
 
         Parameters
         ----------
-        new_bounds : dict
+        new_bounds: dict
             A dictionary with the parameter name and its new bounds
         """
         for row, key in enumerate(self.keys):
@@ -315,7 +310,7 @@ class TargetSpace(object):
 
         Returns
         -------
-        target: numeric value
+        target: float
             The actual numeric value
         info: dict
             The full input dictionary, or an empty dictionary if target was purely numeric
@@ -339,10 +334,10 @@ class TargetSpace(object):
 
         Parameters
         ----------
-        dataset: str, file handle, or pandas.DataFrame, optional(default=None)
+        dataset: str, file handle, or pandas.DataFrame, optional (default=None)
             The dataset which constitutes the optimization domain, if any.
 
-        target_column: str, optional(default=None)
+        target_column: str, optional (default=None)
             Name of the column that will act as the target value of the optimization.
             Only works if dataset is passed.
         """
