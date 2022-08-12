@@ -1,3 +1,4 @@
+import argparse
 import os
 import pandas as pd
 import time
@@ -17,10 +18,22 @@ def target_func_dict(x, y):
     ret['blackbox'] = 2.0 * x + 3.0 * y
     return ret
 
+# User parameters (debug: ignored if None, otherwise it overrides the command-line argument)
 seed = 1
 n0 = 2
 n_iter = 5
-debug = False
+debug = True
+
+
+
+
+
+# Initialize argument parser
+parser = argparse.ArgumentParser(description="Use Bayesian Optimization to maximize a function")
+parser.add_argument('-d', "--debug", help="debug mode (ignored if debug is set in the script)", default=False, action="store_true")
+args = parser.parse_args()
+# Get debug flag
+debug = args.debug if debug is None else debug
 
 
 def perform_test(testfunc):
