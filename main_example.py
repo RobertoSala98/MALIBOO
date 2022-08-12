@@ -97,12 +97,14 @@ def test08_dataset_X_queue():
                  output_path=os.path.join('outputs' ,'test08'), debug=debug)
   optimizer.maximize(init_points=n0, n_iter=n_iter, memory_queue_len=3)
 
+
 def test09_free_eic_default():
   optimizer = BO(f=black_box_function,
                  pbounds={'x': (2, 4), 'y': (-3, 3)}, random_state=seed,
                  output_path=os.path.join('outputs' ,'test09'), debug=debug)
   optimizer.maximize(init_points=n0, n_iter=n_iter, acq='eic',
                      eic_info={'bounds': (-3.2, -3.0)})
+
 
 def test10_dataset_Xy_eic_default():
   optimizer = BO(f=None, pbounds={'x': (999,2501), 'y': (1,50)},
@@ -112,6 +114,7 @@ def test10_dataset_Xy_eic_default():
                  output_path=os.path.join('outputs' ,'test10'), debug=debug)
   optimizer.maximize(init_points=n0, n_iter=n_iter, acq='eic',
                      eic_info={'bounds': (2_500_000, 2_700_000)})
+
 
 def test11_free_eic_custom_PQ():
   def my_P(x):
@@ -124,6 +127,7 @@ def test11_free_eic_custom_PQ():
   optimizer.maximize(init_points=n0, n_iter=n_iter, acq='eic',
                      eic_info={'bounds': (-3.2, -3.0), 'P_func': my_P,
                                                        'Q_func': my_Q})
+
 
 if __name__ == '__main__':
   perform_test(test01_free)
