@@ -5,14 +5,13 @@ from .util import ensure_rng
 
 
 def _hashable(x):
-    """ ensure that an point is hashable by a python dict """
+    """Ensure that an point is hashable by a Python dict"""
     return tuple(map(float, x))
 
 
 class TargetSpace(object):
     """
     Holds the param-space coordinates (X) and target values (Y)
-    Allows for constant-time appends while ensuring no duplicates are added
 
     Example
     -------
@@ -163,20 +162,16 @@ class TargetSpace(object):
 
         Parameters
         ----------
-        params: numpy.ndarray
-            a single point, with len(x) == self.dim
+        params: dict
+            A single point, with len(x) == self.dim
 
         target: float
-            target function value
+            Target function value
 
-        Raises
-        ------
-        KeyError:
-            if the point is not unique
-
-        Notes
-        -----
-        runs in ammortized constant time
+        Returns
+        -------
+        value: float
+            The registered target value
 
         Example
         -------
@@ -214,13 +209,13 @@ class TargetSpace(object):
 
         Parameters
         ----------
-        x: ndarray
-            a single point, with len(x) == self.dim
+        params: dict
+            A single point, with len(x) == self.dim
 
         Returns
         -------
-        y: float
-            target function value.
+        target_value: float
+            Target function value.
         """
         if self._debug: print("Probing point", params)
         x = self._as_array(params)
@@ -238,8 +233,8 @@ class TargetSpace(object):
         Returns
         ----------
         idx: int or None
-            index number of chosen point, or None if no dataset is used
-        data: ndarray
+            Index number of chosen point, or None if no dataset is used
+        data: numpy.ndarray
             [num x dim] array points with dimensions corresponding to `self._keys`
 
         Example
@@ -315,7 +310,7 @@ class TargetSpace(object):
 
         Returns
         -------
-        target: numeric value
+        target: float
             The actual numeric value
         info: dict
             The full input dictionary, or an empty dictionary if target was purely numeric

@@ -72,7 +72,7 @@ class BayesianOptimization(Observable):
     """
     This class takes the function to optimize as well as the parameters bounds
     in order to find which values for the parameters yield the maximum value
-    using bayesian optimization.
+    using Bayesian Optimization.
 
     Parameters
     ----------
@@ -87,7 +87,7 @@ class BayesianOptimization(Observable):
 
     random_state: int or numpy.random.RandomState, optional (default=None)
         If the value is an integer, it is used as the seed for creating a
-        numpy.random.RandomState. Otherwise the random state provieded it is used.
+        `numpy.random.RandomState`. Otherwise the random state provieded it is used.
         When set to None, an unseeded random state is generated.
 
     verbose: int, optional (default=2)
@@ -108,19 +108,6 @@ class BayesianOptimization(Observable):
 
     debug: bool, optional (default=False)
         Whether or not to print detailed debugging information
-
-    Methods
-    -------
-    probe()
-        Evaluates the function on the given points.
-        Can be used to guide the optimizer.
-
-    maximize()
-        Tries to find the parameters that yield the maximum value for the
-        given function.
-
-    set_bounds()
-        Allows changing the lower and upper searching bounds
     """
 
     def __init__(self, f=None, pbounds=None, random_state=None, verbose=2, bounds_transformer=None,
@@ -300,7 +287,7 @@ class BayesianOptimization(Observable):
             Number of iterations where the method attempts to find the maximum
             value.
 
-        acq: str
+        acq: str, optional (default='ucb')
             The acquisition method used. Among others:
                 * 'ucb' stands for the Upper Confidence Bounds method
                 * 'ei' is the Expected Improvement method
@@ -323,15 +310,15 @@ class BayesianOptimization(Observable):
             [unused]
 
         ml_info: dict, optional (default={})
-            Information required for using Machine Learning models. Namely, ml_info['target'] is
-            the name of the target quantity and ml_info['bounds'] is a tuple with its lower and
+            Information required for using Machine Learning models. Namely, `ml_info['target']` is
+            the name of the target quantity and `ml_info['bounds']` is a tuple with its lower and
             upper bounds.
 
         eic_info: dict, optional (default={})
             Information required for using the Expected Improvement with Constraints acquisition.
             EIC assumes that the target function has the form f(x) = P(x) g(x) + Q(x) and is bound
-            to the constraint Gmin <= g(x) <= Gmax. Then, eic_info['bounds'] is a tuple with Gmin
-            and Gmax, and eic_info['P_func'] and eic_info['Q_func'] are the functions in the
+            to the constraint Gmin <= g(x) <= Gmax. Then, `eic_info['bounds']` is a tuple with Gmin
+            and Gmax, and `eic_info['P_func']` and `eic_info['Q_func']` are the functions in the
             definition of f. The default values for the latter are P(x) == 1 and Q(x) == 0.
 
         memory_queue_len: int, optional (default=0)
@@ -422,7 +409,7 @@ class BayesianOptimization(Observable):
 
     def get_ml_model(self, y_name):
         """
-        Returns Machine Learning model trained on current history
+        Returns the Machine Learning model trained on the current history
 
         Parameters
         ----------
@@ -462,8 +449,8 @@ class BayesianOptimization(Observable):
 
     def update_memory_queue(self, dataset, x_new):
         """
-        Updates self.memory_queue, the list of dataset entries which cannot be selected
-        in the current iteration. The list is always no larger than memory_queue_len elements.
+        Updates `self.memory_queue`, the list of dataset entries which cannot be selected
+        in the current iteration. The list is always no larger than `memory_queue_len` elements.
 
         Parameters
         ----------
@@ -471,7 +458,7 @@ class BayesianOptimization(Observable):
             The dataset on which to perform filtering
 
         x_new: numpy.ndarray
-            The lasted selected point, which is to be included in the memory queue
+            The point which is to be included in the memory queue
         """
         if self.memory_queue_len == 0:
             if self._debug: print("No memory queue to be updated")
