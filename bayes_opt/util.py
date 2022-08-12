@@ -145,6 +145,8 @@ class UtilityFunction(object):
             return self._ei(x, gp, y_max, self.xi)
         if self.kind == 'ei_ml':
             return self._ei_ml(x, gp, y_max, self.xi, self.ml_model, self.ml_bounds)
+        if self.kind == 'eic':
+            return self._eic(x, gp, y_max, self.xi, ...)  # TODO
         if self.kind == 'poi':
             return self._poi(x, gp, y_max, self.xi)
         raise NotImplementedError("The utility function {} has not been implemented.".format(self.kind))
@@ -176,6 +178,32 @@ class UtilityFunction(object):
         lb, ub = ml_bounds
         indicator = np.array([lb <= y and y <= ub for y in y_hat])
         return ei * indicator
+
+    @staticmethod
+    def _eic(x, gp, y_max, xi, Gmin, Gmax, P, Q):
+        """
+        Compute Expected Improvement with Constraints.
+
+        Given the target function f(x) = P(x) g(x) + Q(x), with P, Q fixed and P >= 0,
+        this function multiplies the regular Expected Improvement with the probability
+        that Gmin <= g(x) <= Gmax.
+        """
+        # Compute regular Expected Improvement
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            mean, std = gp.predict(x, return_std=True)
+        # std = max(std, 1e-10)
+        a = (mean - y_max - xi)
+        z = a / std
+        ei = a * norm.cdf(z) + std * norm.pdf(z)
+
+        # Compute probability of x respecting the constraint
+        mean_Gmax = P(x) * Gmax + Q(x)
+        mean_Gmin = P(x) * Gmin + Q(x)
+        prob_ub = norm.cdf( (mean_Gmax - mu) / std )
+        prob_lb = norm.cdf( (mean_Gmin - mu) / std )
+
+        return ei * (prob_ub - prob_lb)
 
     @staticmethod
     def _poi(x, gp, y_max, xi):
