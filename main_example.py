@@ -4,13 +4,13 @@ import time
 
 from bayes_opt import BayesianOptimization as BO
 
-def black_box_function(x, y):
+def target_func(x, y):
     return -x ** 2 - (y - 1) ** 2 + 1
 
-def black_box_function_1D(y):
+def target_func_1D(y):
     return -y ** 2
 
-def black_box_function_dict(x, y):
+def target_func_dict(x, y):
     ret = {}
     ret['value'] = -x ** 2 - (y - 1) ** 2 + 1
     ret['field'] = "idk"
@@ -33,7 +33,7 @@ def perform_test(testfunc):
 
 
 def test01_free():
-  optimizer = BO(f=black_box_function, pbounds={'x': (2, 4), 'y': (-3, 3)},
+  optimizer = BO(f=target_func, pbounds={'x': (2, 4), 'y': (-3, 3)},
                  random_state=seed,
                  output_path=os.path.join('outputs' ,'test01'), debug=debug)
   optimizer.maximize(init_points=n0, n_iter=n_iter)
@@ -50,15 +50,15 @@ def test02_dataset_Xy():
 
 def test03_dataset_X():
   data = pd.read_csv(os.path.join('datasets', 'test_xyz.csv'))
-  optimizer = BO(f=black_box_function, pbounds={'x': (999,2501), 'y': (1,50)},
+  optimizer = BO(f=target_func, pbounds={'x': (999,2501), 'y': (1,50)},
                  random_state=seed, dataset=data,
                  output_path=os.path.join('outputs' ,'test03'), debug=debug)
   optimizer.maximize(init_points=n0, n_iter=n_iter)
 
 
 def test04_free_ml():
-  optimizer = BO(f=black_box_function_dict,
-                 pbounds={'x': (2, 4), 'y': (-3, 3)}, random_state=seed,
+  optimizer = BO(f=target_func_dict, pbounds={'x': (2, 4), 'y': (-3, 3)},
+                 random_state=seed,
                  output_path=os.path.join('outputs' ,'test04'), debug=debug)
   optimizer.maximize(init_points=n0, n_iter=n_iter, acq='ei_ml',
                      ml_info={'target': 'blackbox', 'bounds': (2, 8)})
@@ -74,7 +74,7 @@ def test05_dataset_Xy_ml():
 
 
 def test06_dataset_X_ml():
-  optimizer = BO(f=black_box_function_dict, pbounds={'x': (7,73), 'y': (7,73)},
+  optimizer = BO(f=target_func_dict, pbounds={'x': (7,73), 'y': (7,73)},
                  random_state=seed,
                  dataset=os.path.join('datasets', 'test_ml.csv'),
                  output_path=os.path.join('outputs' ,'test06'), debug=debug)
@@ -91,16 +91,15 @@ def test07_dataset_Xy_queue():
 
 
 def test08_dataset_X_queue():
-  optimizer = BO(f=black_box_function_1D, pbounds={'y': (1,50)},
-                 random_state=seed,
+  optimizer = BO(f=target_func_1D, pbounds={'y': (1,50)}, random_state=seed,
                  dataset=os.path.join('datasets', 'test_xyz.csv'),
                  output_path=os.path.join('outputs' ,'test08'), debug=debug)
   optimizer.maximize(init_points=n0, n_iter=n_iter, memory_queue_len=3)
 
 
 def test09_free_eic_default():
-  optimizer = BO(f=black_box_function,
-                 pbounds={'x': (2, 4), 'y': (-3, 3)}, random_state=seed,
+  optimizer = BO(f=target_func, pbounds={'x': (2, 4), 'y': (-3, 3)},
+                 random_state=seed,
                  output_path=os.path.join('outputs' ,'test09'), debug=debug)
   optimizer.maximize(init_points=n0, n_iter=n_iter, acq='eic',
                      eic_info={'bounds': (-3.2, -3.0)})
@@ -121,8 +120,8 @@ def test11_free_eic_custom_PQ():
       return 2.0 * x[:, 0]
   def my_Q(x):
       return 5.0
-  optimizer = BO(f=black_box_function,
-                 pbounds={'x': (2, 4), 'y': (-3, 3)}, random_state=seed,
+  optimizer = BO(f=target_func, pbounds={'x': (2, 4), 'y': (-3, 3)},
+                 random_state=seed,
                  output_path=os.path.join('outputs' ,'test09'), debug=debug)
   optimizer.maximize(init_points=n0, n_iter=n_iter, acq='eic',
                      eic_info={'bounds': (-3.2, -3.0), 'P_func': my_P,
