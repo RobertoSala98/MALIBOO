@@ -133,6 +133,14 @@ def test11_free_eic_custom_PQ(output_path):
                                                        'Q_func': my_Q})
 
 
+def test12_free_init_points(output_path):
+  optimizer = BO(f=target_func, pbounds={'x': (2, 4), 'y': (-3, 3)},
+                 random_state=seed, output_path=output_path, debug=debug)
+  optimizer.probe({'x': 3.1, 'y': 0.7}, lazy=True)
+  optimizer.probe({'x': 2.2, 'y': -2.8}, lazy=True)
+  optimizer.maximize(init_points=0, n_iter=5)
+
+
 if __name__ == '__main__':
   perform_test(test01_free)
   perform_test(test02_dataset_Xy)
@@ -145,3 +153,4 @@ if __name__ == '__main__':
   perform_test(test09_free_eic_default)
   perform_test(test10_dataset_Xy_eic_default)
   perform_test(test11_free_eic_custom_PQ)
+  perform_test(test12_free_init_points)
