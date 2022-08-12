@@ -385,12 +385,27 @@ class TargetSpace(object):
                 raise ValueError("Dataset values for '{}' column are not consistent with bounds".format(key))
 
     def find_point_in_dataset(self, params):
-        """TODO"""
+        """Find index of a matching row in the dataset.
+
+        Parameters
+        ----------
+        params: dict
+            The point to be found in the dataset
+
+        Returns
+        -------
+        idx: int
+            Dataset index of the point found
+        target_val: float
+            Dataset target value associated to the point found
+        """
         dataset_vals = self._dataset[self._keys].values
         x = self.params_to_array(params)
 
         # Find matching rows and choose randomly one of them
         matches = np.where((dataset_vals == x).all(axis=1))[0]
+        if len(matches) == 0:
+            raise ValueError("{} not found in dataset".format(params))
         idx = self.random_state.choice(matches)
         target_val = self.dataset.loc[idx, self._target_column]
         if self._debug: print("Located {} as data[{}], with target value {}".format(x, idx, target_val))
