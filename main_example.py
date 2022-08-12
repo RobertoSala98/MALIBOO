@@ -40,18 +40,19 @@ def test01_free():
 
 
 def test02_dataset_Xy():
-  data = pd.read_csv(os.path.join('datasets', 'test_xyz.csv'))
   optimizer = BO(f=None, pbounds={'x': (999,2501), 'y': (1,50)},
-                 random_state=seed, dataset=data, target_column='z',
+                 random_state=seed,
+                 dataset=os.path.join('datasets', 'test_xyz.csv'),
+                 target_column='z',
                  output_path=os.path.join('outputs' ,'test02'), debug=debug
-                 )
+              )
   optimizer.maximize(init_points=n0, n_iter=n_iter)
 
 
 def test03_dataset_X():
+  data = pd.read_csv(os.path.join('datasets', 'test_xyz.csv'))
   optimizer = BO(f=black_box_function, pbounds={'x': (999,2501), 'y': (1,50)},
-                 random_state=seed,
-                 dataset=os.path.join('datasets', 'test_xyz.csv'),
+                 random_state=seed, dataset=data,
                  output_path=os.path.join('outputs' ,'test03'), debug=debug)
   optimizer.maximize(init_points=n0, n_iter=n_iter)
 
@@ -69,17 +70,17 @@ def test05_dataset_Xy_ml():
                  dataset=os.path.join('datasets', 'test_ml.csv'),
                  target_column='z',
                  output_path=os.path.join('outputs' ,'test05'), debug=debug
-                 )
+              )
   optimizer.maximize(init_points=n0, n_iter=n_iter, acq='ei_ml',
                      ml_info={'target': 'z_pred', 'bounds': (0, 2.2)})
 
 
 def test06_dataset_X_ml():
-  data = pd.read_csv(os.path.join('datasets', 'test_ml.csv'))
   optimizer = BO(f=black_box_function_dict, pbounds={'x': (7,73), 'y': (7,73)},
-                 random_state=seed, dataset=data,
+                 random_state=seed,
+                 dataset=os.path.join('datasets', 'test_ml.csv'),
                  output_path=os.path.join('outputs' ,'test06'), debug=debug
-                 )
+              )
   optimizer.maximize(init_points=n0, n_iter=n_iter, acq='ei_ml',
                      ml_info={'target': 'z_pred', 'bounds': (0, 2.2)})
 
@@ -89,7 +90,7 @@ def test07_dataset_Xy_queue():
                  dataset=os.path.join('datasets', 'test_xyz.csv'),
                  target_column='z',
                  output_path=os.path.join('outputs' ,'test07'), debug=debug
-                 )
+              )
   optimizer.maximize(init_points=n0, n_iter=n_iter, memory_queue_len=3)
 
 
@@ -98,9 +99,25 @@ def test08_dataset_X_queue():
                  random_state=seed,
                  dataset=os.path.join('datasets', 'test_xyz.csv'),
                  output_path=os.path.join('outputs' ,'test08'), debug=debug
-                 )
+              )
   optimizer.maximize(init_points=n0, n_iter=n_iter, memory_queue_len=3)
 
+def test09_free_eic_default():
+  optimizer = BO(f=black_box_function,
+                 pbounds={'x': (2, 4), 'y': (-3, 3)}, random_state=seed,
+                 output_path=os.path.join('outputs' ,'test09'), debug=debug)
+  optimizer.maximize(init_points=n0, n_iter=n_iter, acq='eic',
+                     eic_info={'bounds': (-3.2, -3.0)})
+
+def test10_dataset_Xy_eic_default():
+  optimizer = BO(f=None, pbounds={'x': (999,2501), 'y': (1,50)},
+                 random_state=seed,
+                 dataset=os.path.join('datasets', 'test_xyz.csv'),
+                 target_column='z',
+                 output_path=os.path.join('outputs' ,'test10'), debug=debug
+              )
+  optimizer.maximize(init_points=n0, n_iter=n_iter, acq='eic',
+                     eic_info={'bounds': (2_500_000, 2_700_000)})
 
 if __name__ == '__main__':
   perform_test(test01_free)
@@ -111,3 +128,5 @@ if __name__ == '__main__':
   perform_test(test06_dataset_X_ml)
   perform_test(test07_dataset_Xy_queue)
   perform_test(test08_dataset_X_queue)
+  perform_test(test09_free_eic_default)
+  perform_test(test10_dataset_Xy_eic_default)
