@@ -390,6 +390,7 @@ class BayesianOptimization(Observable):
         os.makedirs(self._output_path, exist_ok=True)
         results = pd.DataFrame.from_dict(self.res)
         results['index'] = self._space.indexes
+        results['index'] = results['index'].fillna(-1).astype(int)
         results.set_index('index', inplace=True)
         results.to_csv(os.path.join(self._output_path, "results.csv"), index=True)
 
