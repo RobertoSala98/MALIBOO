@@ -194,7 +194,6 @@ class BayesianOptimization(Observable):
             maximize(). Otherwise it will evaluate it at the moment.
         """
         if lazy:
-            # TODO actually, an (index, params) tuple should be passed to add()
             self._queue.add((idx, params))
         else:
             self._space.probe(params, idx=idx)
