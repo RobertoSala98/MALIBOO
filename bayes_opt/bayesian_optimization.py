@@ -42,7 +42,6 @@ class Queue:
 
 class Observable(object):
     """
-
     Inspired/Taken from
         https://www.protechtraining.com/blog/post/879#simple-observer
     """
@@ -386,9 +385,7 @@ class BayesianOptimization(Observable):
         self.dispatch(Events.OPTIMIZATION_END)
 
     def save_res_to_csv(self):
-        """
-        Save results of the optimization to csv files located in results directory
-        """
+        """Save results of the optimization to csv files located in results directory"""
         os.makedirs(self._output_path, exist_ok=True)
         results = pd.DataFrame.from_dict(self.res)
         results['index'] = self._space.indexes
@@ -489,7 +486,8 @@ class BayesianOptimization(Observable):
             print("Counts in memory queue: {} (total: {})".format(counts, sum(counts)))
 
     def _add_initial_point_dict(self, x_init: dict, idx=None):
-        """Add one single point as an initial probing point
+        """
+        Add one single point as an initial probing point
 
         Parameters
         ----------
@@ -502,7 +500,8 @@ class BayesianOptimization(Observable):
         self.probe(x_init, idx=idx, lazy=True)
 
     def add_initial_points(self, XX_init, idx=None):
-        """Add given point(s) as initial probing points
+        """
+        Add given point(s) as initial probing points
 
         Parameters
         ----------

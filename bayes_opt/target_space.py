@@ -385,7 +385,8 @@ class TargetSpace(object):
                 raise ValueError("Dataset values for '{}' column are not consistent with bounds".format(key))
 
     def find_point_in_dataset(self, params):
-        """Find index of a matching row in the dataset.
+        """
+        Find index of a matching row in the dataset.
 
         Parameters
         ----------
