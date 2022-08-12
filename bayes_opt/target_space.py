@@ -202,7 +202,7 @@ class TargetSpace(object):
         if self._debug: print("Point registered successfully")
         return value
 
-    def probe(self, params):
+    def probe(self, params, idx=None):
         """
         Evaulates a single point x, to obtain the value y and then records them
         as observations.
@@ -212,12 +212,15 @@ class TargetSpace(object):
         params: dict
             A single point, with len(x) == self.dim
 
+        idx: int or None, optional (default=None)
+            Index number of the point to be probed, or None if no dataset is used
+
         Returns
         -------
         target_value: float
             Target function value.
         """
-        if self._debug: print("Probing point", params)
+        if self._debug: print("Probing point: index {}, value {}".format(idx, params))
         x = self._as_array(params)
 
         params = dict(zip(self._keys, x))
@@ -380,3 +383,32 @@ class TargetSpace(object):
         for key, (lb, ub) in zip(self._keys, self._bounds):
             if self.dataset[key].min() < lb or self.dataset[key].max() >= ub:
                 raise ValueError("Dataset values for '{}' column are not consistent with bounds".format(key))
+
+    def find_point_in_dataset(self, params):
+        """
+        Find index of a matching row in the dataset.
+
+        Parameters
+        ----------
+        params: dict
+            The point to be found in the dataset
+
+        Returns
+        -------
+        idx: int
+            Dataset index of the point found
+        target_val: float
+            Dataset target value associated to the point found
+        """
+        dataset_vals = self._dataset[self._keys].values
+        x = self.params_to_array(params)
+
+        # Find matching rows and choose randomly one of them
+        matches = np.where((dataset_vals == x).all(axis=1))[0]
+        if len(matches) == 0:
+            raise ValueError("{} not found in dataset".format(params))
+        idx = self.random_state.choice(matches)
+        target_val = self.dataset.loc[idx, self._target_column]
+        if self._debug: print("Located {} as data[{}], with target value {}".format(x, idx, target_val))
+
+        return idx, target_val

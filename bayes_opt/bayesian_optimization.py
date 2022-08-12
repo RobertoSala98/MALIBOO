@@ -42,7 +42,6 @@ class Queue:
 
 class Observable(object):
     """
-
     Inspired/Taken from
         https://www.protechtraining.com/blog/post/879#simple-observer
     """
@@ -177,7 +176,7 @@ class BayesianOptimization(Observable):
         self._space.register(params, target)
         self.dispatch(Events.OPTIMIZATION_STEP)
 
-    def probe(self, params, lazy=True):
+    def probe(self, params, idx=None, lazy=True):
         """
         Evaluates the function on the given points. Useful to guide the optimizer.
 
@@ -186,15 +185,17 @@ class BayesianOptimization(Observable):
         params: dict or list
             The parameters where the optimizer will evaluate the function.
 
+        idx: int or None, optional (default=None)
+            Index number of the point to be probed, or None if no dataset is used
+
         lazy: bool, optional (default=True)
             If True, the optimizer will evaluate the points when calling
             maximize(). Otherwise it will evaluate it at the moment.
         """
         if lazy:
-            # TODO actually, an (index, params) tuple should be passed to add()
-            self._queue.add(params)
+            self._queue.add((idx, params))
         else:
-            self._space.probe(params)
+            self._space.probe(params, idx=idx)
             self.dispatch(Events.OPTIMIZATION_STEP)
 
     def suggest(self, utility_function):
@@ -361,18 +362,21 @@ class BayesianOptimization(Observable):
             if x_probe is None:
                 raise ValueError("No point found")
 
-            self._space.indexes.append(idx)
-
             # Register new point
             if self.dataset is None or self._space.target_column is None:
                 # No dataset, or dataset for X only: we evaluate the target function directly
                 if self._debug: print("No dataset, or dataset for X only: evaluating target function")
-                self.probe(x_probe, lazy=False)
+                self.probe(x_probe, idx=idx, lazy=False)
             else:
                 # Dataset for both X and y: register point entirely from dataset without probe()
                 if self._debug: print("Dataset Xy: registering dataset point")
-                target_value = self.dataset.loc[idx, self._space.target_column]
+                if idx is None:
+                    idx, target_value = self._space.find_point_in_dataset(x_probe)
+                else:
+                    target_value = self.dataset.loc[idx, self._space.target_column]
                 self.register(x_probe, target_value)
+
+            self._space.indexes.append(idx)
 
         if self._bounds_transformer:
             self.set_bounds(
@@ -381,12 +385,11 @@ class BayesianOptimization(Observable):
         self.dispatch(Events.OPTIMIZATION_END)
 
     def save_res_to_csv(self):
-        """
-        Save results of the optimization to csv files located in results directory
-        """
+        """Save results of the optimization to csv files located in results directory"""
         os.makedirs(self._output_path, exist_ok=True)
         results = pd.DataFrame.from_dict(self.res)
         results['index'] = self._space.indexes
+        results['index'] = results['index'].fillna(-1).astype(int)
         results.set_index('index', inplace=True)
         results.to_csv(os.path.join(self._output_path, "results.csv"), index=True)
 
@@ -481,3 +484,43 @@ class BayesianOptimization(Observable):
             print("Updated memory queue:", self.memory_queue)
             counts = [len(_) for _ in self.memory_queue]
             print("Counts in memory queue: {} (total: {})".format(counts, sum(counts)))
+
+    def _add_initial_point_dict(self, x_init: dict, idx=None):
+        """
+        Add one single point as an initial probing point
+
+        Parameters
+        ----------
+        XX_init: dict
+            Point to be initialized
+
+        idx: int or None, optional (default=None)
+            Dataset index, if any, of the given point
+        """
+        self.probe(x_init, idx=idx, lazy=True)
+
+    def add_initial_points(self, XX_init, idx=None):
+        """
+        Add given point(s) as initial probing points
+
+        Parameters
+        ----------
+        XX_init: dict, list, tuple, or pandas.DataFrame
+            Point (if dict) or list of points (otherwise) to be initialized
+
+        idx: int or None, optional (default=None)
+            Dataset index, if any, of the given point. Only used if only one point is given,
+            i.e. if `XX_init` is a dict or only has one entry
+        """
+        if type(XX_init) == dict:
+            self._add_initial_point_dict(XX_init, idx)
+        elif type(XX_init) in (list, tuple):
+            idx = idx if len(XX_init) == 1 else None
+            for x in XX_init:
+                self._add_initial_point_dict(x, idx)
+        elif type(XX_init) == pd.DataFrame:
+            idx = idx if XX_init.shape[0] == 1 else None
+            for idx, row in XX_init.iterrows():
+                self._add_initial_point_dict(row.to_dict(), idx)
+        else:
+            raise ValueError("Unrecognized type {} in add_initial_points()".format(type(XX_init)))
