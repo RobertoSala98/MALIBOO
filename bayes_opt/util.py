@@ -68,7 +68,8 @@ def acq_max(ac, gp, y_max, bounds, random_state, n_warmup=10000, n_iter=10, data
     if dataset is not None:
         # idx becomes the true dataset index of the selected point, rather than being relative to x_tries
         idx = dataset.index[idx]
-        if debug: print("End of acq_max(): maximizer of utility is data[{}] = {}".format(idx, x_max))
+        max_acq = ys[idx]
+        if debug: print("End of acq_max(): maximizer of utility is x = data[{}] = {}, with ac(x) = {}".format(idx, x_max, max_acq))
         return idx, x_max
 
     max_acq = ys[idx]
@@ -109,7 +110,7 @@ class UtilityFunction(object):
     See the maximize() function in bayesian_optimization.py for a description of the constructor arguments.
     """
 
-    def __init__(self, kind, kappa, xi, kappa_decay=1, kappa_decay_delay=0, ml_info={}, debug=False):
+    def __init__(self, kind, kappa, xi, kappa_decay=1, kappa_decay_delay=0, ml_info={}, eic_info={}, debug=False):
 
         self._debug = debug
         self.kappa = kappa
@@ -118,16 +119,56 @@ class UtilityFunction(object):
         self.xi = xi
         self.kind = kind
         self._iters_counter = 0
-        if ml_info:
-            if self._debug: print("Initializing UtilityFunction with ml_info =", ml_info)
-            for key in ('ml_target', 'ml_bounds'):  # 'target' and 'bounds' respectively in ml_info dict
-                key_in_dict = key.lstrip('ml_')
-                if key_in_dict not in ml_info:
-                    raise ValueError("'ml_info' option must have '{}' field".format(key_in_dict))
-                self.__setattr__(key, ml_info[key_in_dict])
-        elif 'ml' in kind:
-            raise ValueError("'ml_info' option must be provided if using '{}' acquisition".format(kind))
+
+        self.initialize_ml_params(ml_info, kind)
+        self.initialize_eic_params(eic_info, kind)
+
         if self._debug: print("UtilityFunction initialization completed")
+
+    def initialize_ml_params(self, ml_info, kind):
+        if not ml_info:
+            if 'ml' in kind:
+                raise ValueError("'ml_info' dict must be provided if using '{}' acquisition".format(kind))
+            if self._debug: print("ml_info is empty")
+            return
+
+        if self._debug: print("Initializing UtilityFunction with ml_info =", ml_info)
+
+        # Check for needed fields and initialize them to the class
+        for key in ('target', 'bounds'):
+            if key not in ml_info:
+                raise ValueError("'ml_info' dict must have '{}' field".format(key))
+            self.__setattr__('ml_' + key, ml_info[key])  # setting 'ml_target' and 'ml_bounds'
+
+    def initialize_eic_params(self, eic_info, kind):
+        if not eic_info:
+            if 'eic' in kind:
+                raise ValueError("'eic_info' dict must be provided if using '{}' acquisition".format(kind))
+            if self._debug: print("eic_info is empty")
+            return
+
+        if self._debug: print("Initializing UtilityFunction with eic_info =", eic_info)
+
+        # Check for needed fields and initialize them to the class
+        if 'bounds' not in eic_info:
+            raise ValueError("'eic_info' dict must have 'bounds' field")
+        self.eic_bounds = eic_info['bounds']
+
+        # Check for other needed fields, provide default values if not present, and initialize them to the class
+        if 'P_func' not in eic_info:
+            if self._debug: print("Using default P_func, P(x) == 1")
+            def P_func_default(x):
+                return 1.0
+            eic_info['P_func'] = P_func_default
+
+        if 'Q_func' not in eic_info:
+            if self._debug: print("Using default Q_func, Q(x) == 0")
+            def Q_func_default(x):
+                return 0.0
+            eic_info['Q_func'] = Q_func_default
+
+        self.eic_P_func = eic_info['P_func']
+        self.eic_Q_func = eic_info['Q_func']
 
     def update_params(self):
         self._iters_counter += 1
@@ -145,6 +186,8 @@ class UtilityFunction(object):
             return self._ei(x, gp, y_max, self.xi)
         if self.kind == 'ei_ml':
             return self._ei_ml(x, gp, y_max, self.xi, self.ml_model, self.ml_bounds)
+        if self.kind == 'eic':
+            return self._eic(x, gp, y_max, self.xi, self.eic_bounds, self.eic_P_func, self.eic_Q_func)
         if self.kind == 'poi':
             return self._poi(x, gp, y_max, self.xi)
         raise NotImplementedError("The utility function {} has not been implemented.".format(self.kind))
@@ -168,14 +211,41 @@ class UtilityFunction(object):
         return a * norm.cdf(z) + std * norm.pdf(z)
 
     @staticmethod
-    def _ei_ml(x, gp, y_max, xi, ml_model, ml_bounds):
+    def _ei_ml(x, gp, y_max, xi, ml_model, bounds):
         ei = UtilityFunction._ei(x, gp, y_max, xi)
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
             y_hat = ml_model.predict(x)
-        lb, ub = ml_bounds
+        lb, ub = bounds
         indicator = np.array([lb <= y and y <= ub for y in y_hat])
         return ei * indicator
+
+    @staticmethod
+    def _eic(x, gp, y_max, xi, bounds, P, Q):
+        """
+        Compute Expected Improvement with Constraints.
+
+        Given the target function f(x) = P(x) g(x) + Q(x), with P, Q fixed and P >= 0,
+        this function multiplies the regular Expected Improvement with the probability
+        that Gmin <= g(x) <= Gmax, with Gmin = bounds[0] and Gmax = bounds[1].
+        """
+        # Compute regular Expected Improvement
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            mean, std = gp.predict(x, return_std=True)
+        # std = max(std, 1e-10)
+        a = (mean - y_max - xi)
+        z = a / std
+        ei = a * norm.cdf(z) + std * norm.pdf(z)
+
+        # Compute probability of x respecting the constraint
+        Gmin, Gmax = bounds
+        mean_Gmax = P(x) * Gmax + Q(x)
+        mean_Gmin = P(x) * Gmin + Q(x)
+        prob_ub = norm.cdf( (mean_Gmax - mean) / std )
+        prob_lb = norm.cdf( (mean_Gmin - mean) / std )
+
+        return ei * (prob_ub - prob_lb)
 
     @staticmethod
     def _poi(x, gp, y_max, xi):
