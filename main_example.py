@@ -138,7 +138,7 @@ def test12_free_init_points(output_path):
                  random_state=seed, output_path=output_path, debug=debug)
   optimizer.probe({'x': 3.1, 'y': 0.7}, lazy=True)
   optimizer.probe({'x': 2.2, 'y': -2.8}, lazy=True)
-  optimizer.maximize(init_points=0, n_iter=5)
+  optimizer.maximize(init_points=0, n_iter=n_iter)
 
 
 if __name__ == '__main__':
