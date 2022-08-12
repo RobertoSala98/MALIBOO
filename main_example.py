@@ -113,6 +113,18 @@ def test10_dataset_Xy_eic_default():
   optimizer.maximize(init_points=n0, n_iter=n_iter, acq='eic',
                      eic_info={'bounds': (2_500_000, 2_700_000)})
 
+def test11_free_eic_custom_PQ():
+  def my_P(x):
+      return 2.0 * x[:, 0]
+  def my_Q(x):
+      return 5.0
+  optimizer = BO(f=black_box_function,
+                 pbounds={'x': (2, 4), 'y': (-3, 3)}, random_state=seed,
+                 output_path=os.path.join('outputs' ,'test09'), debug=debug)
+  optimizer.maximize(init_points=n0, n_iter=n_iter, acq='eic',
+                     eic_info={'bounds': (-3.2, -3.0), 'P_func': my_P,
+                                                       'Q_func': my_Q})
+
 if __name__ == '__main__':
   perform_test(test01_free)
   perform_test(test02_dataset_Xy)
@@ -124,3 +136,4 @@ if __name__ == '__main__':
   perform_test(test08_dataset_X_queue)
   perform_test(test09_free_eic_default)
   perform_test(test10_dataset_Xy_eic_default)
+  perform_test(test11_free_eic_custom_PQ)
