@@ -30,25 +30,25 @@ class TargetSpace(object):
         """
         Parameters
         ----------
-        target_func : function, optional(default=None)
+        target_func: function, optional (default=None)
             Target function to be maximized.
 
-        pbounds : dict
+        pbounds: dict
             Dictionary with parameters names as keys and a tuple with minimum
             and maximum values.
 
-        random_state : int, RandomState, or None, optional(default=None)
+        random_state: int, RandomState, or None, optional (default=None)
             Optionally specify a seed for a random number generator
 
-        dataset: str, file handle, or pandas.DataFrame, optional(default=None)
+        dataset: str, file handle, or pandas.DataFrame, optional (default=None)
             The dataset, if any, which constitutes the optimization domain and possibly
             the list of target values
 
-        target_column: str, optional(default=None)
+        target_column: str, optional (default=None)
             Name of the column that will act as the target value of the optimization.
             Only works if dataset is passed.
 
-        debug: bool, optional(default=False)
+        debug: bool, optional (default=False)
             Whether or not to print detailed debugging information
         """
         if pbounds is None:
@@ -163,10 +163,10 @@ class TargetSpace(object):
 
         Parameters
         ----------
-        params : numpy.ndarray
+        params: numpy.ndarray
             a single point, with len(x) == self.dim
 
-        target : float
+        target: float
             target function value
 
         Raises
@@ -214,12 +214,12 @@ class TargetSpace(object):
 
         Parameters
         ----------
-        x : ndarray
+        x: ndarray
             a single point, with len(x) == self.dim
 
         Returns
         -------
-        y : float
+        y: float
             target function value.
         """
         if self._debug: print("Probing point", params)
@@ -292,7 +292,7 @@ class TargetSpace(object):
 
         Parameters
         ----------
-        new_bounds : dict
+        new_bounds: dict
             A dictionary with the parameter name and its new bounds
         """
         for row, key in enumerate(self.keys):
@@ -339,10 +339,10 @@ class TargetSpace(object):
 
         Parameters
         ----------
-        dataset: str, file handle, or pandas.DataFrame, optional(default=None)
+        dataset: str, file handle, or pandas.DataFrame, optional (default=None)
             The dataset which constitutes the optimization domain, if any.
 
-        target_column: str, optional(default=None)
+        target_column: str, optional (default=None)
             Name of the column that will act as the target value of the optimization.
             Only works if dataset is passed.
         """

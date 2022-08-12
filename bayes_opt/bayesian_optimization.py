@@ -76,37 +76,37 @@ class BayesianOptimization(Observable):
 
     Parameters
     ----------
-    f: function, optional(default=None)
+    f: function, optional (default=None)
         Function to be maximized.
 
-    pbounds: dict, optional(default=None)
+    pbounds: dict, optional (default=None)
         Dictionary with parameters names as keys and a tuple with minimum
         and maximum values.
         It is actually a mandatory parameter: if the default value None is left,
         an error will be raised.
 
-    random_state: int or numpy.random.RandomState, optional(default=None)
+    random_state: int or numpy.random.RandomState, optional (default=None)
         If the value is an integer, it is used as the seed for creating a
         numpy.random.RandomState. Otherwise the random state provieded it is used.
         When set to None, an unseeded random state is generated.
 
-    verbose: int, optional(default=2)
+    verbose: int, optional (default=2)
         The level of verbosity.
 
-    bounds_transformer: DomainTransformer, optional(default=None)
+    bounds_transformer: DomainTransformer, optional (default=None)
         If provided, the transformation is applied to the bounds.
 
-    dataset: str, file handle, or pandas.DataFrame, optional(default=None)
+    dataset: str, file handle, or pandas.DataFrame, optional (default=None)
         The dataset specified by the user, or a path/file handle of such file.
 
-    output_path: str, optional(default=None)
+    output_path: str, optional (default=None)
         Path to directory in which the results are written. Default value is the working directory.
 
-    target_column: str, optional(default=None)
+    target_column: str, optional (default=None)
         Name of the column that will act as the target value of the optimization.
         Only works if dataset is passed.
 
-    debug: bool, optional(default=False)
+    debug: bool, optional (default=False)
         Whether or not to print detailed debugging information
 
     Methods
@@ -199,7 +199,7 @@ class BayesianOptimization(Observable):
         params: dict or list
             The parameters where the optimizer will evaluate the function.
 
-        lazy: bool, optional(default=True)
+        lazy: bool, optional (default=True)
             If True, the optimizer will evaluate the points when calling
             maximize(). Otherwise it will evaluate it at the moment.
         """
@@ -292,11 +292,11 @@ class BayesianOptimization(Observable):
 
         Parameters
         ----------
-        init_points : int, optional(default=5)
+        init_points: int, optional (default=5)
             Number of iterations before the explorations starts the exploration
             for the maximum.
 
-        n_iter: int, optional(default=25)
+        n_iter: int, optional (default=25)
             Number of iterations where the method attempts to find the maximum
             value.
 
@@ -306,35 +306,35 @@ class BayesianOptimization(Observable):
                 * 'ei' is the Expected Improvement method
                 * 'poi' is the Probability Of Improvement criterion.
 
-        kappa: float, optional(default=2.576)
+        kappa: float, optional (default=2.576)
             Parameter to indicate how closed are the next parameters sampled.
                 Higher value = favors spaces that are least explored.
                 Lower value = favors spaces where the regression function is the
                 highest.
 
-        kappa_decay: float, optional(default=1)
+        kappa_decay: float, optional (default=1)
             `kappa` is multiplied by this factor every iteration.
 
-        kappa_decay_delay: int, optional(default=0)
+        kappa_decay_delay: int, optional (default=0)
             Number of iterations that must have passed before applying the decay
             to `kappa`.
 
-        xi: float, optional(default=0.0)
+        xi: float, optional (default=0.0)
             [unused]
 
-        ml_info: dict, optional(default={})
+        ml_info: dict, optional (default={})
             Information required for using Machine Learning models. Namely, ml_info['target'] is
             the name of the target quantity and ml_info['bounds'] is a tuple with its lower and
             upper bounds.
 
-        eic_info: dict, optional(default={})
+        eic_info: dict, optional (default={})
             Information required for using the Expected Improvement with Constraints acquisition.
             EIC assumes that the target function has the form f(x) = P(x) g(x) + Q(x) and is bound
             to the constraint Gmin <= g(x) <= Gmax. Then, eic_info['bounds'] is a tuple with Gmin
             and Gmax, and eic_info['P_func'] and eic_info['Q_func'] are the functions in the
             definition of f. The default values for the latter are P(x) == 1 and Q(x) == 0.
 
-        memory_queue_len: int, optional(default=0)
+        memory_queue_len: int, optional (default=0)
             Length of FIFO memory queue. If used alongside a dataset, at each iteration,
             values which have already been chosen in the last memory_queue_len iterations
             will not be considered
@@ -411,7 +411,7 @@ class BayesianOptimization(Observable):
 
         Parameters
         ----------
-        new_bounds : dict
+        new_bounds: dict
             A dictionary with the parameter name and its new bounds
         """
         self._space.set_bounds(new_bounds)
