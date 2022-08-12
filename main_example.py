@@ -45,7 +45,6 @@ def perform_test(testfunc):
   print("Done in", stop-start, "seconds\n\n\n")
 
 
-
 def test01_free(output_path):
   optimizer = BO(f=target_func, pbounds={'x': (2, 4), 'y': (-3, 3)},
                  random_state=seed, output_path=output_path, debug=debug)
