@@ -68,7 +68,8 @@ def acq_max(ac, gp, y_max, bounds, random_state, n_warmup=10000, n_iter=10, data
     if dataset is not None:
         # idx becomes the true dataset index of the selected point, rather than being relative to x_tries
         idx = dataset.index[idx]
-        if debug: print("End of acq_max(): maximizer of utility is data[{}] = {}".format(idx, x_max))
+        max_acq = ys[idx]
+        if debug: print("End of acq_max(): maximizer of utility is x = data[{}] = {}, with ac(x) = {}".format(idx, x_max, max_acq))
         return idx, x_max
 
     max_acq = ys[idx]
