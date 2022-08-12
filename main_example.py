@@ -141,6 +141,16 @@ def test12_free_init_points(output_path):
   optimizer.maximize(init_points=0, n_iter=n_iter)
 
 
+def test14_dataset_X_init_points(output_path):
+  optimizer = BO(f=target_func, pbounds={'x': (999,2501), 'y': (1,50)},
+                 random_state=seed,
+                 dataset=os.path.join('datasets', 'test_xyz.csv'),
+                 output_path=output_path, debug=debug)
+  optimizer.probe(dict(x=1000, y=6), lazy=True)
+  optimizer.probe(dict(x=2500, y=38), lazy=True)
+  optimizer.maximize(init_points=0, n_iter=n_iter)
+
+
 if __name__ == '__main__':
   perform_test(test01_free)
   perform_test(test02_dataset_Xy)
@@ -154,3 +164,4 @@ if __name__ == '__main__':
   perform_test(test10_dataset_Xy_eic_default)
   perform_test(test11_free_eic_custom_PQ)
   perform_test(test12_free_init_points)
+  perform_test(test14_dataset_X_init_points)
