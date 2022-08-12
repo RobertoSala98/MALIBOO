@@ -119,16 +119,25 @@ class UtilityFunction(object):
         self.kind = kind
         self._iters_counter = 0
 
-        if ml_info:
-            if self._debug: print("Initializing UtilityFunction with ml_info =", ml_info)
-            for key in ('ml_target', 'ml_bounds'):  # 'target' and 'bounds' respectively in ml_info dict
-                key_in_dict = key.lstrip('ml_')
-                if key_in_dict not in ml_info:
-                    raise ValueError("'ml_info' option must have '{}' field".format(key_in_dict))
-                self.__setattr__(key, ml_info[key_in_dict])
-        elif 'ml' in kind:
-            raise ValueError("'ml_info' option must be provided if using '{}' acquisition".format(kind))
+        self.initialize_ml_params(ml_info, kind)
+
         if self._debug: print("UtilityFunction initialization completed")
+
+    def initialize_ml_params(self, ml_info, kind):
+        if not ml_info:
+            if 'ml' in kind:
+                raise ValueError("'ml_info' dict must be provided if using '{}' acquisition".format(kind))
+            if self._debug: print("ml_info is empty")
+            return
+
+        if self._debug: print("Initializing UtilityFunction with ml_info =", ml_info)
+
+        # Check for needed fields and initialize them to the class
+        for key in ('target', 'bounds'):
+            if key not in ml_info:
+                raise ValueError("'ml_info' dict must have '{}' field".format(key))
+            key_in_class = 'ml_' + key
+            self.__setattr__(key_in_class, ml_info[key])  # setting 'ml_target' and 'ml_bounds'
 
     def update_params(self):
         self._iters_counter += 1
