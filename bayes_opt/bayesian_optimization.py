@@ -487,3 +487,41 @@ class BayesianOptimization(Observable):
             print("Updated memory queue:", self.memory_queue)
             counts = [len(_) for _ in self.memory_queue]
             print("Counts in memory queue: {} (total: {})".format(counts, sum(counts)))
+
+    def _add_initial_point_dict(self, x_init: dict, idx=None):
+        """Add one single point as an initial probing point
+
+        Parameters
+        ----------
+        XX_init: dict
+            Point to be initialized
+
+        idx: int or None, optional (default=None)
+            Dataset index, if any, of the given point
+        """
+        self.probe(x_init, idx=idx, lazy=True)
+
+    def add_initial_points(self, XX_init, idx=None):
+        """Add given point(s) as initial probing points
+
+        Parameters
+        ----------
+        XX_init: dict, list, tuple, or pandas.DataFrame
+            Point (if dict) or list of points (otherwise) to be initialized
+
+        idx: int or None, optional (default=None)
+            Dataset index, if any, of the given point. Only used if only one point is given,
+            i.e. if `XX_init` is a dict or only has one entry
+        """
+        if type(XX_init) == dict:
+            self._add_initial_point_dict(XX_init, idx)
+        elif type(XX_init) in (list, tuple):
+            idx = idx if len(XX_init) == 1 else None
+            for x in XX_init:
+                self._add_initial_point_dict(x, idx)
+        elif type(XX_init) == pd.DataFrame:
+            idx = idx if XX_init.shape[0] == 1 else None
+            for idx, row in XX_init.iterrows():
+                self._add_initial_point_dict(row.to_dict(), idx)
+        else:
+            raise ValueError("Unrecognized type {} in add_initial_points()".format(type(XX_init)))
