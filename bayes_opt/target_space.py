@@ -69,7 +69,6 @@ class TargetSpace(object):
         # Initialize other members
         self.random_state = ensure_rng(random_state)
         self.target_func = target_func
-        self._indexes = []  # dataset indexes of points, or Nones if no dataset is used
         self.initialize_dataset(dataset, target_column)
 
         # preallocated memory for X and Y points
@@ -118,7 +117,7 @@ class TargetSpace(object):
 
     @property
     def indexes(self):
-        return self._indexes
+        return self._params.index
 
     def params_to_array(self, params):
         try:

@@ -376,8 +376,6 @@ class BayesianOptimization(Observable):
                     target_value = self.dataset.loc[idx, self._space.target_column]
                 self.register(self._space.params_to_array(x_probe), target_value, idx)
 
-            self._space.indexes.append(idx)
-
         if self._bounds_transformer:
             self.set_bounds(
                 self._bounds_transformer.transform(self._space))
@@ -388,9 +386,9 @@ class BayesianOptimization(Observable):
     def save_res_to_csv(self):
         """Save results of the optimization to csv files located in results directory"""
         os.makedirs(self._output_path, exist_ok=True)
-        results = pd.DataFrame.from_dict(self.res)
-        results['index'] = self._space.indexes
-        results['index'] = results['index'].fillna(-1).astype(int)
+        results = self._space.params
+        results['target'] = self._space.target
+        results['index'] = results.index.fillna(-1).astype(int)
         results.set_index('index', inplace=True)
         results.to_csv(os.path.join(self._output_path, "results.csv"), index=True)
 
