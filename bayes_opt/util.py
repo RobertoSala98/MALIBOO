@@ -125,7 +125,21 @@ class UtilityFunction(object):
         if self._debug: print("UtilityFunction initialization completed")
 
     def set_acq_info_field(self, acq_info, key_from, key_to=None):
-        """TODO"""
+        """
+        Set a field from acq_info into the current object if it exists, otherwise raise an error
+
+        Parameters
+        ----------
+        acq_info: dict
+            Dictionary with relevant objects and information for several acquisition functions
+
+        key_from: str
+            Name of the field to fetch from acq_info
+
+        key_to: str or None, optional (default=None)
+            Name of the member of the current object to set the field to. If None, key_from will be
+            used as the member name
+        """
         key_to = key_from if key_to is None else key_to
         if self._debug: print("Setting '{}' field of acq_info to '{}' member".format(key_from, key_to))
         if key_from in acq_info:
@@ -134,7 +148,7 @@ class UtilityFunction(object):
             raise KeyError("'{}' field is required in acq_info if using '{}' acquisition".format(key_from, self.kind))
 
     def initialize_acq_info(self, acq_info, kind):
-        """TODO"""
+        """Initialize some parameters of the `kind` acquisition function from the `acq_info` dict, if any"""
         if self._debug: print("Initializing UtilityFunction of kind", kind, "with acq_info =", acq_info)
 
         # For Machine Learning-based acquisitions
