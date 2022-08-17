@@ -381,6 +381,7 @@ class BayesianOptimization(Observable):
         if self._bounds_transformer:
             self.set_bounds(
                 self._bounds_transformer.transform(self._space))
+        print("max:", self.max)
         self.save_res_to_csv()
         self.dispatch(Events.OPTIMIZATION_END)
 

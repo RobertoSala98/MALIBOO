@@ -65,6 +65,7 @@ def test03_dataset_X(output_path):
                  random_state=seed, dataset=data, output_path=output_path,
                  debug=debug)
   optimizer.maximize(init_points=n0, n_iter=n_iter)
+  print("res:", optimizer.res)
 
 
 def test04_free_ml(output_path):
