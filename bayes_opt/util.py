@@ -195,6 +195,8 @@ class UtilityFunction(object):
             return self._ei_ml(x, gp, y_max, self.xi, self.ml_model, self.ml_bounds)
         if self.kind == 'eic':
             return self._eic(x, gp, y_max, self.xi, self.eic_bounds, self.eic_P_func, self.eic_Q_func)
+        if self.kind == 'eic_ml_C':
+            return self._eic_ml_C(x, gp, y_max, self.xi, self.ml_model, self.ml_bounds, self.eic_bounds, self.eic_P_func, self.eic_Q_func)
         raise NotImplementedError("The utility function {} has not been implemented.".format(self.kind))
 
     @staticmethod
@@ -260,6 +262,18 @@ class UtilityFunction(object):
         prob_lb = norm.cdf( (mean_Gmin - mean) / std )
 
         return ei * (prob_ub - prob_lb)
+
+
+    @staticmethod
+    def _eic_ml_C(x, gp, y_max, xi, ml_model, ml_bounds, eic_bounds, P, Q):
+        """Compute Expected Improvement with Constraints, variant C"""
+        eic = UtilityFunction._eic(x, gp, y_max, xi, eic_bounds, P, Q)
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            y_hat = ml_model.predict(x)
+        lb, ub = ml_bounds
+        indicator = np.array([lb <= y and y <= ub for y in y_hat])
+        return eic * indicator
 
 
 def load_logs(optimizer, logs):
