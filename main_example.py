@@ -162,18 +162,29 @@ def test14_dataset_X_init_points_df(output_path):
   optimizer.maximize(init_points=0, n_iter=n_iter)
 
 
+def test16_free_eic_ml_C(output_path):
+  optimizer = BO(f=target_func_dict, pbounds={'x': (2, 4), 'y': (-3, 3)},
+                 random_state=seed, output_path=output_path, debug=debug)
+  optimizer.maximize(init_points=n0, n_iter=n_iter, acq='eic_ml_C',
+                     acq_info={'eic_bounds': (-3.2, -3.0),
+                               'ml_target': 'blackbox',
+                               'ml_bounds': (2, 8)
+                               })
+
+
 if __name__ == '__main__':
-  perform_test(test01_free)
-  perform_test(test02_dataset_Xy)
-  perform_test(test03_dataset_X)
-  perform_test(test04_free_ml)
-  perform_test(test05_dataset_Xy_ml)
-  perform_test(test06_dataset_X_ml)
-  perform_test(test07_dataset_Xy_queue)
-  perform_test(test08_dataset_X_queue)
-  perform_test(test09_free_eic_default)
-  perform_test(test10_dataset_Xy_eic_default)
-  perform_test(test11_free_eic_custom_PQ)
-  perform_test(test12_free_init_points_tuple)
-  perform_test(test13_dataset_Xy_init_points_dicts)
-  perform_test(test14_dataset_X_init_points_df)
+  # perform_test(test01_free)
+  # perform_test(test02_dataset_Xy)
+  # perform_test(test03_dataset_X)
+  # perform_test(test04_free_ml)
+  # perform_test(test05_dataset_Xy_ml)
+  # perform_test(test06_dataset_X_ml)
+  # perform_test(test07_dataset_Xy_queue)
+  # perform_test(test08_dataset_X_queue)
+  # perform_test(test09_free_eic_default)
+  # perform_test(test10_dataset_Xy_eic_default)
+  # perform_test(test11_free_eic_custom_PQ)
+  # perform_test(test12_free_init_points_tuple)
+  # perform_test(test13_dataset_Xy_init_points_dicts)
+  # perform_test(test14_dataset_X_init_points_df)
+  perform_test(test16_free_eic_ml_C)
