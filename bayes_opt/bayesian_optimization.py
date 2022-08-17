@@ -270,8 +270,7 @@ class BayesianOptimization(Observable):
                  kappa_decay=1,
                  kappa_decay_delay=0,
                  xi=0.0,
-                 ml_info={},
-                 eic_info={},
+                 acq_info={},
                  memory_queue_len=0,
                  **gp_params):
         """
@@ -310,17 +309,14 @@ class BayesianOptimization(Observable):
         xi: float, optional (default=0.0)
             [unused]
 
-        ml_info: dict, optional (default={})
-            Information required for using Machine Learning models. Namely, `ml_info['target']` is
-            the name of the target quantity and `ml_info['bounds']` is a tuple with its lower and
-            upper bounds.
-
-        eic_info: dict, optional (default={})
-            Information required for using the Expected Improvement with Constraints acquisition.
-            EIC assumes that the target function has the form f(x) = P(x) g(x) + Q(x) and is bound
-            to the constraint Gmin <= g(x) <= Gmax. Then, `eic_info['bounds']` is a tuple with Gmin
-            and Gmax, and `eic_info['P_func']` and `eic_info['Q_func']` are the functions in the
-            definition of f. The default values for the latter are P(x) == 1 and Q(x) == 0.
+        acq_info: dict, optional (default={})
+            Information required for using some acquisition functions. Namely:
+            * if using Machine Learning models, the 'ml_target' field is the name of the target
+              quantity and 'bounds' is a tuple with its lower and upper bounds;
+            * if using EIC, it assumes that the target function has the form f(x) = P(x) g(x) + Q(x)
+              and is bound to the constraint Gmin <= g(x) <= Gmax. Then, 'bounds' is a tuple with
+              Gmin and Gmax, and 'eic_P_func'/'eic_Q_func' are the functions in the definition of f.
+              The default values for the latter are P(x) == 1 and Q(x) == 0
 
         memory_queue_len: int, optional (default=0)
             Length of FIFO memory queue. If used alongside a dataset, at each iteration,
@@ -343,8 +339,7 @@ class BayesianOptimization(Observable):
                                xi=xi,
                                kappa_decay=kappa_decay,
                                kappa_decay_delay=kappa_decay_delay,
-                               ml_info=ml_info,
-                               eic_info=eic_info,
+                               acq_info=acq_info,
                                debug=self._debug)
         iteration = 0
 

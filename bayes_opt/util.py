@@ -110,7 +110,7 @@ class UtilityFunction(object):
     See the maximize() function in bayesian_optimization.py for a description of the constructor arguments.
     """
 
-    def __init__(self, kind, kappa, xi, kappa_decay=1, kappa_decay_delay=0, ml_info={}, eic_info={}, debug=False):
+    def __init__(self, kind, kappa, xi, kappa_decay=1, kappa_decay_delay=0, acq_info={}, debug=False):
 
         self._debug = debug
         self.kappa = kappa
@@ -120,55 +120,46 @@ class UtilityFunction(object):
         self.kind = kind
         self._iters_counter = 0
 
-        self.initialize_ml_params(ml_info, kind)
-        self.initialize_eic_params(eic_info, kind)
+        self.initialize_acq_info(acq_info, kind)
 
         if self._debug: print("UtilityFunction initialization completed")
 
-    def initialize_ml_params(self, ml_info, kind):
-        if not ml_info:
-            if 'ml' in kind:
-                raise ValueError("'ml_info' dict must be provided if using '{}' acquisition".format(kind))
-            if self._debug: print("ml_info is empty")
-            return
+    def set_acq_info_field(self, acq_info, key_from, key_to=None):
+        """TODO"""
+        key_to = key_from if key_to is None else key_to
+        if self._debug: print("Setting '{}' field of acq_info to '{}' member".format(key_from, key_to))
+        if key_from in acq_info:
+            self.__setattr__(key_to, acq_info[key_from])
+        else:
+            raise KeyError("'{}' field is required in acq_info if using '{}' acquisition".format(key_from, self.kind))
 
-        if self._debug: print("Initializing UtilityFunction with ml_info =", ml_info)
+    def initialize_acq_info(self, acq_info, kind):
+        """TODO"""
+        if self._debug: print("Initializing UtilityFunction of kind", kind, "with acq_info =", acq_info)
 
-        # Check for needed fields and initialize them to the class
-        for key in ('target', 'bounds'):
-            if key not in ml_info:
-                raise ValueError("'ml_info' dict must have '{}' field".format(key))
-            self.__setattr__('ml_' + key, ml_info[key])  # setting 'ml_target' and 'ml_bounds'
+        # For Machine Learning-based acquisitions
+        if 'ml' in kind:
+            self.set_acq_info_field(acq_info, 'ml_target')
+            self.set_acq_info_field(acq_info, 'ml_bounds')
 
-    def initialize_eic_params(self, eic_info, kind):
-        if not eic_info:
-            if 'eic' in kind:
-                raise ValueError("'eic_info' dict must be provided if using '{}' acquisition".format(kind))
-            if self._debug: print("eic_info is empty")
-            return
+        # For Expected Improvement with Constraints-based acquisitions
+        if 'eic' in kind:
+            self.set_acq_info_field(acq_info, 'eic_bounds')
 
-        if self._debug: print("Initializing UtilityFunction with eic_info =", eic_info)
+            # Check for other needed fields, and provide default values if not present
+            if 'eic_P_func' not in acq_info:
+                if self._debug: print("Using default eic_P_func, P(x) == 1")
+                def P_func_default(x):
+                    return 1.0
+                acq_info['eic_P_func'] = P_func_default
+            if 'eic_Q_func' not in acq_info:
+                if self._debug: print("Using default eic_Q_func, Q(x) == 0")
+                def Q_func_default(x):
+                    return 0.0
+                acq_info['eic_Q_func'] = Q_func_default
 
-        # Check for needed fields and initialize them to the class
-        if 'bounds' not in eic_info:
-            raise ValueError("'eic_info' dict must have 'bounds' field")
-        self.eic_bounds = eic_info['bounds']
-
-        # Check for other needed fields, provide default values if not present, and initialize them to the class
-        if 'P_func' not in eic_info:
-            if self._debug: print("Using default P_func, P(x) == 1")
-            def P_func_default(x):
-                return 1.0
-            eic_info['P_func'] = P_func_default
-
-        if 'Q_func' not in eic_info:
-            if self._debug: print("Using default Q_func, Q(x) == 0")
-            def Q_func_default(x):
-                return 0.0
-            eic_info['Q_func'] = Q_func_default
-
-        self.eic_P_func = eic_info['P_func']
-        self.eic_Q_func = eic_info['Q_func']
+            self.set_acq_info_field(acq_info, 'eic_P_func')
+            self.set_acq_info_field(acq_info, 'eic_Q_func')
 
     def update_params(self):
         self._iters_counter += 1
