@@ -69,11 +69,10 @@ class TargetSpace(object):
         # Initialize other members
         self.random_state = ensure_rng(random_state)
         self.target_func = target_func
-        self._indexes = []  # dataset indexes of points, or Nones if no dataset is used
         self.initialize_dataset(dataset, target_column)
 
         # preallocated memory for X and Y points
-        self._params = np.empty(shape=(0, self.dim))
+        self._params = pd.DataFrame()
         self._target = np.empty(shape=(0))
         self._target_dict_info = pd.DataFrame()
         self._target_dict_key = 'value'
@@ -118,7 +117,7 @@ class TargetSpace(object):
 
     @property
     def indexes(self):
-        return self._indexes
+        return self._params.index
 
     def params_to_array(self, params):
         try:
@@ -156,17 +155,20 @@ class TargetSpace(object):
             )
         return x
 
-    def register(self, params, target):
+    def register(self, params, target, idx=None):
         """
         Append a point and its target value to the known data.
 
         Parameters
         ----------
-        params: dict
-            A single point, with len(x) == self.dim
+        params: numpy.ndarray
+            A single point, with x.shape[1] == self.dim
 
         target: float
             Target function value
+
+        idx: int or None, optional (default=None)
+            Index number of the point to be registered, or None if no dataset is used
 
         Returns
         -------
@@ -185,11 +187,11 @@ class TargetSpace(object):
         >>> len(space)
         1
         """
-        if self._debug: print("Registering params", params, "and target value", target)
-        x = self._as_array(params)
+        if self._debug: print("Registering params", params, "with index", idx, "and target value", target)
         value, info = self.extract_value_and_info(target)
 
-        self._params = np.concatenate([self._params, x.reshape(1, -1)])
+        x_df = pd.DataFrame(params.reshape(1, -1), columns=self._keys, index=[idx], dtype=np.float)
+        self._params = pd.concat((self._params, x_df))
         self._target = np.concatenate([self._target, [value]])
         if info:  # The return value of the target function is a dict
             if self._target_dict_info.empty:
@@ -225,7 +227,7 @@ class TargetSpace(object):
 
         params = dict(zip(self._keys, x))
         target = self.target_func(**params)
-        target_value = self.register(x, target)
+        target_value = self.register(x, target, idx)
         if self._debug: print("Probed target value:", target_value)
         return target_value
 
@@ -268,7 +270,7 @@ class TargetSpace(object):
             res = {
                 'target': self.target.max(),
                 'params': dict(
-                    zip(self.keys, self.params[self.target.argmax()])
+                    zip(self.keys, self.params.values[self.target.argmax()])
                 )
             }
         except ValueError:
@@ -277,7 +279,7 @@ class TargetSpace(object):
 
     def res(self):
         """Get all target values found and corresponding parameters."""
-        params = [dict(zip(self.keys, p)) for p in self.params]
+        params = [dict(zip(self.keys, p)) for p in self.params.values]
 
         return [
             {"target": target} | param

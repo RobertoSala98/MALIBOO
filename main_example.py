@@ -65,13 +65,14 @@ def test03_dataset_X(output_path):
                  random_state=seed, dataset=data, output_path=output_path,
                  debug=debug)
   optimizer.maximize(init_points=n0, n_iter=n_iter)
+  print("res:", optimizer.res)
 
 
 def test04_free_ml(output_path):
   optimizer = BO(f=target_func_dict, pbounds={'x': (2, 4), 'y': (-3, 3)},
                  random_state=seed, output_path=output_path, debug=debug)
   optimizer.maximize(init_points=n0, n_iter=n_iter, acq='ei_ml',
-                     ml_info={'target': 'blackbox', 'bounds': (2, 8)})
+                     acq_info={'ml_target': 'blackbox', 'ml_bounds': (2, 8)})
 
 
 def test05_dataset_Xy_ml(output_path):
@@ -79,7 +80,7 @@ def test05_dataset_Xy_ml(output_path):
                  dataset=os.path.join('datasets', 'test_ml.csv'),
                  target_column='z', output_path=output_path, debug=debug)
   optimizer.maximize(init_points=n0, n_iter=n_iter, acq='ei_ml',
-                     ml_info={'target': 'z_pred', 'bounds': (0, 2.2)})
+                     acq_info={'ml_target': 'z_pred', 'ml_bounds': (0, 2.2)})
 
 
 def test06_dataset_X_ml(output_path):
@@ -88,7 +89,7 @@ def test06_dataset_X_ml(output_path):
                  dataset=os.path.join('datasets', 'test_ml.csv'),
                  output_path=output_path, debug=debug)
   optimizer.maximize(init_points=n0, n_iter=n_iter, acq='ei_ml',
-                     ml_info={'target': 'z_pred', 'bounds': (0, 2.2)})
+                     acq_info={'ml_target': 'z_pred', 'ml_bounds': (0, 2.2)})
 
 
 def test07_dataset_Xy_queue(output_path):
@@ -109,7 +110,7 @@ def test09_free_eic_default(output_path):
   optimizer = BO(f=target_func, pbounds={'x': (2, 4), 'y': (-3, 3)},
                  random_state=seed, output_path=output_path, debug=debug)
   optimizer.maximize(init_points=n0, n_iter=n_iter, acq='eic',
-                     eic_info={'bounds': (-3.2, -3.0)})
+                     acq_info={'eic_bounds': (-3.2, -3.0)})
 
 
 def test10_dataset_Xy_eic_default(output_path):
@@ -118,7 +119,7 @@ def test10_dataset_Xy_eic_default(output_path):
                  dataset=os.path.join('datasets', 'test_xyz.csv'),
                  target_column='z', output_path=output_path, debug=debug)
   optimizer.maximize(init_points=n0, n_iter=n_iter, acq='eic',
-                     eic_info={'bounds': (2_500_000, 2_700_000)})
+                     acq_info={'eic_bounds': (2_500_000, 2_700_000)})
 
 
 def test11_free_eic_custom_PQ(output_path):
@@ -129,8 +130,8 @@ def test11_free_eic_custom_PQ(output_path):
   optimizer = BO(f=target_func, pbounds={'x': (2, 4), 'y': (-3, 3)},
                  random_state=seed, output_path=output_path, debug=debug)
   optimizer.maximize(init_points=n0, n_iter=n_iter, acq='eic',
-                     eic_info={'bounds': (-3.2, -3.0), 'P_func': my_P,
-                                                       'Q_func': my_Q})
+                     acq_info={'eic_bounds': (-3.2, -3.0), 'eic_P_func': my_P,
+                                                           'eic_Q_func': my_Q})
 
 
 def test12_free_init_points_tuple(output_path):
