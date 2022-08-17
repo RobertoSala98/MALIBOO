@@ -187,14 +187,14 @@ class UtilityFunction(object):
     def utility(self, x, gp, y_max):
         if self.kind == 'ucb':
             return self._ucb(x, gp, self.kappa)
+        if self.kind == 'poi':
+            return self._poi(x, gp, y_max, self.xi)
         if self.kind == 'ei':
             return self._ei(x, gp, y_max, self.xi)
         if self.kind == 'ei_ml':
             return self._ei_ml(x, gp, y_max, self.xi, self.ml_model, self.ml_bounds)
         if self.kind == 'eic':
             return self._eic(x, gp, y_max, self.xi, self.eic_bounds, self.eic_P_func, self.eic_Q_func)
-        if self.kind == 'poi':
-            return self._poi(x, gp, y_max, self.xi)
         raise NotImplementedError("The utility function {} has not been implemented.".format(self.kind))
 
     @staticmethod
@@ -204,6 +204,15 @@ class UtilityFunction(object):
             mean, std = gp.predict(x, return_std=True)
 
         return mean + kappa * std
+
+    @staticmethod
+    def _poi(x, gp, y_max, xi):
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            mean, std = gp.predict(x, return_std=True)
+
+        z = (mean - y_max - xi)/std
+        return norm.cdf(z)
 
     @staticmethod
     def _ei(x, gp, y_max, xi):
@@ -251,15 +260,6 @@ class UtilityFunction(object):
         prob_lb = norm.cdf( (mean_Gmin - mean) / std )
 
         return ei * (prob_ub - prob_lb)
-
-    @staticmethod
-    def _poi(x, gp, y_max, xi):
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore")
-            mean, std = gp.predict(x, return_std=True)
-
-        z = (mean - y_max - xi)/std
-        return norm.cdf(z)
 
 
 def load_logs(optimizer, logs):
