@@ -171,9 +171,9 @@ class BayesianOptimization(Observable):
     def dataset(self):
         return self._space.dataset
 
-    def register(self, params, target):
+    def register(self, params, target, idx=None):
         """Expect observation with known target"""
-        self._space.register(params, target)
+        self._space.register(params, target, idx)
         self.dispatch(Events.OPTIMIZATION_STEP)
 
     def probe(self, params, idx=None, lazy=True):
@@ -374,7 +374,7 @@ class BayesianOptimization(Observable):
                     idx, target_value = self._space.find_point_in_dataset(x_probe)
                 else:
                     target_value = self.dataset.loc[idx, self._space.target_column]
-                self.register(self._space.params_to_array(x_probe), target_value)
+                self.register(self._space.params_to_array(x_probe), target_value, idx)
 
             self._space.indexes.append(idx)
 
