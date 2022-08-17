@@ -162,8 +162,8 @@ class TargetSpace(object):
 
         Parameters
         ----------
-        params: dict
-            A single point, with len(x) == self.dim
+        params: numpy.ndarray
+            A single point, with x.shape[1] == self.dim
 
         target: float
             Target function value

@@ -374,7 +374,7 @@ class BayesianOptimization(Observable):
                     idx, target_value = self._space.find_point_in_dataset(x_probe)
                 else:
                     target_value = self.dataset.loc[idx, self._space.target_column]
-                self.register(x_probe, target_value)
+                self.register(self._space.params_to_array(x_probe), target_value)
 
             self._space.indexes.append(idx)
 
