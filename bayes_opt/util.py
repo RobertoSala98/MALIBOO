@@ -175,6 +175,18 @@ class UtilityFunction(object):
             self.set_acq_info_field(acq_info, 'eic_P_func')
             self.set_acq_info_field(acq_info, 'eic_Q_func')
 
+        # For EIC-ML hybrid acquisitions
+        if 'eic_ml' in kind:
+            self.set_acq_info_field(acq_info, 'eic_ml_var')
+            if self.eic_ml_var not in ('B', 'C', 'D'):
+                raise ValueError("'eic_ml_var' field must be B/C/D, not {}".format(self.eic_ml_var))
+
+            # Check for other needed field, and provide default value if not present
+            if 'eic_ml_exp_C' not in acq_info:
+                if self._debug: print("Using default eic_ml_exp_C = 2")
+                acq_info['eic_ml_exp_C'] = 2.0
+            self.set_acq_info_field(acq_info, 'eic_ml_exp_C')
+
     def update_params(self):
         self._iters_counter += 1
 
@@ -195,6 +207,9 @@ class UtilityFunction(object):
             return self._ei_ml(x, gp, y_max, self.xi, self.ml_model, self.ml_bounds)
         if self.kind == 'eic':
             return self._eic(x, gp, y_max, self.xi, self.eic_bounds, self.eic_P_func, self.eic_Q_func)
+        if self.kind == 'eic_ml':
+            return self._eic_ml(x, gp, y_max, self.xi, self.eic_ml_var, self.ml_model, self.ml_bounds,
+                                self.eic_bounds, self.eic_P_func, self.eic_Q_func, self.eic_ml_exp_C)
         raise NotImplementedError("The utility function {} has not been implemented.".format(self.kind))
 
     @staticmethod
@@ -260,6 +275,28 @@ class UtilityFunction(object):
         prob_lb = norm.cdf( (mean_Gmin - mean) / std )
 
         return ei * (prob_ub - prob_lb)
+
+
+    @staticmethod
+    def _eic_ml(x, gp, y_max, xi, variant, ml_model, ml_bounds, eic_bounds, P, Q, exp_C):
+        """Compute Expected Improvement with Constraints, variants B/C/D"""
+        # Compute regular Expected Improvement with Constraints
+        eic = UtilityFunction._eic(x, gp, y_max, xi, eic_bounds, P, Q)
+        # Call ML model
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            y_hat = ml_model.predict(x)
+        # Compute exponential coefficient for variant B (and D)
+        if variant in ('B', 'D'):
+            coeff = np.exp(-exp_C * y_hat)
+            eic *= coeff
+        # Compute indicator coefficient for variant C (and D)
+        if variant in ('C', 'D'):
+            lb, ub = ml_bounds
+            indicator = np.array([lb <= y and y <= ub for y in y_hat])
+            eic *= indicator
+
+        return eic
 
 
 def load_logs(optimizer, logs):

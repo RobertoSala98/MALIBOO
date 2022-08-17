@@ -162,6 +162,39 @@ def test14_dataset_X_init_points_df(output_path):
   optimizer.maximize(init_points=0, n_iter=n_iter)
 
 
+def test15_free_eic_ml_B(output_path):
+  optimizer = BO(f=target_func_dict, pbounds={'x': (2, 4), 'y': (-3, 3)},
+                 random_state=seed, output_path=output_path, debug=debug)
+  optimizer.maximize(init_points=n0, n_iter=n_iter, acq='eic_ml',
+                     acq_info={'eic_ml_var': 'B',
+                               'eic_bounds': (-3.2, -3.0),
+                               'ml_target': 'blackbox',
+                               'ml_bounds': (2, 8)
+                               })
+
+
+def test16_free_eic_ml_C(output_path):
+  optimizer = BO(f=target_func_dict, pbounds={'x': (2, 4), 'y': (-3, 3)},
+                 random_state=seed, output_path=output_path, debug=debug)
+  optimizer.maximize(init_points=n0, n_iter=n_iter, acq='eic_ml',
+                     acq_info={'eic_ml_var': 'C',
+                               'eic_bounds': (-3.2, -3.0),
+                               'ml_target': 'blackbox',
+                               'ml_bounds': (2, 8)
+                               })
+
+
+def test17_free_eic_ml_D(output_path):
+  optimizer = BO(f=target_func_dict, pbounds={'x': (2, 4), 'y': (-3, 3)},
+                 random_state=seed, output_path=output_path, debug=debug)
+  optimizer.maximize(init_points=n0, n_iter=n_iter, acq='eic_ml',
+                     acq_info={'eic_ml_var': 'D',
+                               'eic_bounds': (-3.2, -3.0),
+                               'ml_target': 'blackbox',
+                               'ml_bounds': (2, 8)
+                               })
+
+
 if __name__ == '__main__':
   perform_test(test01_free)
   perform_test(test02_dataset_Xy)
@@ -177,3 +210,6 @@ if __name__ == '__main__':
   perform_test(test12_free_init_points_tuple)
   perform_test(test13_dataset_Xy_init_points_dicts)
   perform_test(test14_dataset_X_init_points_df)
+  perform_test(test15_free_eic_ml_B)
+  perform_test(test16_free_eic_ml_C)
+  perform_test(test17_free_eic_ml_D)
