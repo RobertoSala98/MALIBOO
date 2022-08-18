@@ -75,7 +75,6 @@ class TargetSpace(object):
         self._params = pd.DataFrame()
         self._target = np.empty(shape=(0))
         self._target_dict_info = pd.DataFrame()
-        self._target_dict_key = 'value'
 
         if self._debug: print("TargetSpace initialization completed")
 
@@ -325,11 +324,11 @@ class TargetSpace(object):
             if self._debug: print("Extracting info: target", target, "is scalar")
             return target, {}
         elif isinstance(target, dict):
-            if self._target_dict_key not in target:
-                raise ValueError("If target function is a dictionary, it must "
-                                 "contain the '{}' field".format(self._target_dict_key))
-            if self._debug: print("Extracting info: target is a dict with value", target[self._target_dict_key])
-            return target[self._target_dict_key], target
+            key = 'value'
+            if key not in target:
+                raise ValueError("If target function is a dictionary, it must contain the '{}' field".format(key))
+            if self._debug: print("Extracting info: target is a dict with value", target[key])
+            return target[key], target
         else:
             raise ValueError("Unrecognized return type '{}' in target function".format(type(target)))
 
