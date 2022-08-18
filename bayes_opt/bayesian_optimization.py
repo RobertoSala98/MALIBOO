@@ -430,15 +430,7 @@ class BayesianOptimization(Observable):
         # Build training dataset for the ML model
         X = self._space._params
         if self._debug: print("Dataset for ML model has shape", X.shape)
-        try:
-            y = self._space._target_dict_info[y_name]
-        except KeyError:
-            if self.dataset is None:
-                raise KeyError("Target function return values must have '{}' field".format(y_name))
-            elif y_name in self.dataset.columns:
-                y = self.dataset.loc[self._space.indexes, y_name]
-            else:
-                raise KeyError("Dataset must have '{}' column".format(y_name))
+        y = self.get_ml_target_data(y_name)
 
         # Initialize and train model
         model = Ridge()
@@ -452,6 +444,16 @@ class BayesianOptimization(Observable):
             except:
                 pass
         return model
+
+    def get_ml_target_data(self, y_name):
+        if y_name in self._space._target_dict_info:
+            return self._space._target_dict_info[y_name]
+        elif self.dataset is None:
+            raise KeyError("Target function return values must have '{}' field".format(y_name))
+        elif y_name in self.dataset.columns:
+            return self.dataset.loc[self._space.indexes, y_name]
+        else:
+            raise KeyError("Dataset must have '{}' column".format(y_name))
 
     def update_memory_queue(self, dataset, x_new):
         """
