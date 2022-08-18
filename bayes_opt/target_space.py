@@ -13,43 +13,31 @@ class TargetSpace(object):
     """
     Holds the param-space coordinates (X) and target values (Y)
 
-    Example
-    -------
-    >>> def target_func(p1, p2):
-    >>>     return p1 + p2
-    >>> pbounds = {'p1': (0, 1), 'p2': (1, 100)}
-    >>> space = TargetSpace(target_func, pbounds, random_state=0)
-    >>> x = space.random_points(1)[0]
-    >>> y = space.register_point(x)
-    >>> assert self.max_point()['max_val'] == y
-    """
+    Parameters
+    ----------
+    target_func: function, optional (default=None)
+        Target function to be maximized.
 
+    pbounds: dict
+        Dictionary with parameters names as keys and a tuple with minimum
+        and maximum values. Mandatory argument.
+
+    random_state: int, RandomState, or None, optional (default=None)
+        Optionally specify a seed for a random number generator
+
+    dataset: str, file handle, or pandas.DataFrame, optional (default=None)
+        The dataset, if any, which constitutes the optimization domain (X) and possibly
+        the list of target values (Y)
+
+    target_column: str, optional (default=None)
+        Name of the column that will act as the target value of the optimization.
+        Only works if dataset is passed.
+
+    debug: bool, optional (default=False)
+        Whether or not to print detailed debugging information
+    """
     def __init__(self, target_func=None, pbounds=None, random_state=None,
                  dataset=None, target_column=None, debug=False):
-        """
-        Parameters
-        ----------
-        target_func: function, optional (default=None)
-            Target function to be maximized.
-
-        pbounds: dict
-            Dictionary with parameters names as keys and a tuple with minimum
-            and maximum values.
-
-        random_state: int, RandomState, or None, optional (default=None)
-            Optionally specify a seed for a random number generator
-
-        dataset: str, file handle, or pandas.DataFrame, optional (default=None)
-            The dataset, if any, which constitutes the optimization domain and possibly
-            the list of target values
-
-        target_column: str, optional (default=None)
-            Name of the column that will act as the target value of the optimization.
-            Only works if dataset is passed.
-
-        debug: bool, optional (default=False)
-            Whether or not to print detailed debugging information
-        """
         if pbounds is None:
             raise ValueError("pbounds must be specified")
 
@@ -74,14 +62,18 @@ class TargetSpace(object):
         # preallocated memory for X and Y points
         self._params = pd.DataFrame()
         self._target = np.empty(shape=(0))
+
+        # Other information to be recorded
         self._target_dict_info = pd.DataFrame()
-        self._target_dict_key = 'value'
+        self._optimization_info = pd.DataFrame()
 
         if self._debug: print("TargetSpace initialization completed")
+
 
     def __len__(self):
         assert len(self._params) == len(self._target)
         return len(self._target)
+
 
     @property
     def empty(self):
@@ -119,6 +111,7 @@ class TargetSpace(object):
     def indexes(self):
         return self._params.index
 
+
     def params_to_array(self, params):
         try:
             assert set(params) == set(self.keys)
@@ -129,6 +122,7 @@ class TargetSpace(object):
             )
         return np.asarray([params[key] for key in self.keys])
 
+
     def array_to_params(self, x):
         try:
             assert len(x) == len(self.keys)
@@ -138,6 +132,7 @@ class TargetSpace(object):
                 "expected number of parameters ({}).".format(len(self.keys))
             )
         return dict(zip(self.keys, x))
+
 
     def _as_array(self, x):
         try:
@@ -155,6 +150,7 @@ class TargetSpace(object):
             )
         return x
 
+
     def register(self, params, target, idx=None):
         """
         Append a point and its target value to the known data.
@@ -168,7 +164,7 @@ class TargetSpace(object):
             Target function value
 
         idx: int or None, optional (default=None)
-            Index number of the point to be registered, or None if no dataset is used
+            The dataset index of the point to be registered, or None if no dataset is being used
 
         Returns
         -------
@@ -196,13 +192,21 @@ class TargetSpace(object):
         if info:  # The return value of the target function is a dict
             if self._target_dict_info.empty:
                 # Initialize member
-                self._target_dict_info = pd.DataFrame(info, index=[0])
+                self._target_dict_info = pd.DataFrame(info, index=[idx])
             else:
                 # Append new point to member
-                self._target_dict_info = pd.concat((self._target_dict_info, pd.DataFrame(info, index=[0])), ignore_index=True)
+                info_new = pd.DataFrame(info, index=[idx])
+                self._target_dict_info = pd.concat((self._target_dict_info, info_new))
 
         if self._debug: print("Point registered successfully")
         return value
+
+
+    def register_optimization_info(self, info_new):
+        """Register relevant information into self._optimization_info"""
+        self._optimization_info = pd.concat((self._optimization_info, info_new))
+        if self._debug: print("Registered optimization information:", info_new, sep="\n")
+
 
     def probe(self, params, idx=None):
         """
@@ -215,7 +219,7 @@ class TargetSpace(object):
             A single point, with len(x) == self.dim
 
         idx: int or None, optional (default=None)
-            Index number of the point to be probed, or None if no dataset is used
+            The dataset index of the point to be probed, or None if no dataset is being used
 
         Returns
         -------
@@ -231,6 +235,7 @@ class TargetSpace(object):
         if self._debug: print("Probed target value:", target_value)
         return target_value
 
+
     def random_sample(self):
         """
         Creates random points within the bounds of the space.
@@ -238,7 +243,7 @@ class TargetSpace(object):
         Returns
         ----------
         idx: int or None
-            Index number of chosen point, or None if no dataset is used
+            The dataset index number of the chosen point, or None if no dataset is being used
         data: numpy.ndarray
             [num x dim] array points with dimensions corresponding to `self._keys`
 
@@ -264,6 +269,7 @@ class TargetSpace(object):
             if self._debug: print("Uniform randomly sampled point: value {}".format(data))
         return idx, self.array_to_params(data.ravel())
 
+
     def max(self):
         """Get maximum target value found and corresponding parameters."""
         try:
@@ -277,6 +283,7 @@ class TargetSpace(object):
             res = {}
         return res
 
+
     def res(self):
         """Get all target values found and corresponding parameters."""
         params = [dict(zip(self.keys, p)) for p in self.params.values]
@@ -285,6 +292,7 @@ class TargetSpace(object):
             {"target": target} | param
             for target, param in zip(self.target, params)
         ]
+
 
     def set_bounds(self, new_bounds):
         """
@@ -298,6 +306,7 @@ class TargetSpace(object):
         for row, key in enumerate(self.keys):
             if key in new_bounds:
                 self._bounds[row] = new_bounds[key]
+
 
     def extract_value_and_info(self, target):
         """
@@ -324,13 +333,14 @@ class TargetSpace(object):
             if self._debug: print("Extracting info: target", target, "is scalar")
             return target, {}
         elif isinstance(target, dict):
-            if self._target_dict_key not in target:
-                raise ValueError("If target function is a dictionary, it must "
-                                 "contain the '{}' field".format(self._target_dict_key))
-            if self._debug: print("Extracting info: target is a dict with value", target[self._target_dict_key])
-            return target[self._target_dict_key], target
+            key = 'value'
+            if key not in target:
+                raise ValueError("If target function is a dictionary, it must contain the '{}' field".format(key))
+            if self._debug: print("Extracting info: target is a dict with value", target[key])
+            return target[key], target
         else:
             raise ValueError("Unrecognized return type '{}' in target function".format(type(target)))
+
 
     def initialize_dataset(self, dataset=None, target_column=None):
         """
@@ -351,7 +361,7 @@ class TargetSpace(object):
             if self._debug: print("initialize_dataset(): dataset is None")
             return
 
-        if type(dataset) == pd.DataFrame:
+        if isinstance(dataset, pd.DataFrame):
             self._dataset = dataset
         else:
             try:
@@ -362,7 +372,7 @@ class TargetSpace(object):
         if self._debug: print("Shape of initialized dataset is", self._dataset.shape)
 
         # Check for banned column names
-        banned_columns = ('index', 'params', 'target', 'value')
+        banned_columns = ('index', 'params', 'target', 'value', 'acquisition', 'ml_mape')
         for col in banned_columns:
             if col in self._dataset.columns:
                 raise ValueError("Column name '{}' is not allowed in a dataset, please change it".format(col))
@@ -386,6 +396,7 @@ class TargetSpace(object):
             if self.dataset[key].min() < lb or self.dataset[key].max() >= ub:
                 raise ValueError("Dataset values for '{}' column are not consistent with bounds".format(key))
 
+
     def find_point_in_dataset(self, params):
         """
         Find index of a matching row in the dataset.
@@ -398,7 +409,7 @@ class TargetSpace(object):
         Returns
         -------
         idx: int
-            Dataset index of the point found
+            The dataset index of the point found
         target_val: float
             Dataset target value associated to the point found
         """

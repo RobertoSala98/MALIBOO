@@ -44,12 +44,15 @@ def acq_max(ac, gp, y_max, bounds, random_state, n_warmup=10000, n_iter=10, data
 
     Returns
     -------
-    idx
-        The dataset index of the arg max of the acquisition function, or None if no dataset is used
-    x_max
+    x_max: numpy.ndarray
         The arg max of the acquisition function
-    """
 
+    idx: int or None
+        The dataset index of the arg max of the acquisition function, or None if no dataset is being used
+
+    max_acq: float
+        The computed maximum of the acquisition function, namely ac(x_max)
+    """
     # Warm up with random points or dataset points
     if debug: print("Starting acq_max()\nIncumbent target: y_max =", y_max)
     if dataset is not None:
@@ -70,7 +73,7 @@ def acq_max(ac, gp, y_max, bounds, random_state, n_warmup=10000, n_iter=10, data
         idx = dataset.index[idx]
         max_acq = ys[idx]
         if debug: print("End of acq_max(): maximizer of utility is x = data[{}] = {}, with ac(x) = {}".format(idx, x_max, max_acq))
-        return idx, x_max
+        return x_max, idx, max_acq
 
     max_acq = ys[idx]
     if debug: print("Best point on initial grid is ac({}) = {}".format(x_max, max_acq))
@@ -100,7 +103,7 @@ def acq_max(ac, gp, y_max, bounds, random_state, n_warmup=10000, n_iter=10, data
 
     # Clip output to make sure it lies within the bounds. Due to floating
     # point technicalities this is not always the case.
-    return None, np.clip(x_max, bounds[:, 0], bounds[:, 1])
+    return np.clip(x_max, bounds[:, 0], bounds[:, 1]), None, max_acq
 
 
 class UtilityFunction(object):
@@ -109,7 +112,6 @@ class UtilityFunction(object):
 
     See the maximize() function in bayesian_optimization.py for a description of the constructor arguments.
     """
-
     def __init__(self, kind, kappa, xi, kappa_decay=1, kappa_decay_delay=0, acq_info={}, debug=False):
 
         self._debug = debug
@@ -123,6 +125,7 @@ class UtilityFunction(object):
         self.initialize_acq_info(acq_info, kind)
 
         if self._debug: print("UtilityFunction initialization completed")
+
 
     def set_acq_info_field(self, acq_info, key_from, key_to=None):
         """
@@ -147,9 +150,10 @@ class UtilityFunction(object):
         else:
             raise KeyError("'{}' field is required in acq_info if using '{}' acquisition".format(key_from, self.kind))
 
+
     def initialize_acq_info(self, acq_info, kind):
         """Initialize some parameters of the `kind` acquisition function from the `acq_info` dict, if any"""
-        if self._debug: print("Initializing UtilityFunction of kind", kind, "with acq_info =", acq_info)
+        if self._debug: print("Initializing UtilityFunction of kind '{}' with acq_info = {}".format(kind, acq_info))
 
         # For Machine Learning-based acquisitions
         if 'ml' in kind:
@@ -187,14 +191,17 @@ class UtilityFunction(object):
                 acq_info['eic_ml_exp_C'] = 2.0
             self.set_acq_info_field(acq_info, 'eic_ml_exp_C')
 
+
     def update_params(self):
         self._iters_counter += 1
 
         if self._kappa_decay < 1 and self._iters_counter > self._kappa_decay_delay:
             self.kappa *= self._kappa_decay
 
+
     def set_ml_model(self, model):
         self.ml_model = model
+
 
     def utility(self, x, gp, y_max):
         if self.kind == 'ucb':
@@ -212,16 +219,20 @@ class UtilityFunction(object):
                                 self.eic_bounds, self.eic_P_func, self.eic_Q_func, self.eic_ml_exp_C)
         raise NotImplementedError("The utility function {} has not been implemented.".format(self.kind))
 
+
     @staticmethod
     def _ucb(x, gp, kappa):
+        """Compute Upper Confidence Bound"""
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
             mean, std = gp.predict(x, return_std=True)
 
         return mean + kappa * std
 
+
     @staticmethod
     def _poi(x, gp, y_max, xi):
+        """Compute Probability Of Improvement"""
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
             mean, std = gp.predict(x, return_std=True)
@@ -229,8 +240,10 @@ class UtilityFunction(object):
         z = (mean - y_max - xi)/std
         return norm.cdf(z)
 
+
     @staticmethod
     def _ei(x, gp, y_max, xi):
+        """Compute Expected Improvement"""
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
             mean, std = gp.predict(x, return_std=True)
@@ -239,8 +252,10 @@ class UtilityFunction(object):
         z = a / std
         return a * norm.cdf(z) + std * norm.pdf(z)
 
+
     @staticmethod
     def _ei_ml(x, gp, y_max, xi, ml_model, bounds):
+        """Compute Expected Improvement - ML indicator version"""
         ei = UtilityFunction._ei(x, gp, y_max, xi)
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
@@ -248,6 +263,7 @@ class UtilityFunction(object):
         lb, ub = bounds
         indicator = np.array([lb <= y and y <= ub for y in y_hat])
         return ei * indicator
+
 
     @staticmethod
     def _eic(x, gp, y_max, xi, bounds, P, Q):
@@ -279,7 +295,7 @@ class UtilityFunction(object):
 
     @staticmethod
     def _eic_ml(x, gp, y_max, xi, variant, ml_model, ml_bounds, eic_bounds, P, Q, exp_C):
-        """Compute Expected Improvement with Constraints, variants B/C/D"""
+        """Compute Expected Improvement with Constraints, ML variants B/C/D"""
         # Compute regular Expected Improvement with Constraints
         eic = UtilityFunction._eic(x, gp, y_max, xi, eic_bounds, P, Q)
         # Call ML model
@@ -330,7 +346,7 @@ def load_logs(optimizer, logs):
 
 def ensure_rng(random_state=None):
     """
-    Creates a random number generator based on an optional seed.  This can be
+    Creates a random number generator based on an optional seed. This can be
     an integer or another random state for a seeded rng, or None for an
     unseeded rng.
     """

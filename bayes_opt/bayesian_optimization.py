@@ -108,10 +108,8 @@ class BayesianOptimization(Observable):
     debug: bool, optional (default=False)
         Whether or not to print detailed debugging information
     """
-
     def __init__(self, f=None, pbounds=None, random_state=None, verbose=2, bounds_transformer=None,
                  dataset=None, output_path=None, target_column=None, debug=False):
-
         # Initialize members from arguments
         self._random_state = ensure_rng(random_state)
         self._verbose = verbose
@@ -155,6 +153,7 @@ class BayesianOptimization(Observable):
 
         if self._debug: print("BayesianOptimization initialization completed")
 
+
     @property
     def space(self):
         return self._space
@@ -171,10 +170,16 @@ class BayesianOptimization(Observable):
     def dataset(self):
         return self._space.dataset
 
+
     def register(self, params, target, idx=None):
         """Expect observation with known target"""
         self._space.register(params, target, idx)
         self.dispatch(Events.OPTIMIZATION_STEP)
+
+
+    def register_optimization_info(self, info_new):
+        self._space.register_optimization_info(info_new)
+
 
     def probe(self, params, idx=None, lazy=True):
         """
@@ -183,14 +188,14 @@ class BayesianOptimization(Observable):
         Parameters
         ----------
         params: dict or list
-            The parameters where the optimizer will evaluate the function.
+            The parameters where the optimizer will evaluate the function
 
         idx: int or None, optional (default=None)
-            Index number of the point to be probed, or None if no dataset is used
+            The dataset index of the probed point, or None if no dataset is being used
 
         lazy: bool, optional (default=True)
             If True, the optimizer will evaluate the points when calling
-            maximize(). Otherwise it will evaluate it at the moment.
+            maximize(), otherwise it will evaluate it at the moment
         """
         if lazy:
             self._queue.add((idx, params))
@@ -198,8 +203,27 @@ class BayesianOptimization(Observable):
             self._space.probe(params, idx=idx)
             self.dispatch(Events.OPTIMIZATION_STEP)
 
+
     def suggest(self, utility_function):
-        """Most promising point to probe next"""
+        """
+        Get most promising point to probe next
+
+        Parameters
+        ----------
+        utility_function: UtilityFunction object
+            Acquisition function to be maximized
+
+        Returns
+        -------
+        x_max: dict
+            The arg max of the acquisition function
+
+        idx: int or None
+            The dataset index of the arg max of the acquisition function, or None if no dataset is being used
+
+        max_acq: float
+            The computed maximum of the acquisition function, namely ac(x_max)
+        """
         if len(self._space) == 0:
             idx, x_rand = self._space.random_sample()
             return idx, self._space.array_to_params(x_rand)
@@ -209,10 +233,6 @@ class BayesianOptimization(Observable):
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
             self._gp.fit(self._space.params, self._space.target)
-            # If requird, train ML model with all space parameters data collected so far
-            if 'ml' in utility_function.kind:
-                model = self.get_ml_model(y_name=utility_function.ml_target)
-                utility_function.set_ml_model(model)
 
         if self.dataset is None:
             dataset_acq = None
@@ -226,7 +246,7 @@ class BayesianOptimization(Observable):
             dataset_acq = self.dataset.loc[mask, self._space.keys]
 
         # Find argmax of the acquisition function
-        idx, suggestion = acq_max(
+        suggestion, idx, acq_val = acq_max(
             ac=utility_function.utility,
             gp=self._gp,
             y_max=self._space.target.max(),
@@ -239,7 +259,8 @@ class BayesianOptimization(Observable):
         if self.dataset is not None:
             self.update_memory_queue(self.dataset[self._space.keys], suggestion)
 
-        return idx, self._space.array_to_params(suggestion)
+        return self._space.array_to_params(suggestion), idx, acq_val
+
 
     def _prime_queue(self, init_points):
         """Make sure there's something in the queue at the very beginning."""
@@ -255,12 +276,14 @@ class BayesianOptimization(Observable):
                 self.update_memory_queue(self.dataset[self._space.keys],
                                          self._space.params_to_array(x_init))
 
+
     def _prime_subscriptions(self):
         if not any([len(subs) for subs in self._events.values()]):
             _logger = _get_default_logger(self._verbose)
             self.subscribe(Events.OPTIMIZATION_START, _logger)
             self.subscribe(Events.OPTIMIZATION_STEP, _logger)
             self.subscribe(Events.OPTIMIZATION_END, _logger)
+
 
     def maximize(self,
                  init_points=5,
@@ -347,11 +370,17 @@ class BayesianOptimization(Observable):
             # Sample new point from GP
             try:
                 idx, x_probe = next(self._queue)
-                if self._debug: print("Selected point from queue: index {}, value {}".format(idx, x_probe))
+                acq_val = None
+                if self._debug: print("New iteration: selected point from queue, index {}, value {}".format(idx, x_probe))
             except StopIteration:
+                if self._debug: print("New iteration {}: suggesting new point".format(iteration))
                 util.update_params()
-                idx, x_probe = self.suggest(util)
-                if self._debug: print("Iteration {}, suggested point: index {}, value {}".format(iteration, idx, x_probe))
+                # If requird, train ML model with all space parameters data collected so far
+                if 'ml' in acq:
+                    ml_model = self.train_ml_model(y_name=util.ml_target)
+                    util.set_ml_model(ml_model)
+                x_probe, idx, acq_val = self.suggest(util)
+                if self._debug: print("Suggested point: index {}, value {}, acquisition {}".format(iteration, idx, x_probe, acq_val))
                 iteration += 1
 
             if x_probe is None:
@@ -371,6 +400,17 @@ class BayesianOptimization(Observable):
                     target_value = self.dataset.loc[idx, self._space.target_column]
                 self.register(self._space.params_to_array(x_probe), target_value, idx)
 
+            # Register other information about the new point
+            other_info = pd.DataFrame(acq_val, columns=['acquisition'], index=[idx])
+            if hasattr(util, 'ml_model'):  # register validation MAPE on new point
+                y_true = [ self.get_ml_target_data(util.ml_target).iloc[-1] ]
+                y_bar = util.ml_model.predict(pd.DataFrame(x_probe, index=[idx]))
+                if self._debug: print("True vs predicted '{}' value: {} vs {}".format(util.ml_target, y_true, y_bar))
+                other_info['ml_mape'] = mape(y_true, y_bar)
+            self.register_optimization_info(other_info)
+
+            if self._debug: print("End of current iteration", 24*"+", sep="\n")
+
         if self._bounds_transformer:
             self.set_bounds(
                 self._bounds_transformer.transform(self._space))
@@ -378,16 +418,19 @@ class BayesianOptimization(Observable):
         self.save_res_to_csv()
         self.dispatch(Events.OPTIMIZATION_END)
 
+
     def save_res_to_csv(self):
         """Save results of the optimization to csv files located in results directory"""
         os.makedirs(self._output_path, exist_ok=True)
         results = self._space.params
         results['target'] = self._space.target
+        results = pd.concat((results, self._space._optimization_info), axis=1)
         results['index'] = results.index.fillna(-1).astype(int)
         results.set_index('index', inplace=True)
         results.to_csv(os.path.join(self._output_path, "results.csv"), index=True)
 
         print("Results successfully saved to " + self._output_path)
+
 
     def set_bounds(self, new_bounds):
         """
@@ -400,11 +443,13 @@ class BayesianOptimization(Observable):
         """
         self._space.set_bounds(new_bounds)
 
+
     def set_gp_params(self, **params):
         """Set parameters to the internal Gaussian Process Regressor"""
         self._gp.set_params(**params)
 
-    def get_ml_model(self, y_name):
+
+    def train_ml_model(self, y_name):
         """
         Returns the Machine Learning model trained on the current history
 
@@ -419,17 +464,9 @@ class BayesianOptimization(Observable):
             The trained ML model
         """
         # Build training dataset for the ML model
-        X = pd.DataFrame(self._space._params, columns=self._space.keys)
+        X = self._space._params
         if self._debug: print("Dataset for ML model has shape", X.shape)
-        try:
-            y = self._space._target_dict_info[y_name]
-        except KeyError:
-            if self.dataset is None:
-                raise KeyError("Target function return values must have '{}' field".format(y_name))
-            elif y_name in self.dataset.columns:
-                y = self.dataset.loc[self._space.indexes, y_name]
-            else:
-                raise KeyError("Dataset must have '{}' column".format(y_name))
+        y = self.get_ml_target_data(y_name)
 
         # Initialize and train model
         model = Ridge()
@@ -438,11 +475,24 @@ class BayesianOptimization(Observable):
         if self._debug:
             try:
                 print("Trained ML model:")
-                print("Training MAPE =", mape(model.predict(X), y))
+                print("Training MAPE =", mape(y, model.predict(X)))
                 print("Coefficients =", model.coef_)
             except:
                 pass
         return model
+
+
+    def get_ml_target_data(self, y_name):
+        """Fetches target data for ML with the given field/column name"""
+        if y_name in self._space._target_dict_info:
+            return self._space._target_dict_info[y_name]
+        elif self.dataset is None:
+            raise KeyError("Target function return values must have '{}' field".format(y_name))
+        elif y_name in self.dataset.columns:
+            return self.dataset.loc[self._space.indexes, y_name]
+        else:
+            raise KeyError("Dataset must have '{}' column".format(y_name))
+
 
     def update_memory_queue(self, dataset, x_new):
         """
@@ -479,19 +529,21 @@ class BayesianOptimization(Observable):
             counts = [len(_) for _ in self.memory_queue]
             print("Counts in memory queue: {} (total: {})".format(counts, sum(counts)))
 
-    def _add_initial_point_dict(self, x_init: dict, idx=None):
+
+    def _add_initial_point_dict(self, x_init, idx=None):
         """
         Add one single point as an initial probing point
 
         Parameters
         ----------
-        XX_init: dict
+        x_init: dict
             Point to be initialized
 
         idx: int or None, optional (default=None)
-            Dataset index, if any, of the given point
+            The dataset index, if any, of the given point
         """
         self.probe(x_init, idx=idx, lazy=True)
+
 
     def add_initial_points(self, XX_init, idx=None, ignore_df_index=True):
         """
@@ -503,7 +555,7 @@ class BayesianOptimization(Observable):
             Point (if dict) or list of points (otherwise) to be initialized
 
         idx: int or None, optional (default=None)
-            Dataset index, if any, of the given point. Only used if only one point is given,
+            The dataset index, if any, of the given point. Only used if only one point is given,
             i.e. if `XX_init` is a dict or only has one entry
 
         ignore_df_index: bool, optional (default=True)
@@ -512,13 +564,13 @@ class BayesianOptimization(Observable):
             `DataFrame` is SPECIFICALLY set to match the true dataset indexes, otherwise
             keep True. This parameter is ignored if XX_init is not a `DataFrame`.
         """
-        if type(XX_init) == dict:
+        if isinstance(XX_init, dict):
             self._add_initial_point_dict(XX_init, idx)
-        elif type(XX_init) in (list, tuple):
+        elif isinstance(XX_init, (list, tuple)):
             idx = idx if len(XX_init) == 1 else None
             for x in XX_init:
                 self._add_initial_point_dict(x, idx)
-        elif type(XX_init) == pd.DataFrame:
+        elif isinstance(XX_init, pd.DataFrame):
             for i, row in XX_init.iterrows():
                 if not ignore_df_index:
                     idx_arg = i
