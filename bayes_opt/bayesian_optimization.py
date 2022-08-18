@@ -108,10 +108,8 @@ class BayesianOptimization(Observable):
     debug: bool, optional (default=False)
         Whether or not to print detailed debugging information
     """
-
     def __init__(self, f=None, pbounds=None, random_state=None, verbose=2, bounds_transformer=None,
                  dataset=None, output_path=None, target_column=None, debug=False):
-
         # Initialize members from arguments
         self._random_state = ensure_rng(random_state)
         self._verbose = verbose
@@ -155,6 +153,7 @@ class BayesianOptimization(Observable):
 
         if self._debug: print("BayesianOptimization initialization completed")
 
+
     @property
     def space(self):
         return self._space
@@ -171,13 +170,16 @@ class BayesianOptimization(Observable):
     def dataset(self):
         return self._space.dataset
 
+
     def register(self, params, target, idx=None):
         """Expect observation with known target"""
         self._space.register(params, target, idx)
         self.dispatch(Events.OPTIMIZATION_STEP)
 
+
     def register_optimization_info(self, info_new):
         self._space.register_optimization_info(info_new)
+
 
     def probe(self, params, idx=None, lazy=True):
         """
@@ -200,6 +202,7 @@ class BayesianOptimization(Observable):
         else:
             self._space.probe(params, idx=idx)
             self.dispatch(Events.OPTIMIZATION_STEP)
+
 
     def suggest(self, utility_function):
         """Most promising point to probe next"""
@@ -240,6 +243,7 @@ class BayesianOptimization(Observable):
 
         return self._space.array_to_params(suggestion), idx, acq_val
 
+
     def _prime_queue(self, init_points):
         """Make sure there's something in the queue at the very beginning."""
         if self._queue.empty and self._space.empty:
@@ -254,12 +258,14 @@ class BayesianOptimization(Observable):
                 self.update_memory_queue(self.dataset[self._space.keys],
                                          self._space.params_to_array(x_init))
 
+
     def _prime_subscriptions(self):
         if not any([len(subs) for subs in self._events.values()]):
             _logger = _get_default_logger(self._verbose)
             self.subscribe(Events.OPTIMIZATION_START, _logger)
             self.subscribe(Events.OPTIMIZATION_STEP, _logger)
             self.subscribe(Events.OPTIMIZATION_END, _logger)
+
 
     def maximize(self,
                  init_points=5,
@@ -392,6 +398,7 @@ class BayesianOptimization(Observable):
         self.save_res_to_csv()
         self.dispatch(Events.OPTIMIZATION_END)
 
+
     def save_res_to_csv(self):
         """Save results of the optimization to csv files located in results directory"""
         os.makedirs(self._output_path, exist_ok=True)
@@ -404,6 +411,7 @@ class BayesianOptimization(Observable):
 
         print("Results successfully saved to " + self._output_path)
 
+
     def set_bounds(self, new_bounds):
         """
         Change the lower and upper searching bounds
@@ -415,9 +423,11 @@ class BayesianOptimization(Observable):
         """
         self._space.set_bounds(new_bounds)
 
+
     def set_gp_params(self, **params):
         """Set parameters to the internal Gaussian Process Regressor"""
         self._gp.set_params(**params)
+
 
     def train_ml_model(self, y_name):
         """
@@ -451,6 +461,7 @@ class BayesianOptimization(Observable):
                 pass
         return model
 
+
     def get_ml_target_data(self, y_name):
         if y_name in self._space._target_dict_info:
             return self._space._target_dict_info[y_name]
@@ -460,6 +471,7 @@ class BayesianOptimization(Observable):
             return self.dataset.loc[self._space.indexes, y_name]
         else:
             raise KeyError("Dataset must have '{}' column".format(y_name))
+
 
     def update_memory_queue(self, dataset, x_new):
         """
@@ -496,6 +508,7 @@ class BayesianOptimization(Observable):
             counts = [len(_) for _ in self.memory_queue]
             print("Counts in memory queue: {} (total: {})".format(counts, sum(counts)))
 
+
     def _add_initial_point_dict(self, x_init: dict, idx=None):
         """
         Add one single point as an initial probing point
@@ -509,6 +522,7 @@ class BayesianOptimization(Observable):
             Dataset index, if any, of the given point
         """
         self.probe(x_init, idx=idx, lazy=True)
+
 
     def add_initial_points(self, XX_init, idx=None, ignore_df_index=True):
         """

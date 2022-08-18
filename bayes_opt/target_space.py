@@ -23,7 +23,6 @@ class TargetSpace(object):
     >>> y = space.register_point(x)
     >>> assert self.max_point()['max_val'] == y
     """
-
     def __init__(self, target_func=None, pbounds=None, random_state=None,
                  dataset=None, target_column=None, debug=False):
         """
@@ -81,9 +80,11 @@ class TargetSpace(object):
 
         if self._debug: print("TargetSpace initialization completed")
 
+
     def __len__(self):
         assert len(self._params) == len(self._target)
         return len(self._target)
+
 
     @property
     def empty(self):
@@ -121,6 +122,7 @@ class TargetSpace(object):
     def indexes(self):
         return self._params.index
 
+
     def params_to_array(self, params):
         try:
             assert set(params) == set(self.keys)
@@ -131,6 +133,7 @@ class TargetSpace(object):
             )
         return np.asarray([params[key] for key in self.keys])
 
+
     def array_to_params(self, x):
         try:
             assert len(x) == len(self.keys)
@@ -140,6 +143,7 @@ class TargetSpace(object):
                 "expected number of parameters ({}).".format(len(self.keys))
             )
         return dict(zip(self.keys, x))
+
 
     def _as_array(self, x):
         try:
@@ -156,6 +160,7 @@ class TargetSpace(object):
                 "expected number of parameters ({}).".format(len(self.keys))
             )
         return x
+
 
     def register(self, params, target, idx=None):
         """
@@ -207,10 +212,12 @@ class TargetSpace(object):
         if self._debug: print("Point registered successfully")
         return value
 
+
     def register_optimization_info(self, info_new):
         """Register relevant information into self._optimization_info"""
         self._optimization_info = pd.concat((self._optimization_info, info_new))
         if self._debug: print("Registered optimization information:", info_new, sep="\n")
+
 
     def probe(self, params, idx=None):
         """
@@ -238,6 +245,7 @@ class TargetSpace(object):
         target_value = self.register(x, target, idx)
         if self._debug: print("Probed target value:", target_value)
         return target_value
+
 
     def random_sample(self):
         """
@@ -272,6 +280,7 @@ class TargetSpace(object):
             if self._debug: print("Uniform randomly sampled point: value {}".format(data))
         return idx, self.array_to_params(data.ravel())
 
+
     def max(self):
         """Get maximum target value found and corresponding parameters."""
         try:
@@ -285,6 +294,7 @@ class TargetSpace(object):
             res = {}
         return res
 
+
     def res(self):
         """Get all target values found and corresponding parameters."""
         params = [dict(zip(self.keys, p)) for p in self.params.values]
@@ -293,6 +303,7 @@ class TargetSpace(object):
             {"target": target} | param
             for target, param in zip(self.target, params)
         ]
+
 
     def set_bounds(self, new_bounds):
         """
@@ -306,6 +317,7 @@ class TargetSpace(object):
         for row, key in enumerate(self.keys):
             if key in new_bounds:
                 self._bounds[row] = new_bounds[key]
+
 
     def extract_value_and_info(self, target):
         """
@@ -339,6 +351,7 @@ class TargetSpace(object):
             return target[key], target
         else:
             raise ValueError("Unrecognized return type '{}' in target function".format(type(target)))
+
 
     def initialize_dataset(self, dataset=None, target_column=None):
         """
@@ -393,6 +406,7 @@ class TargetSpace(object):
         for key, (lb, ub) in zip(self._keys, self._bounds):
             if self.dataset[key].min() < lb or self.dataset[key].max() >= ub:
                 raise ValueError("Dataset values for '{}' column are not consistent with bounds".format(key))
+
 
     def find_point_in_dataset(self, params):
         """
