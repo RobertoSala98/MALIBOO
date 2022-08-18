@@ -198,20 +198,19 @@ class TargetSpace(object):
         if info:  # The return value of the target function is a dict
             if self._target_dict_info.empty:
                 # Initialize member
-                self._target_dict_info = pd.DataFrame(info, index=[0])
+                self._target_dict_info = pd.DataFrame(info, index=[idx])
             else:
                 # Append new point to member
-                info_new = pd.DataFrame(info, index=[0])
-                self._target_dict_info = pd.concat((self._target_dict_info, info_new), ignore_index=True)
+                info_new = pd.DataFrame(info, index=[idx])
+                self._target_dict_info = pd.concat((self._target_dict_info, info_new))
 
         if self._debug: print("Point registered successfully")
         return value
 
-    def register_optimization_info(self, idx, key, val):
+    def register_optimization_info(self, info_new):
         """Register relevant information into self._optimization_info"""
-        info_new = pd.DataFrame([val], columns=[key], index=[idx])
         self._optimization_info = pd.concat((self._optimization_info, info_new))
-        if self._debug: print("Registered value {} with index {} in column '{}'".format(val, idx, key))
+        if self._debug: print("Registered optimization information:", info_new, sep="\n")
 
     def probe(self, params, idx=None):
         """

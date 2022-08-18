@@ -176,8 +176,8 @@ class BayesianOptimization(Observable):
         self._space.register(params, target, idx)
         self.dispatch(Events.OPTIMIZATION_STEP)
 
-    def register_optimization_info(self, idx, key, val):
-        self._space.register_optimization_info(idx, key, val)
+    def register_optimization_info(self, info_new):
+        self._space.register_optimization_info(info_new)
 
     def probe(self, params, idx=None, lazy=True):
         """
@@ -212,10 +212,6 @@ class BayesianOptimization(Observable):
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
             self._gp.fit(self._space.params, self._space.target)
-            # If requird, train ML model with all space parameters data collected so far
-            if 'ml' in utility_function.kind:
-                model = self.get_ml_model(y_name=utility_function.ml_target)
-                utility_function.set_ml_model(model)
 
         if self.dataset is None:
             dataset_acq = None
@@ -354,6 +350,10 @@ class BayesianOptimization(Observable):
                 if self._debug: print("Selected point from queue: index {}, value {}".format(idx, x_probe))
             except StopIteration:
                 util.update_params()
+                # If requird, train ML model with all space parameters data collected so far
+                if 'ml' in acq:
+                    ml_model = self.train_ml_model(y_name=util.ml_target)
+                    util.set_ml_model(ml_model)
                 x_probe, idx, acq_val = self.suggest(util)
                 if self._debug: print("Iteration {}, suggested point: index {}, value {}, acquisition {}".format(iteration, idx, x_probe, acq_val))
                 iteration += 1
@@ -376,7 +376,8 @@ class BayesianOptimization(Observable):
                 self.register(self._space.params_to_array(x_probe), target_value, idx)
 
             # Register other information about the new point
-            self.register_optimization_info(idx, 'acquisition', acq_val)
+            other_info = pd.DataFrame(acq_val, columns=['acquisition'], index=[idx])
+            self.register_optimization_info(other_info)
 
         if self._bounds_transformer:
             self.set_bounds(
@@ -412,7 +413,7 @@ class BayesianOptimization(Observable):
         """Set parameters to the internal Gaussian Process Regressor"""
         self._gp.set_params(**params)
 
-    def get_ml_model(self, y_name):
+    def train_ml_model(self, y_name):
         """
         Returns the Machine Learning model trained on the current history
 
@@ -446,7 +447,7 @@ class BayesianOptimization(Observable):
         if self._debug:
             try:
                 print("Trained ML model:")
-                print("Training MAPE =", mape(model.predict(X), y))
+                print("Training MAPE =", mape(y, model.predict(X)))
                 print("Coefficients =", model.coef_)
             except:
                 pass
