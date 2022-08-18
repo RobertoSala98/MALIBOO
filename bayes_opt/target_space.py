@@ -383,7 +383,7 @@ class TargetSpace(object):
         if self._debug: print("Shape of initialized dataset is", self._dataset.shape)
 
         # Check for banned column names
-        banned_columns = ('index', 'params', 'target', 'value', 'acquisition')
+        banned_columns = ('index', 'params', 'target', 'value', 'acquisition', 'ml_mape')
         for col in banned_columns:
             if col in self._dataset.columns:
                 raise ValueError("Column name '{}' is not allowed in a dataset, please change it".format(col))
