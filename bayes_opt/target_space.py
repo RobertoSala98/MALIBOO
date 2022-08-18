@@ -352,7 +352,7 @@ class TargetSpace(object):
             if self._debug: print("initialize_dataset(): dataset is None")
             return
 
-        if type(dataset) == pd.DataFrame:
+        if isinstance(dataset, pd.DataFrame):
             self._dataset = dataset
         else:
             try:

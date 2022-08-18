@@ -512,13 +512,13 @@ class BayesianOptimization(Observable):
             `DataFrame` is SPECIFICALLY set to match the true dataset indexes, otherwise
             keep True. This parameter is ignored if XX_init is not a `DataFrame`.
         """
-        if type(XX_init) == dict:
+        if isinstance(XX_init, dict):
             self._add_initial_point_dict(XX_init, idx)
-        elif type(XX_init) in (list, tuple):
+        elif isinstance(XX_init, (list, tuple)):
             idx = idx if len(XX_init) == 1 else None
             for x in XX_init:
                 self._add_initial_point_dict(x, idx)
-        elif type(XX_init) == pd.DataFrame:
+        elif isinstance(XX_init, pd.DataFrame):
             for i, row in XX_init.iterrows():
                 if not ignore_df_index:
                     idx_arg = i
