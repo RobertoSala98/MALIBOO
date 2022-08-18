@@ -176,6 +176,9 @@ class BayesianOptimization(Observable):
         self._space.register(params, target, idx)
         self.dispatch(Events.OPTIMIZATION_STEP)
 
+    def register_optimization_info(self, idx, key, val):
+        self._space.register_optimization_info(idx, key, val)
+
     def probe(self, params, idx=None, lazy=True):
         """
         Evaluates the function on the given points. Useful to guide the optimizer.
@@ -352,7 +355,7 @@ class BayesianOptimization(Observable):
             except StopIteration:
                 util.update_params()
                 x_probe, idx, acq_val = self.suggest(util)
-                if self._debug: print("Iteration {}, suggested point: index {}, value {}".format(iteration, idx, x_probe))
+                if self._debug: print("Iteration {}, suggested point: index {}, value {}, acquisition {}".format(iteration, idx, x_probe, acq_val))
                 iteration += 1
 
             if x_probe is None:
@@ -372,6 +375,9 @@ class BayesianOptimization(Observable):
                     target_value = self.dataset.loc[idx, self._space.target_column]
                 self.register(self._space.params_to_array(x_probe), target_value, idx)
 
+            # Register other information about the new point
+            self.register_optimization_info(idx, 'acquisition', acq_val)
+
         if self._bounds_transformer:
             self.set_bounds(
                 self._bounds_transformer.transform(self._space))
@@ -384,6 +390,7 @@ class BayesianOptimization(Observable):
         os.makedirs(self._output_path, exist_ok=True)
         results = self._space.params
         results['target'] = self._space.target
+        results = pd.concat((results, self._space._optimization_info), axis=1)
         results['index'] = results.index.fillna(-1).astype(int)
         results.set_index('index', inplace=True)
         results.to_csv(os.path.join(self._output_path, "results.csv"), index=True)

@@ -74,7 +74,10 @@ class TargetSpace(object):
         # preallocated memory for X and Y points
         self._params = pd.DataFrame()
         self._target = np.empty(shape=(0))
+
+        # Other information to be recorded
         self._target_dict_info = pd.DataFrame()
+        self._optimization_info = pd.DataFrame()
 
         if self._debug: print("TargetSpace initialization completed")
 
@@ -203,6 +206,12 @@ class TargetSpace(object):
 
         if self._debug: print("Point registered successfully")
         return value
+
+    def register_optimization_info(self, idx, key, val):
+        """Register relevant information into self._optimization_info"""
+        info_new = pd.DataFrame([val], columns=[key], index=[idx])
+        self._optimization_info = pd.concat((self._optimization_info, info_new))
+        if self._debug: print("Registered value {} with index {} in column '{}'".format(val, idx, key))
 
     def probe(self, params, idx=None):
         """
@@ -362,7 +371,7 @@ class TargetSpace(object):
         if self._debug: print("Shape of initialized dataset is", self._dataset.shape)
 
         # Check for banned column names
-        banned_columns = ('index', 'params', 'target', 'value')
+        banned_columns = ('index', 'params', 'target', 'value', 'acquisition')
         for col in banned_columns:
             if col in self._dataset.columns:
                 raise ValueError("Column name '{}' is not allowed in a dataset, please change it".format(col))
