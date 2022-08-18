@@ -153,7 +153,7 @@ class UtilityFunction(object):
 
     def initialize_acq_info(self, acq_info, kind):
         """Initialize some parameters of the `kind` acquisition function from the `acq_info` dict, if any"""
-        if self._debug: print("Initializing UtilityFunction of kind", kind, "with acq_info =", acq_info)
+        if self._debug: print("Initializing UtilityFunction of kind '{}' with acq_info = {}".format(kind, acq_info))
 
         # For Machine Learning-based acquisitions
         if 'ml' in kind:

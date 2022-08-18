@@ -353,15 +353,16 @@ class BayesianOptimization(Observable):
             try:
                 idx, x_probe = next(self._queue)
                 acq_val = None
-                if self._debug: print("Selected point from queue: index {}, value {}".format(idx, x_probe))
+                if self._debug: print("New iteration: selected point from queue, index {}, value {}".format(idx, x_probe))
             except StopIteration:
+                if self._debug: print("New iteration {}: suggesting new point".format(iteration))
                 util.update_params()
                 # If requird, train ML model with all space parameters data collected so far
                 if 'ml' in acq:
                     ml_model = self.train_ml_model(y_name=util.ml_target)
                     util.set_ml_model(ml_model)
                 x_probe, idx, acq_val = self.suggest(util)
-                if self._debug: print("Iteration {}, suggested point: index {}, value {}, acquisition {}".format(iteration, idx, x_probe, acq_val))
+                if self._debug: print("Suggested point: index {}, value {}, acquisition {}".format(iteration, idx, x_probe, acq_val))
                 iteration += 1
 
             if x_probe is None:
@@ -390,6 +391,8 @@ class BayesianOptimization(Observable):
                 err = mape(y_true, y_bar)
                 other_info['ml_mape'] = err
             self.register_optimization_info(other_info)
+
+            if self._debug: print("End of current iteration", 24*"+", sep="\n")
 
         if self._bounds_transformer:
             self.set_bounds(
