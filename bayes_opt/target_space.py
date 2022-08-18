@@ -199,7 +199,8 @@ class TargetSpace(object):
                 self._target_dict_info = pd.DataFrame(info, index=[0])
             else:
                 # Append new point to member
-                self._target_dict_info = pd.concat((self._target_dict_info, pd.DataFrame(info, index=[0])), ignore_index=True)
+                info_new = pd.DataFrame(info, index=[0])
+                self._target_dict_info = pd.concat((self._target_dict_info, info_new), ignore_index=True)
 
         if self._debug: print("Point registered successfully")
         return value
