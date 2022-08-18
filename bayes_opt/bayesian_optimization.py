@@ -377,6 +377,12 @@ class BayesianOptimization(Observable):
 
             # Register other information about the new point
             other_info = pd.DataFrame(acq_val, columns=['acquisition'], index=[idx])
+            if hasattr(util, 'ml_model'):  # register validation MAPE on new point
+                y_true = [ self.get_ml_target_data(util.ml_target).iloc[-1] ]
+                y_bar = util.ml_model.predict(pd.DataFrame(x_probe, index=[idx]))
+                if self._debug: print("True vs predicted '{}' value: {} vs {}".format(util.ml_target, y_true, y_bar))
+                err = mape(y_true, y_bar)
+                other_info['ml_mape'] = err
             self.register_optimization_info(other_info)
 
         if self._bounds_transformer:
