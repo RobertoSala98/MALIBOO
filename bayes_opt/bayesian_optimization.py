@@ -419,7 +419,7 @@ class BayesianOptimization(Observable):
             The trained ML model
         """
         # Build training dataset for the ML model
-        X = pd.DataFrame(self._space._params, columns=self._space.keys)
+        X = self._space._params
         if self._debug: print("Dataset for ML model has shape", X.shape)
         try:
             y = self._space._target_dict_info[y_name]
