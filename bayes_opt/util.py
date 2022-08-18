@@ -44,10 +44,14 @@ def acq_max(ac, gp, y_max, bounds, random_state, n_warmup=10000, n_iter=10, data
 
     Returns
     -------
-    idx
-        The dataset index of the arg max of the acquisition function, or None if no dataset is used
     x_max
         The arg max of the acquisition function
+
+    idx
+        The dataset index of the arg max of the acquisition function, or None if no dataset is used
+
+    max_acq
+        The computed maximum of the acquisition function, namely ac(x_max)
     """
 
     # Warm up with random points or dataset points
@@ -70,7 +74,7 @@ def acq_max(ac, gp, y_max, bounds, random_state, n_warmup=10000, n_iter=10, data
         idx = dataset.index[idx]
         max_acq = ys[idx]
         if debug: print("End of acq_max(): maximizer of utility is x = data[{}] = {}, with ac(x) = {}".format(idx, x_max, max_acq))
-        return idx, x_max
+        return x_max, idx, max_acq
 
     max_acq = ys[idx]
     if debug: print("Best point on initial grid is ac({}) = {}".format(x_max, max_acq))
@@ -100,7 +104,7 @@ def acq_max(ac, gp, y_max, bounds, random_state, n_warmup=10000, n_iter=10, data
 
     # Clip output to make sure it lies within the bounds. Due to floating
     # point technicalities this is not always the case.
-    return None, np.clip(x_max, bounds[:, 0], bounds[:, 1])
+    return np.clip(x_max, bounds[:, 0], bounds[:, 1]), None, max_acq
 
 
 class UtilityFunction(object):

@@ -226,7 +226,7 @@ class BayesianOptimization(Observable):
             dataset_acq = self.dataset.loc[mask, self._space.keys]
 
         # Find argmax of the acquisition function
-        idx, suggestion = acq_max(
+        suggestion, idx, acq_val = acq_max(
             ac=utility_function.utility,
             gp=self._gp,
             y_max=self._space.target.max(),
@@ -239,7 +239,7 @@ class BayesianOptimization(Observable):
         if self.dataset is not None:
             self.update_memory_queue(self.dataset[self._space.keys], suggestion)
 
-        return idx, self._space.array_to_params(suggestion)
+        return self._space.array_to_params(suggestion), idx, acq_val
 
     def _prime_queue(self, init_points):
         """Make sure there's something in the queue at the very beginning."""
@@ -347,10 +347,11 @@ class BayesianOptimization(Observable):
             # Sample new point from GP
             try:
                 idx, x_probe = next(self._queue)
+                acq_val = None
                 if self._debug: print("Selected point from queue: index {}, value {}".format(idx, x_probe))
             except StopIteration:
                 util.update_params()
-                idx, x_probe = self.suggest(util)
+                x_probe, idx, acq_val = self.suggest(util)
                 if self._debug: print("Iteration {}, suggested point: index {}, value {}".format(iteration, idx, x_probe))
                 iteration += 1
 
