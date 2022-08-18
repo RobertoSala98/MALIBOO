@@ -188,14 +188,14 @@ class BayesianOptimization(Observable):
         Parameters
         ----------
         params: dict or list
-            The parameters where the optimizer will evaluate the function.
+            The parameters where the optimizer will evaluate the function
 
         idx: int or None, optional (default=None)
-            Index number of the point to be probed, or None if no dataset is used
+            The dataset index of the probed point, or None if no dataset is being used
 
         lazy: bool, optional (default=True)
             If True, the optimizer will evaluate the points when calling
-            maximize(). Otherwise it will evaluate it at the moment.
+            maximize(), otherwise it will evaluate it at the moment
         """
         if lazy:
             self._queue.add((idx, params))
@@ -205,7 +205,25 @@ class BayesianOptimization(Observable):
 
 
     def suggest(self, utility_function):
-        """Most promising point to probe next"""
+        """
+        Get most promising point to probe next
+
+        Parameters
+        ----------
+        utility_function: UtilityFunction object
+            Acquisition function to be maximized
+
+        Returns
+        -------
+        x_max: dict
+            The arg max of the acquisition function
+
+        idx: int or None
+            The dataset index of the arg max of the acquisition function, or None if no dataset is being used
+
+        max_acq: float
+            The computed maximum of the acquisition function, namely ac(x_max)
+        """
         if len(self._space) == 0:
             idx, x_rand = self._space.random_sample()
             return idx, self._space.array_to_params(x_rand)
@@ -465,6 +483,7 @@ class BayesianOptimization(Observable):
 
 
     def get_ml_target_data(self, y_name):
+        """Fetches target data for ML with the given field/column name"""
         if y_name in self._space._target_dict_info:
             return self._space._target_dict_info[y_name]
         elif self.dataset is None:
@@ -511,17 +530,17 @@ class BayesianOptimization(Observable):
             print("Counts in memory queue: {} (total: {})".format(counts, sum(counts)))
 
 
-    def _add_initial_point_dict(self, x_init: dict, idx=None):
+    def _add_initial_point_dict(self, x_init, idx=None):
         """
         Add one single point as an initial probing point
 
         Parameters
         ----------
-        XX_init: dict
+        x_init: dict
             Point to be initialized
 
         idx: int or None, optional (default=None)
-            Dataset index, if any, of the given point
+            The dataset index, if any, of the given point
         """
         self.probe(x_init, idx=idx, lazy=True)
 
@@ -536,7 +555,7 @@ class BayesianOptimization(Observable):
             Point (if dict) or list of points (otherwise) to be initialized
 
         idx: int or None, optional (default=None)
-            Dataset index, if any, of the given point. Only used if only one point is given,
+            The dataset index, if any, of the given point. Only used if only one point is given,
             i.e. if `XX_init` is a dict or only has one entry
 
         ignore_df_index: bool, optional (default=True)

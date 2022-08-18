@@ -13,42 +13,31 @@ class TargetSpace(object):
     """
     Holds the param-space coordinates (X) and target values (Y)
 
-    Example
-    -------
-    >>> def target_func(p1, p2):
-    >>>     return p1 + p2
-    >>> pbounds = {'p1': (0, 1), 'p2': (1, 100)}
-    >>> space = TargetSpace(target_func, pbounds, random_state=0)
-    >>> x = space.random_points(1)[0]
-    >>> y = space.register_point(x)
-    >>> assert self.max_point()['max_val'] == y
+    Parameters
+    ----------
+    target_func: function, optional (default=None)
+        Target function to be maximized.
+
+    pbounds: dict
+        Dictionary with parameters names as keys and a tuple with minimum
+        and maximum values. Mandatory argument.
+
+    random_state: int, RandomState, or None, optional (default=None)
+        Optionally specify a seed for a random number generator
+
+    dataset: str, file handle, or pandas.DataFrame, optional (default=None)
+        The dataset, if any, which constitutes the optimization domain (X) and possibly
+        the list of target values (Y)
+
+    target_column: str, optional (default=None)
+        Name of the column that will act as the target value of the optimization.
+        Only works if dataset is passed.
+
+    debug: bool, optional (default=False)
+        Whether or not to print detailed debugging information
     """
     def __init__(self, target_func=None, pbounds=None, random_state=None,
                  dataset=None, target_column=None, debug=False):
-        """
-        Parameters
-        ----------
-        target_func: function, optional (default=None)
-            Target function to be maximized.
-
-        pbounds: dict
-            Dictionary with parameters names as keys and a tuple with minimum
-            and maximum values.
-
-        random_state: int, RandomState, or None, optional (default=None)
-            Optionally specify a seed for a random number generator
-
-        dataset: str, file handle, or pandas.DataFrame, optional (default=None)
-            The dataset, if any, which constitutes the optimization domain and possibly
-            the list of target values
-
-        target_column: str, optional (default=None)
-            Name of the column that will act as the target value of the optimization.
-            Only works if dataset is passed.
-
-        debug: bool, optional (default=False)
-            Whether or not to print detailed debugging information
-        """
         if pbounds is None:
             raise ValueError("pbounds must be specified")
 
@@ -175,7 +164,7 @@ class TargetSpace(object):
             Target function value
 
         idx: int or None, optional (default=None)
-            Index number of the point to be registered, or None if no dataset is used
+            The dataset index of the point to be registered, or None if no dataset is being used
 
         Returns
         -------
@@ -230,7 +219,7 @@ class TargetSpace(object):
             A single point, with len(x) == self.dim
 
         idx: int or None, optional (default=None)
-            Index number of the point to be probed, or None if no dataset is used
+            The dataset index of the point to be probed, or None if no dataset is being used
 
         Returns
         -------
@@ -254,7 +243,7 @@ class TargetSpace(object):
         Returns
         ----------
         idx: int or None
-            Index number of chosen point, or None if no dataset is used
+            The dataset index number of the chosen point, or None if no dataset is being used
         data: numpy.ndarray
             [num x dim] array points with dimensions corresponding to `self._keys`
 
@@ -420,7 +409,7 @@ class TargetSpace(object):
         Returns
         -------
         idx: int
-            Dataset index of the point found
+            The dataset index of the point found
         target_val: float
             Dataset target value associated to the point found
         """

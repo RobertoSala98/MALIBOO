@@ -44,13 +44,13 @@ def acq_max(ac, gp, y_max, bounds, random_state, n_warmup=10000, n_iter=10, data
 
     Returns
     -------
-    x_max
+    x_max: numpy.ndarray
         The arg max of the acquisition function
 
-    idx
-        The dataset index of the arg max of the acquisition function, or None if no dataset is used
+    idx: int or None
+        The dataset index of the arg max of the acquisition function, or None if no dataset is being used
 
-    max_acq
+    max_acq: float
         The computed maximum of the acquisition function, namely ac(x_max)
     """
     # Warm up with random points or dataset points
@@ -222,6 +222,7 @@ class UtilityFunction(object):
 
     @staticmethod
     def _ucb(x, gp, kappa):
+        """Compute Upper Confidence Bound"""
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
             mean, std = gp.predict(x, return_std=True)
@@ -231,6 +232,7 @@ class UtilityFunction(object):
 
     @staticmethod
     def _poi(x, gp, y_max, xi):
+        """Compute Probability Of Improvement"""
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
             mean, std = gp.predict(x, return_std=True)
@@ -241,6 +243,7 @@ class UtilityFunction(object):
 
     @staticmethod
     def _ei(x, gp, y_max, xi):
+        """Compute Expected Improvement"""
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
             mean, std = gp.predict(x, return_std=True)
@@ -252,6 +255,7 @@ class UtilityFunction(object):
 
     @staticmethod
     def _ei_ml(x, gp, y_max, xi, ml_model, bounds):
+        """Compute Expected Improvement - ML indicator version"""
         ei = UtilityFunction._ei(x, gp, y_max, xi)
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
@@ -291,7 +295,7 @@ class UtilityFunction(object):
 
     @staticmethod
     def _eic_ml(x, gp, y_max, xi, variant, ml_model, ml_bounds, eic_bounds, P, Q, exp_C):
-        """Compute Expected Improvement with Constraints, variants B/C/D"""
+        """Compute Expected Improvement with Constraints, ML variants B/C/D"""
         # Compute regular Expected Improvement with Constraints
         eic = UtilityFunction._eic(x, gp, y_max, xi, eic_bounds, P, Q)
         # Call ML model
@@ -342,7 +346,7 @@ def load_logs(optimizer, logs):
 
 def ensure_rng(random_state=None):
     """
-    Creates a random number generator based on an optional seed.  This can be
+    Creates a random number generator based on an optional seed. This can be
     an integer or another random state for a seeded rng, or None for an
     unseeded rng.
     """
