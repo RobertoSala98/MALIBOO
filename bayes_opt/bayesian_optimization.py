@@ -388,8 +388,7 @@ class BayesianOptimization(Observable):
                 y_true = [ self.get_ml_target_data(util.ml_target).iloc[-1] ]
                 y_bar = util.ml_model.predict(pd.DataFrame(x_probe, index=[idx]))
                 if self._debug: print("True vs predicted '{}' value: {} vs {}".format(util.ml_target, y_true, y_bar))
-                err = mape(y_true, y_bar)
-                other_info['ml_mape'] = err
+                other_info['ml_mape'] = mape(y_true, y_bar)
             self.register_optimization_info(other_info)
 
             if self._debug: print("End of current iteration", 24*"+", sep="\n")
