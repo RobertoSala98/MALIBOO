@@ -86,7 +86,7 @@ class BayesianOptimization(Observable):
 
     random_state: int or numpy.random.RandomState, optional (default=None)
         If the value is an integer, it is used as the seed for creating a
-        `numpy.random.RandomState`. Otherwise the random state provieded it is used.
+        `numpy.random.RandomState`. Otherwise the random state provided it is used.
         When set to None, an unseeded random state is generated.
 
     verbose: int, optional (default=2)
@@ -411,7 +411,9 @@ class BayesianOptimization(Observable):
 
             if self._debug: print("End of current iteration", 24*"+", sep="\n")
 
-        if self._bounds_transformer:
+        if self._bounds_transformer and iteration > 0:
+            # The bounds transformer should only modify the bounds after the init_points points (only for the true
+            # iterations)
             self.set_bounds(
                 self._bounds_transformer.transform(self._space))
         print("max:", self.max)
