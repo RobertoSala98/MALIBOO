@@ -3,7 +3,7 @@ import numpy as np
 import os
 import pandas as pd
 import warnings
-from queue import Queue, Empty
+from queue import Queue
 
 from sklearn.gaussian_process.kernels import Matern
 from sklearn.gaussian_process import GaussianProcessRegressor
@@ -362,26 +362,27 @@ class BayesianOptimization(Observable):
 
         while not self._queue.empty() or iteration < n_iter:
             # Sample new point from GP
-            try:
+            if not self._queue.empty():
+                # get point from queue
                 idx, x_probe = self._queue.get(block=False)
                 acq_val = None
                 if self._debug: print("New iteration: selected point from queue, index {}, value {}".format(idx, x_probe))
-            except Empty:
-                if not stopcrit.hard_stop() and terminated:
-                    # Keep the best point found so far
-                    x_probe = self.max['params']
-                    idx = None
-                    acq_val = None
-                    if self._debug: print("New iteration: sticking to the best point", x_probe)
-                else:
-                    if self._debug: print("New iteration {}: suggesting new point".format(iteration))
-                    util.update_params()
-                    # If requird, train ML model with all space parameters data collected so far
-                    if 'ml' in acq:
-                        ml_model = self.train_ml_model(y_name=util.ml_target)
-                        util.set_ml_model(ml_model)
-                    x_probe, idx, acq_val = self.suggest(util)
-                    if self._debug: print("Suggested point: index {}, value {}, acquisition {}".format(idx, x_probe, acq_val))
+            elif not stopcrit.hard_stop() and terminated:
+                # keep the best point found so far
+                x_probe = self.max['params']
+                idx = None
+                acq_val = None
+                if self._debug: print("New iteration: sticking to the best point", x_probe)
+                iteration += 1
+            else:
+                # sample new point
+                if self._debug: print("New iteration {}: suggesting new point".format(iteration))
+                util.update_params()
+                if 'ml' in acq:  # if requird, train ML model
+                    ml_model = self.train_ml_model(y_name=util.ml_target)
+                    util.set_ml_model(ml_model)
+                x_probe, idx, acq_val = self.suggest(util)
+                if self._debug: print("Suggested point: index {}, value {}, acquisition {}".format(idx, x_probe, acq_val))
                 iteration += 1
 
             if x_probe is None:
