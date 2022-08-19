@@ -347,6 +347,7 @@ class BayesianOptimization(Observable):
         if self._debug: print("Initializing StoppingCriterion with stop_crit_info = {}".format(stop_crit_info))
         stopcrit = StoppingCriterion(debug=self._debug, **stop_crit_info)
         iteration = 0
+        terminated = False
 
         while not self._queue.empty() or iteration < n_iter:
             # Sample new point from GP
@@ -355,7 +356,7 @@ class BayesianOptimization(Observable):
                 acq_val = None
                 if self._debug: print("New iteration: selected point from queue, index {}, value {}".format(idx, x_probe))
             except Empty:
-                if not stopcrit.hard_stop() and iteration >= 2:  # TODO add termination bool
+                if not stopcrit.hard_stop() and terminated:
                     # Keep the best point found so far
                     x_probe = self.max['params']
                     idx = None
@@ -392,17 +393,17 @@ class BayesianOptimization(Observable):
             # Register other information about the new point
             other_info = pd.DataFrame(acq_val, columns=['acquisition'], index=[idx])
             if hasattr(util, 'ml_model'):  # register validation MAPE on new point
-                y_true = [ self.get_ml_target_data(util.ml_target).iloc[-1] ]
+                ml_target_val = self.get_ml_target_data(util.ml_target).iloc[-1]
+                y_true = [ml_target_val]
                 y_bar = util.ml_model.predict(pd.DataFrame(x_probe, index=[idx]))
                 if self._debug: print("True vs predicted '{}' value: {} vs {}".format(util.ml_target, y_true, y_bar))
                 other_info['ml_mape'] = mape(y_true, y_bar)
+            else:
+                ml_target_val = None
             self.register_optimization_info(other_info)
 
             if self._debug: print("End of current iteration", 24*"+", sep="\n")
 
-            if stopcrit.hard_stop() and iteration >= 2:  # TODO add termination bool
-                if self._debug: print("Ending loop early due to stopping condition(s)")
-                break
 
         if self._bounds_transformer and iteration > 0:
             # The bounds transformer should only modify the bounds after the init_points points (only for the true
