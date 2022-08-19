@@ -197,10 +197,17 @@ def test17_free_eic_ml_D(output_path):
 
 
 def test18_free_stop_crit_soft(output_path):
-  optimizer = BO(f=target_func, pbounds={'x': (2, 4), 'y': (-3, 3)},
+  optimizer = BO(f=target_func_dict, pbounds={'x': (2, 4), 'y': (-3, 3)},
                  random_state=seed, output_path=output_path, debug=debug)
-  optimizer.maximize(init_points=n0, n_iter=n_iter,
-                     stop_crit_info={'hard_stop': False})
+  optimizer.maximize(init_points=n0, n_iter=n_iter, acq='eic_ml',
+                     acq_info={'eic_ml_var': 'C',
+                               'eic_bounds': (-3.2, -3.0),
+                               'ml_target': 'blackbox',
+                               'ml_bounds': (2, 8)
+                               },
+                     stop_crit_info={'hard_stop': False,
+                                     'ml_bounds_coeff': (0.9, None)
+                                    })
 
 
 def test19_dataset_Xy_stop_crit_soft(output_path):
