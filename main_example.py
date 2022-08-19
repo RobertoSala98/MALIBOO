@@ -209,7 +209,7 @@ def test19_dataset_Xy_stop_crit_soft(output_path):
                  dataset=os.path.join('datasets', 'test_xyz.csv'),
                  target_column='z', output_path=output_path, debug=debug)
   optimizer.maximize(init_points=n0, n_iter=n_iter,
-                     stop_crit_info={'hard_stop': False})
+                     stop_crit_info={'hard_stop': True})
 
 
 if __name__ == '__main__':
@@ -230,5 +230,5 @@ if __name__ == '__main__':
   # perform_test(test15_free_eic_ml_B)
   # perform_test(test16_free_eic_ml_C)
   # perform_test(test17_free_eic_ml_D)
-  perform_test(test18_free_stop_crit)
-  perform_test(test19_dataset_Xy_stop_crit)
+  perform_test(test18_free_stop_crit_soft)
+  perform_test(test19_dataset_Xy_stop_crit_soft)
