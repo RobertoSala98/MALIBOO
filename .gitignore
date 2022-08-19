@@ -8,8 +8,7 @@ scratch/
 .DS_Store
 bo_eg*.png
 gif/
-*.csv
-!datasets/test*.csv
+output*
 
 # Unit test / coverage reports
 htmlcov/
