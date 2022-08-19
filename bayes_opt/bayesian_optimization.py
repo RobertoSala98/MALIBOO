@@ -355,14 +355,21 @@ class BayesianOptimization(Observable):
                 acq_val = None
                 if self._debug: print("New iteration: selected point from queue, index {}, value {}".format(idx, x_probe))
             except Empty:
-                if self._debug: print("New iteration {}: suggesting new point".format(iteration))
-                util.update_params()
-                # If requird, train ML model with all space parameters data collected so far
-                if 'ml' in acq:
-                    ml_model = self.train_ml_model(y_name=util.ml_target)
-                    util.set_ml_model(ml_model)
-                x_probe, idx, acq_val = self.suggest(util)
-                if self._debug: print("Suggested point: index {}, value {}, acquisition {}".format(iteration, idx, x_probe, acq_val))
+                if not stopcrit.hard_stop() and iteration >= 2:  # TODO add termination bool
+                    # Keep the best point found so far
+                    x_probe = self.max['params']
+                    idx = None
+                    acq_info = None
+                    if self._debug: print("New iteration: sticking to the best point", x_probe)
+                else:
+                    if self._debug: print("New iteration {}: suggesting new point".format(iteration))
+                    util.update_params()
+                    # If requird, train ML model with all space parameters data collected so far
+                    if 'ml' in acq:
+                        ml_model = self.train_ml_model(y_name=util.ml_target)
+                        util.set_ml_model(ml_model)
+                    x_probe, idx, acq_val = self.suggest(util)
+                    if self._debug: print("Suggested point: index {}, value {}, acquisition {}".format(idx, x_probe, acq_val))
                 iteration += 1
 
             if x_probe is None:

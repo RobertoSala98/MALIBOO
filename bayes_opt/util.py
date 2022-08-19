@@ -330,14 +330,14 @@ class StoppingCriterion(object):
         self._debug = debug
         if conjunction not in ('and', 'or'):
             raise ValueError("'conjunction' option for Stopping Criterion must be 'and' or 'or'")
-        self.conjunction = conjunction
-        self.hard_stop = True
-        self.ml_bounds_coeff = ml_bounds_coeff
+        self._conjunction = conjunction
+        self._hard_stop = hard_stop
+        self._ml_bounds_coeff = ml_bounds_coeff
         if self._debug: print("StoppingCriterion initialization completed")
 
 
     def hard_stop(self):
-        return self.hard_stop
+        return self._hard_stop
 
 
 
