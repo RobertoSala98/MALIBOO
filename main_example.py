@@ -45,6 +45,9 @@ def perform_test(testfunc):
   print("Done in", stop-start, "seconds\n\n\n")
 
 
+# TODO test00_complex()
+
+
 def test01_free(output_path):
   optimizer = BO(f=target_func, pbounds={'x': (2, 4), 'y': (-3, 3)},
                  random_state=seed, output_path=output_path, debug=debug)
@@ -211,31 +214,37 @@ def test18_free_stop_crit_soft(output_path):
 
 
 def test19_dataset_Xy_stop_crit_soft(output_path):
-  optimizer = BO(f=None, pbounds={'x': (999,2501), 'y': (1,50)},
-                 random_state=seed,
-                 dataset=os.path.join('datasets', 'test_xyz.csv'),
+  optimizer = BO(f=None, pbounds={'x': (7,73), 'y': (7,73)}, random_state=seed,
+                 dataset=os.path.join('datasets', 'test_ml.csv'),
                  target_column='z', output_path=output_path, debug=debug)
-  optimizer.maximize(init_points=n0, n_iter=n_iter,
-                     stop_crit_info={'hard_stop': True})
+  optimizer.maximize(init_points=n0, n_iter=n_iter, acq='eic_ml',
+                     acq_info={'eic_ml_var': 'C',
+                               'eic_bounds': (-3.2, -3.0),
+                               'ml_target': 'z_pred',
+                               'ml_bounds': (0, 2.2)
+                               },
+                     stop_crit_info={'hard_stop': False,
+                                     'ml_bounds_coeff': (0.9, None)
+                                    })
 
 
 if __name__ == '__main__':
-  # perform_test(test01_free)
-  # perform_test(test02_dataset_Xy)
-  # perform_test(test03_dataset_X)
-  # perform_test(test04_free_ml)
-  # perform_test(test05_dataset_Xy_ml)
-  # perform_test(test06_dataset_X_ml)
-  # perform_test(test07_dataset_Xy_queue)
-  # perform_test(test08_dataset_X_queue)
-  # perform_test(test09_free_eic_default)
-  # perform_test(test10_dataset_Xy_eic_default)
-  # perform_test(test11_free_eic_custom_PQ)
-  # perform_test(test12_free_init_points_tuple)
-  # perform_test(test13_dataset_Xy_init_points_dicts)
-  # perform_test(test14_dataset_X_init_points_df)
-  # perform_test(test15_free_eic_ml_B)
-  # perform_test(test16_free_eic_ml_C)
-  # perform_test(test17_free_eic_ml_D)
+  perform_test(test01_free)
+  perform_test(test02_dataset_Xy)
+  perform_test(test03_dataset_X)
+  perform_test(test04_free_ml)
+  perform_test(test05_dataset_Xy_ml)
+  perform_test(test06_dataset_X_ml)
+  perform_test(test07_dataset_Xy_queue)
+  perform_test(test08_dataset_X_queue)
+  perform_test(test09_free_eic_default)
+  perform_test(test10_dataset_Xy_eic_default)
+  perform_test(test11_free_eic_custom_PQ)
+  perform_test(test12_free_init_points_tuple)
+  perform_test(test13_dataset_Xy_init_points_dicts)
+  perform_test(test14_dataset_X_init_points_df)
+  perform_test(test15_free_eic_ml_B)
+  perform_test(test16_free_eic_ml_C)
+  perform_test(test17_free_eic_ml_D)
   perform_test(test18_free_stop_crit_soft)
   perform_test(test19_dataset_Xy_stop_crit_soft)
