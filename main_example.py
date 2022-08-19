@@ -210,10 +210,9 @@ def test15_free_eic_ml_B(output_path):
   optimizer = BO(f=target_func_dict, pbounds={'x': (2, 4), 'y': (-3, 3)},
                  random_state=seed, output_path=output_path, debug=debug)
   optimizer.maximize(init_points=n0, n_iter=n_iter, acq='eic_ml',
-                     acq_info={'eic_ml_var': 'B',  # TODO 15-17 indentation
+                     acq_info={'eic_ml_var': 'B',
                                'eic_bounds': (-3.2, -3.0),
-                               'ml_target': 'blackbox',
-                               'ml_bounds': (2, 8),
+                               'ml_target': 'blackbox', 'ml_bounds': (2, 8),
                                'eic_ml_exp_B': 2.0
                                })
 
@@ -224,8 +223,7 @@ def test16_free_eic_ml_C(output_path):
   optimizer.maximize(init_points=n0, n_iter=n_iter, acq='eic_ml',
                      acq_info={'eic_ml_var': 'C',
                                'eic_bounds': (-3.2, -3.0),
-                               'ml_target': 'blackbox',
-                               'ml_bounds': (2, 8)
+                               'ml_target': 'blackbox', 'ml_bounds': (2, 8)
                                })
 
 
@@ -235,8 +233,7 @@ def test17_free_eic_ml_D(output_path):
   optimizer.maximize(init_points=n0, n_iter=n_iter, acq='eic_ml',
                      acq_info={'eic_ml_var': 'D',
                                'eic_bounds': (-3.2, -3.0),
-                               'ml_target': 'blackbox',
-                               'ml_bounds': (2, 8)
+                               'ml_target': 'blackbox', 'ml_bounds': (2, 8)
                                })
 
 
