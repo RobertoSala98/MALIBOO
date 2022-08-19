@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="https://github.com/brunoguindani/MALIBOO/master/resources/bo_dark.png"><br><br>
+  <img src="https://github.com/brunoguindani/MALIBOO/blob/master/resources/bo_dark.png"><br><br>
 </div>
 
 # MALIBOO
