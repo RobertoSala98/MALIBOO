@@ -172,12 +172,19 @@ class BayesianOptimization(Observable):
         lazy: bool, optional (default=True)
             If True, the optimizer will evaluate the points when calling
             maximize(), otherwise it will evaluate it at the moment
+
+        Returns
+        -------
+        target_value: float or None
+            Target function value, or None if lazy mode was called
         """
         if lazy:
             self._queue.put((idx, params))
+            return None
         else:
-            self._space.probe(params, idx=idx)
+            target_val = self._space.probe(params, idx=idx)
             self.dispatch(Events.OPTIMIZATION_STEP)
+            return target_val
 
 
     def suggest(self, utility_function):
@@ -380,7 +387,7 @@ class BayesianOptimization(Observable):
             if self.dataset is None or self._space.target_column is None:
                 # No dataset, or dataset for X only: we evaluate the target function directly
                 if self._debug: print("No dataset, or dataset for X only: evaluating target function")
-                self.probe(x_probe, idx=idx, lazy=False)
+                target_value = self.probe(x_probe, idx=idx, lazy=False)
             else:
                 # Dataset for both X and y: register point entirely from dataset without probe()
                 if self._debug: print("Dataset Xy: registering dataset point")
