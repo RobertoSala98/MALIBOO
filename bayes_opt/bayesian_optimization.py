@@ -324,6 +324,7 @@ class BayesianOptimization(Observable):
               and is bound to the constraint Gmin <= g(x) <= Gmax. Then, 'eic_bounds' is a tuple with
               Gmin and Gmax, and 'eic_P_func'/'eic_Q_func' are the functions in the definition of f.
               The default values for the latter are P(x) == 1 and Q(x) == 0
+            Note that 'ml_bounds' are 'eic_bounds' are not necessarily the same.
 
         stop_crit_info: dict, optional (default={})
             Information required for using termination criteria. See the `StoppingCriteria` constructor
