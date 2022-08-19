@@ -169,7 +169,8 @@ def test15_free_eic_ml_B(output_path):
                      acq_info={'eic_ml_var': 'B',
                                'eic_bounds': (-3.2, -3.0),
                                'ml_target': 'blackbox',
-                               'ml_bounds': (2, 8)
+                               'ml_bounds': (2, 8),
+                               'eic_ml_exp_B': 2.0
                                })
 
 

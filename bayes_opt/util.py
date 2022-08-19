@@ -186,10 +186,10 @@ class UtilityFunction(object):
                 raise ValueError("'eic_ml_var' field must be B/C/D, not {}".format(self.eic_ml_var))
 
             # Check for other needed field, and provide default value if not present
-            if 'eic_ml_exp_C' not in acq_info:
-                if self._debug: print("Using default eic_ml_exp_C = 2")
-                acq_info['eic_ml_exp_C'] = 2.0
-            self.set_acq_info_field(acq_info, 'eic_ml_exp_C')
+            if 'eic_ml_exp_B' not in acq_info:
+                if self._debug: print("Using default eic_ml_exp_B = 2")
+                acq_info['eic_ml_exp_B'] = 2.0
+            self.set_acq_info_field(acq_info, 'eic_ml_exp_B')
 
 
     def update_params(self):
@@ -216,7 +216,7 @@ class UtilityFunction(object):
             return self._eic(x, gp, y_max, self.xi, self.eic_bounds, self.eic_P_func, self.eic_Q_func)
         if self.kind == 'eic_ml':
             return self._eic_ml(x, gp, y_max, self.xi, self.eic_ml_var, self.ml_model, self.ml_bounds,
-                                self.eic_bounds, self.eic_P_func, self.eic_Q_func, self.eic_ml_exp_C)
+                                self.eic_bounds, self.eic_P_func, self.eic_Q_func, self.eic_ml_exp_B)
         raise NotImplementedError("The utility function {} has not been implemented.".format(self.kind))
 
 
@@ -294,7 +294,7 @@ class UtilityFunction(object):
 
 
     @staticmethod
-    def _eic_ml(x, gp, y_max, xi, variant, ml_model, ml_bounds, eic_bounds, P, Q, exp_C):
+    def _eic_ml(x, gp, y_max, xi, variant, ml_model, ml_bounds, eic_bounds, P, Q, exp_B):
         """Compute Expected Improvement with Constraints, ML variants B/C/D"""
         # Compute regular Expected Improvement with Constraints
         eic = UtilityFunction._eic(x, gp, y_max, xi, eic_bounds, P, Q)
@@ -303,12 +303,12 @@ class UtilityFunction(object):
             warnings.simplefilter("ignore")
             y_hat = ml_model.predict(x)
         # Compute exponential coefficient for variant B (and D)
+        lb, ub = ml_bounds
         if variant in ('B', 'D'):
-            coeff = np.exp(-exp_C * y_hat)
+            coeff = np.exp(-exp_B * y_hat)
             eic *= coeff
         # Compute indicator coefficient for variant C (and D)
         if variant in ('C', 'D'):
-            lb, ub = ml_bounds
             indicator = np.array([lb <= y and y <= ub for y in y_hat])
             eic *= indicator
 
