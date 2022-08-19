@@ -358,6 +358,8 @@ class BayesianOptimization(Observable):
         iteration = 0
         terminated = False
 
+        if self._debug: print(24*"+", "Starting optimization loop", sep="\n")
+
         while not self._queue.empty() or iteration < n_iter:
             # Sample new point from GP
             try:
@@ -369,7 +371,7 @@ class BayesianOptimization(Observable):
                     # Keep the best point found so far
                     x_probe = self.max['params']
                     idx = None
-                    acq_info = None
+                    acq_val = None
                     if self._debug: print("New iteration: sticking to the best point", x_probe)
                 else:
                     if self._debug: print("New iteration {}: suggesting new point".format(iteration))
