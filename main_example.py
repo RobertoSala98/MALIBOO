@@ -45,6 +45,50 @@ def perform_test(testfunc):
   print("Done in", stop-start, "seconds\n\n\n")
 
 
+def test00a_free_complex(output_path):
+  def my_P(x):
+      return 2.0 * x[:, 0]
+  def my_Q(x):
+      return 5.0
+  optimizer = BO(f=target_func_dict, pbounds={'x': (2, 4), 'y': (-3, 3)},
+                 random_state=seed, output_path=output_path, debug=debug)
+  init_points = ({'x': 3.1, 'y': 0.7}, {'x': 2.2, 'y': -2.8})
+  optimizer.add_initial_points(init_points)
+  optimizer.maximize(init_points=0, n_iter=n_iter, acq='eic_ml',
+                     memory_queue_len=3,
+                     acq_info={'eic_ml_var': 'B', 'eic_bounds': (-3.2, -3.0),
+                               'eic_P_func': my_P, 'eic_Q_func': my_Q,
+                               'ml_target': 'blackbox', 'ml_bounds': (2, 8),
+                               'eic_ml_exp_B': 2.0
+                               },
+                     stop_crit_info={'hard_stop': False, 'conjunction': 'or',
+                                     'ml_bounds_coeff': (0.9, 1.1)
+                                    })
+
+
+def test00b_dataset_Xy_complex(output_path):
+  def my_P(x):
+      return 2.0 * x[:, 0]
+  def my_Q(x):
+      return 5.0
+  optimizer = BO(f=None, pbounds={'x': (7,73), 'y': (7,73)}, random_state=seed,
+                 dataset=os.path.join('datasets', 'test_ml.csv'),
+                 target_column='z', output_path=output_path, debug=debug)
+  optimizer.add_initial_points(dict(x=48, y=48))  # z=220.431, idx=0
+  optimizer.add_initial_points(dict(x=16, y=8))   # z=146.028, idx=1
+  optimizer.maximize(init_points=0, n_iter=n_iter, acq='eic_ml',
+                     memory_queue_len=3,
+                     acq_info={'eic_ml_var': 'B',
+                               'eic_bounds': (0, 2.2),
+                               'eic_P_func': my_P, 'eic_Q_func': my_Q,
+                               'ml_target': 'z_pred', 'ml_bounds': (0, 2.2),
+                               'eic_ml_exp_B': 2.0
+                               },
+                     stop_crit_info={'hard_stop': True, 'conjunction': 'or',
+                                     'ml_bounds_coeff': (0.9, 1.01)
+                                    })
+
+
 def test01_free(output_path):
   optimizer = BO(f=target_func, pbounds={'x': (2, 4), 'y': (-3, 3)},
                  random_state=seed, output_path=output_path, debug=debug)
@@ -168,8 +212,7 @@ def test15_free_eic_ml_B(output_path):
   optimizer.maximize(init_points=n0, n_iter=n_iter, acq='eic_ml',
                      acq_info={'eic_ml_var': 'B',
                                'eic_bounds': (-3.2, -3.0),
-                               'ml_target': 'blackbox',
-                               'ml_bounds': (2, 8),
+                               'ml_target': 'blackbox', 'ml_bounds': (2, 8),
                                'eic_ml_exp_B': 2.0
                                })
 
@@ -180,8 +223,7 @@ def test16_free_eic_ml_C(output_path):
   optimizer.maximize(init_points=n0, n_iter=n_iter, acq='eic_ml',
                      acq_info={'eic_ml_var': 'C',
                                'eic_bounds': (-3.2, -3.0),
-                               'ml_target': 'blackbox',
-                               'ml_bounds': (2, 8)
+                               'ml_target': 'blackbox', 'ml_bounds': (2, 8)
                                })
 
 
@@ -191,12 +233,42 @@ def test17_free_eic_ml_D(output_path):
   optimizer.maximize(init_points=n0, n_iter=n_iter, acq='eic_ml',
                      acq_info={'eic_ml_var': 'D',
                                'eic_bounds': (-3.2, -3.0),
-                               'ml_target': 'blackbox',
-                               'ml_bounds': (2, 8)
+                               'ml_target': 'blackbox', 'ml_bounds': (2, 8)
                                })
 
 
+def test18_free_stop_crit_soft(output_path):
+  optimizer = BO(f=target_func_dict, pbounds={'x': (2, 4), 'y': (-3, 3)},
+                 random_state=seed, output_path=output_path, debug=debug)
+  optimizer.maximize(init_points=n0, n_iter=n_iter, acq='eic_ml',
+                     acq_info={'eic_ml_var': 'C',
+                               'eic_bounds': (-3.2, -3.0),
+                               'ml_target': 'blackbox',
+                               'ml_bounds': (2, 8)
+                               },
+                     stop_crit_info={'hard_stop': False,
+                                     'ml_bounds_coeff': (0.9, None)
+                                    })
+
+
+def test19_dataset_Xy_stop_crit_hard(output_path):
+  optimizer = BO(f=None, pbounds={'x': (7,73), 'y': (7,73)}, random_state=seed,
+                 dataset=os.path.join('datasets', 'test_ml.csv'),
+                 target_column='z', output_path=output_path, debug=debug)
+  optimizer.maximize(init_points=n0, n_iter=n_iter, acq='eic_ml',
+                     acq_info={'eic_ml_var': 'C',
+                               'eic_bounds': (-3.2, -3.0),
+                               'ml_target': 'z_pred',
+                               'ml_bounds': (0, 2.2)
+                               },
+                     stop_crit_info={'hard_stop': True, 'conjunction': 'or',
+                                     'ml_bounds_coeff': (0.9, None)
+                                    })
+
+
 if __name__ == '__main__':
+  perform_test(test00a_free_complex)
+  perform_test(test00b_dataset_Xy_complex)
   perform_test(test01_free)
   perform_test(test02_dataset_Xy)
   perform_test(test03_dataset_X)
@@ -214,3 +286,5 @@ if __name__ == '__main__':
   perform_test(test15_free_eic_ml_B)
   perform_test(test16_free_eic_ml_C)
   perform_test(test17_free_eic_ml_D)
+  perform_test(test18_free_stop_crit_soft)
+  perform_test(test19_dataset_Xy_stop_crit_hard)

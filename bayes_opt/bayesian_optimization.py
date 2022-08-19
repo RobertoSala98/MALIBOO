@@ -3,7 +3,7 @@ import numpy as np
 import os
 import pandas as pd
 import warnings
-from queue import Queue, Empty
+from queue import Queue
 
 from sklearn.gaussian_process.kernels import Matern
 from sklearn.gaussian_process import GaussianProcessRegressor
@@ -13,7 +13,7 @@ from sklearn.metrics import mean_absolute_percentage_error as mape
 from .target_space import TargetSpace
 from .event import Events, DEFAULT_EVENTS
 from .logger import _get_default_logger
-from .util import UtilityFunction, acq_max, ensure_rng
+from .util import UtilityFunction, StoppingCriterion, acq_max, ensure_rng
 
 
 class Observable(object):
@@ -172,12 +172,19 @@ class BayesianOptimization(Observable):
         lazy: bool, optional (default=True)
             If True, the optimizer will evaluate the points when calling
             maximize(), otherwise it will evaluate it at the moment
+
+        Returns
+        -------
+        target_value: float or None
+            Target function value, or None if lazy mode was called
         """
         if lazy:
             self._queue.put((idx, params))
+            return None
         else:
-            self._space.probe(params, idx=idx)
+            target_val = self._space.probe(params, idx=idx)
             self.dispatch(Events.OPTIMIZATION_STEP)
+            return target_val
 
 
     def suggest(self, utility_function):
@@ -270,6 +277,7 @@ class BayesianOptimization(Observable):
                  kappa_decay_delay=0,
                  xi=0.0,
                  acq_info={},
+                 stop_crit_info={},
                  memory_queue_len=0,
                  **gp_params):
         """
@@ -311,11 +319,17 @@ class BayesianOptimization(Observable):
         acq_info: dict, optional (default={})
             Information required for using some acquisition functions. Namely:
             * if using Machine Learning models, the 'ml_target' field is the name of the target
-              quantity and 'bounds' is a tuple with its lower and upper bounds;
+              quantity and 'ml_bounds' is a tuple with its lower and upper bounds;
             * if using EIC, it assumes that the target function has the form f(x) = P(x) g(x) + Q(x)
-              and is bound to the constraint Gmin <= g(x) <= Gmax. Then, 'bounds' is a tuple with
+              and is bound to the constraint Gmin <= g(x) <= Gmax. Then, 'eic_bounds' is a tuple with
               Gmin and Gmax, and 'eic_P_func'/'eic_Q_func' are the functions in the definition of f.
               The default values for the latter are P(x) == 1 and Q(x) == 0
+            Note that 'ml_bounds' are 'eic_bounds' are not necessarily the same.
+
+        stop_crit_info: dict, optional (default={})
+            Information required for using termination criteria. See the `StoppingCriteria` constructor
+            in `util.py` for a description of the possible contents of this dict (except `debug`, which
+            is set separately to the value stored in this class)
 
         memory_queue_len: int, optional (default=0)
             Length of FIFO memory queue. If used alongside a dataset, at each iteration,
@@ -340,33 +354,46 @@ class BayesianOptimization(Observable):
                                kappa_decay_delay=kappa_decay_delay,
                                acq_info=acq_info,
                                debug=self._debug)
+        if self._debug: print("Initializing StoppingCriterion with stop_crit_info = {}".format(stop_crit_info))
+        stopcrit = StoppingCriterion(debug=self._debug, **stop_crit_info)
         iteration = 0
+        terminated = False
+
+        if self._debug: print(24*"+", "Starting optimization loop", sep="\n")
 
         while not self._queue.empty() or iteration < n_iter:
             # Sample new point from GP
-            try:
+            if not self._queue.empty():
+                # get point from queue
                 idx, x_probe = self._queue.get(block=False)
                 acq_val = None
                 if self._debug: print("New iteration: selected point from queue, index {}, value {}".format(idx, x_probe))
-            except Empty:
+                iteration -= 1  # i.e. counter will be unchanged at the end of this round
+            elif not stopcrit.hard_stop() and terminated:
+                # keep the best point found so far
+                x_probe = self.max['params']
+                idx = None
+                acq_val = None
+                if self._debug: print("New iteration after termination: using the current best point", x_probe)
+            else:
+                # sample new point
                 if self._debug: print("New iteration {}: suggesting new point".format(iteration))
                 util.update_params()
-                # If requird, train ML model with all space parameters data collected so far
-                if 'ml' in acq:
+                if 'ml' in acq:  # if requird, train ML model
                     ml_model = self.train_ml_model(y_name=util.ml_target)
                     util.set_ml_model(ml_model)
                 x_probe, idx, acq_val = self.suggest(util)
-                if self._debug: print("Suggested point: index {}, value {}, acquisition {}".format(iteration, idx, x_probe, acq_val))
-                iteration += 1
+                if self._debug: print("Suggested point: index {}, value {}, acquisition {}".format(idx, x_probe, acq_val))
 
             if x_probe is None:
                 raise ValueError("No point found")
+            iteration += 1
 
             # Register new point
             if self.dataset is None or self._space.target_column is None:
                 # No dataset, or dataset for X only: we evaluate the target function directly
                 if self._debug: print("No dataset, or dataset for X only: evaluating target function")
-                self.probe(x_probe, idx=idx, lazy=False)
+                target_value = self.probe(x_probe, idx=idx, lazy=False)
             else:
                 # Dataset for both X and y: register point entirely from dataset without probe()
                 if self._debug: print("Dataset Xy: registering dataset point")
@@ -376,16 +403,30 @@ class BayesianOptimization(Observable):
                     target_value = self.dataset.loc[idx, self._space.target_column]
                 self.register(self._space.params_to_array(x_probe), target_value, idx)
 
+            # Compute ML prediction and check stopping condition
+            y_true_ml = self.get_ml_target_data(util.ml_target).iloc[-1] if hasattr(util, 'ml_model') else None
+            if acq_val is None:
+                if self._debug: print("Point was not selected by suggest(): skipping termination check")
+            else:
+                terminated = terminated or stopcrit.terminate(x_probe, target_value, iteration, util, y_true_ml)
+
             # Register other information about the new point
-            other_info = pd.DataFrame(acq_val, columns=['acquisition'], index=[idx])
+            other_info = pd.DataFrame(index=[idx])
+            other_info.loc[idx, 'acquisition'] = acq_val
+            other_info.loc[idx, 'terminated'] = terminated
             if hasattr(util, 'ml_model'):  # register validation MAPE on new point
-                y_true = [ self.get_ml_target_data(util.ml_target).iloc[-1] ]
                 y_bar = util.ml_model.predict(pd.DataFrame(x_probe, index=[idx]))
-                if self._debug: print("True vs predicted '{}' value: {} vs {}".format(util.ml_target, y_true, y_bar))
-                other_info['ml_mape'] = mape(y_true, y_bar)
+                if self._debug: print("True vs predicted '{}' value: {} vs {}".format(util.ml_target, y_true_ml, y_bar[0]))
+                other_info['ml_mape'] = mape([y_true_ml], y_bar)
             self.register_optimization_info(other_info)
 
             if self._debug: print("End of current iteration", 24*"+", sep="\n")
+
+            # Check stopping conditions
+            if stopcrit.hard_stop() and terminated:
+                if self._debug: print("Ending loop early due to stopping condition(s)")
+                break
+
 
         if self._bounds_transformer and iteration > 0:
             # The bounds transformer should only modify the bounds after the init_points points (only for the true
