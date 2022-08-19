@@ -196,11 +196,20 @@ def test17_free_eic_ml_D(output_path):
                                })
 
 
-def test18_free_stop_crit(output_path):
+def test18_free_stop_crit_soft(output_path):
   optimizer = BO(f=target_func, pbounds={'x': (2, 4), 'y': (-3, 3)},
                  random_state=seed, output_path=output_path, debug=debug)
   optimizer.maximize(init_points=n0, n_iter=n_iter,
-                     stop_crit_info={'hard_stop': True})
+                     stop_crit_info={'hard_stop': False})
+
+
+def test19_dataset_Xy_stop_crit_soft(output_path):
+  optimizer = BO(f=None, pbounds={'x': (999,2501), 'y': (1,50)},
+                 random_state=seed,
+                 dataset=os.path.join('datasets', 'test_xyz.csv'),
+                 target_column='z', output_path=output_path, debug=debug)
+  optimizer.maximize(init_points=n0, n_iter=n_iter,
+                     stop_crit_info={'hard_stop': False})
 
 
 if __name__ == '__main__':
@@ -222,3 +231,4 @@ if __name__ == '__main__':
   # perform_test(test16_free_eic_ml_C)
   # perform_test(test17_free_eic_ml_D)
   perform_test(test18_free_stop_crit)
+  perform_test(test19_dataset_Xy_stop_crit)
