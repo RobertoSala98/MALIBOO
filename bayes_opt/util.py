@@ -306,7 +306,9 @@ class UtilityFunction(object):
         lb, ub = ml_bounds
         if variant in ('B', 'D'):
             coeff = np.exp(-exp_B * y_hat)
-            eic *= coeff
+            # normalization constant (positive when 0.5 k (lb + ub) > 1)
+            norm_const = exp_B * (lb-ub) - 0.5 * exp_B ** 2 * (lb ** 2 - ub ** 2)
+            eic *= coeff * norm_const
         # Compute indicator coefficient for variant C (and D)
         if variant in ('C', 'D'):
             indicator = np.array([lb <= y and y <= ub for y in y_hat])
