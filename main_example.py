@@ -45,7 +45,26 @@ def perform_test(testfunc):
   print("Done in", stop-start, "seconds\n\n\n")
 
 
-# TODO test00_complex()
+def test00a_free_complex(output_path):
+  def my_P(x):
+      return 2.0 * x[:, 0]
+  def my_Q(x):
+      return 5.0
+  optimizer = BO(f=target_func_dict, pbounds={'x': (2, 4), 'y': (-3, 3)},
+                 random_state=seed, output_path=output_path, debug=debug)
+  init_points = ({'x': 3.1, 'y': 0.7}, {'x': 2.2, 'y': -2.8})
+  optimizer.add_initial_points(init_points)
+  optimizer.maximize(init_points=0, n_iter=n_iter, acq='eic_ml',
+                     memory_queue_len=3,
+                     acq_info={'eic_ml_var': 'B', 'eic_bounds': (-3.2, -3.0),
+                               'eic_P_func': my_P, 'eic_Q_func': my_Q,
+                               'ml_target': 'blackbox', 'ml_bounds': (2, 8),
+                               'eic_ml_exp_B': 2.0
+                               },
+                     stop_crit_info={'hard_stop': False, 'conjunction': 'or',
+                                     'ml_bounds_coeff': (0.9, 1.1)
+                                    })
+
 
 
 def test01_free(output_path):
@@ -229,6 +248,7 @@ def test19_dataset_Xy_stop_crit_hard(output_path):
 
 
 if __name__ == '__main__':
+  perform_test(test00a_free_complex)
   perform_test(test01_free)
   perform_test(test02_dataset_Xy)
   perform_test(test03_dataset_X)
