@@ -367,10 +367,6 @@ class StoppingCriterion(object):
             vi = self._violate_ml_bounds(ml_target_val, ml_bounds)
             bool_list.append(vi)
             if self._debug: print("_violate_ml_bounds() termination criterion:", vi)
-        # TODO temporary, remove
-        vi = (iteration >= 3)
-        bool_list.append(vi)
-        if self._debug: print("Iteration termination criterion:", vi)
         # Do not terminate if there was no stopping criterion required,
         # otherwise reduce list of bools according to the 'and'/'or' conjunction
         if not bool_list:
