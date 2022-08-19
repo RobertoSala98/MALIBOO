@@ -213,7 +213,7 @@ def test18_free_stop_crit_soft(output_path):
                                     })
 
 
-def test19_dataset_Xy_stop_crit_soft(output_path):
+def test19_dataset_Xy_stop_crit_hard(output_path):
   optimizer = BO(f=None, pbounds={'x': (7,73), 'y': (7,73)}, random_state=seed,
                  dataset=os.path.join('datasets', 'test_ml.csv'),
                  target_column='z', output_path=output_path, debug=debug)
@@ -223,7 +223,7 @@ def test19_dataset_Xy_stop_crit_soft(output_path):
                                'ml_target': 'z_pred',
                                'ml_bounds': (0, 2.2)
                                },
-                     stop_crit_info={'hard_stop': False,
+                     stop_crit_info={'hard_stop': True, 'conjunction': 'or',
                                      'ml_bounds_coeff': (0.9, None)
                                     })
 
@@ -247,4 +247,4 @@ if __name__ == '__main__':
   perform_test(test16_free_eic_ml_C)
   perform_test(test17_free_eic_ml_D)
   perform_test(test18_free_stop_crit_soft)
-  perform_test(test19_dataset_Xy_stop_crit_soft)
+  perform_test(test19_dataset_Xy_stop_crit_hard)
