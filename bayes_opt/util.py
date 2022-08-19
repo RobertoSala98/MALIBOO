@@ -327,10 +327,13 @@ class StoppingCriterion(object):
     TODO
     """
     def __init__(self, conjunction='or', hard_stop=True, ml_bounds_coeff=None, debug=False):
-        self._debug = debug
-        if conjunction not in ('and', 'or'):
+        if conjunction == 'and':
+            self._AND_join = True
+        elif conjunction == 'or':
+            self._AND_join = False
+        else:
             raise ValueError("'conjunction' option for Stopping Criterion must be 'and' or 'or'")
-        self._conjunction = conjunction
+        self._debug = debug
         self._hard_stop = hard_stop
         self._ml_bounds_coeff = ml_bounds_coeff
         if self._debug: print("StoppingCriterion initialization completed")
@@ -339,6 +342,35 @@ class StoppingCriterion(object):
     def hard_stop(self):
         return self._hard_stop
 
+
+    def terminate(self, x_point, target, iteration, ml_target_val=None, ml_bounds=None):
+        return False  # TODO temporary, remove
+        bool_list = []
+        # Target value within given bounds
+        if self.extra_bounds_coeff is not None:
+            bool_list.append(self._violate_ml_bounds(ml_target_val, ml_bounds))
+        # Do not terminate if there was no stopping criterion required,
+        # otherwise reduce list of bools according to the 'and'/'or' conjunction
+        if not bool_list:
+            return False
+        elif self._AND_join:
+            return np.product(bool_list)
+        else:
+            return bool(np.sum(bool_list))
+
+
+    def _violate_ml_bounds(self, ml_target_val, ml_bounds):
+        if ml_target_val is None:
+            raise ValueError("Since 'extra_bounds_coeff' was initialized, 'ml_target_val' must be passed to terminate()")
+        if ml_bounds is None:
+            raise ValueError("Since 'extra_bounds_coeff' was initialized, 'ml_bounds' must be passed to terminate()")
+        lb, ub = ml_bounds
+        lb_coef, ub_coef = self._ml_bounds_coeff
+        if lb_coef is not None and ml_target_val < lb_coef * lb:
+            return True
+        if ub_coef is not None and ml_target_val > ub_coef * ub:
+            return True
+        return False
 
 
 def load_logs(optimizer, logs):
