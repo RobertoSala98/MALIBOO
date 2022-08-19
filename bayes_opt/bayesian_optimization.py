@@ -397,27 +397,26 @@ class BayesianOptimization(Observable):
                     target_value = self.dataset.loc[idx, self._space.target_column]
                 self.register(self._space.params_to_array(x_probe), target_value, idx)
 
+            # Check stopping condition
+            y_true_ml = self.get_ml_target_data(util.ml_target).iloc[-1] if hasattr(util, 'ml_model') else None
+            terminated = terminated or stopcrit.terminate(x_probe, target_value, iteration, util, y_true_ml)
+
             # Register other information about the new point
-            other_info = pd.DataFrame(acq_val, columns=['acquisition'], index=[idx])
+            other_info = pd.DataFrame(index=[idx])
+            other_info.loc[idx, 'acquisition'] = acq_val
+            other_info.loc[idx, 'terminated'] = terminated
             if hasattr(util, 'ml_model'):  # register validation MAPE on new point
-                ml_target_val = self.get_ml_target_data(util.ml_target).iloc[-1]
-                y_true = [ml_target_val]
                 y_bar = util.ml_model.predict(pd.DataFrame(x_probe, index=[idx]))
-                if self._debug: print("True vs predicted '{}' value: {} vs {}".format(util.ml_target, y_true, y_bar))
-                other_info['ml_mape'] = mape(y_true, y_bar)
-            else:
-                ml_target_val = None
+                if self._debug: print("True vs predicted '{}' value: {} vs {}".format(util.ml_target, y_true_ml, y_bar[0]))
+                other_info['ml_mape'] = mape([y_true_ml], y_bar)
             self.register_optimization_info(other_info)
 
             if self._debug: print("End of current iteration", 24*"+", sep="\n")
 
             # Check stopping conditions
-            if stopcrit.terminate(x_probe, target_value, iteration, util, ml_target_val):
-                if stopcrit.hard_stop():
-                    if self._debug: print("Ending loop early due to stopping condition(s)")
-                    break
-                else:
-                    terminated = True
+            if terminated:
+                if self._debug: print("Ending loop early due to stopping condition(s)")
+                break
 
 
         if self._bounds_transformer and iteration > 0:
