@@ -367,13 +367,13 @@ class BayesianOptimization(Observable):
                 idx, x_probe = self._queue.get(block=False)
                 acq_val = None
                 if self._debug: print("New iteration: selected point from queue, index {}, value {}".format(idx, x_probe))
+                iteration -= 1  # i.e. counter will be unchanged at the end of this round
             elif not stopcrit.hard_stop() and terminated:
                 # keep the best point found so far
                 x_probe = self.max['params']
                 idx = None
                 acq_val = None
                 if self._debug: print("New iteration: sticking to the best point", x_probe)
-                iteration += 1
             else:
                 # sample new point
                 if self._debug: print("New iteration {}: suggesting new point".format(iteration))
@@ -383,10 +383,10 @@ class BayesianOptimization(Observable):
                     util.set_ml_model(ml_model)
                 x_probe, idx, acq_val = self.suggest(util)
                 if self._debug: print("Suggested point: index {}, value {}, acquisition {}".format(idx, x_probe, acq_val))
-                iteration += 1
 
             if x_probe is None:
                 raise ValueError("No point found")
+            iteration += 1
 
             # Register new point
             if self.dataset is None or self._space.target_column is None:
@@ -405,7 +405,7 @@ class BayesianOptimization(Observable):
             # Compute ML prediction and check stopping condition
             y_true_ml = self.get_ml_target_data(util.ml_target).iloc[-1] if hasattr(util, 'ml_model') else None
             if acq_val is None:
-                if self._debug: print("Point was selected from queue: skipping termination check")
+                if self._debug: print("Point was not selected by suggest(): skipping termination check")
             else:
                 terminated = terminated or stopcrit.terminate(x_probe, target_value, iteration, util, y_true_ml)
 

@@ -368,7 +368,7 @@ class StoppingCriterion(object):
             bool_list.append(vi)
             if self._debug: print("_violate_ml_bounds() termination criterion:", vi)
         # TODO temporary, remove
-        vi = (iteration == 3)
+        vi = (iteration >= 3)
         bool_list.append(vi)
         if self._debug: print("Iteration termination criterion:", vi)
         # Do not terminate if there was no stopping criterion required,
@@ -377,21 +377,21 @@ class StoppingCriterion(object):
             if self._debug: print("No termination criteria have been used")
             term = False
         elif self._AND_join:
-            term = np.product(bool_list)
+            term = bool(np.product(bool_list))
         else:
             term = bool(np.sum(bool_list))
         if self._debug: print("Result of termination criteria:", term)
         return term
 
 
-    def _violate_ml_bounds(self, ml_target_val, ml_bounds):
+    def _violate_ml_bounds(self, val, ml_bounds):
         """
-        Checks if ml_target_val is not included in the [lb_coef * lb, ub_coef * ub] interval
+        Checks if val is not included in the [lb_coef * lb, ub_coef * ub] interval
 
         Parameters
         ----------
-        ml_target_val: float
-            Target of the ML model, which will be checked against the interval
+        val: float
+            Target value of the ML model, which will be checked against the interval
         ml_bounds: tuple
             Contains lb and ub. If either is None, that extremity of the interval will not be checked
 
@@ -402,10 +402,14 @@ class StoppingCriterion(object):
         """
         lb, ub = ml_bounds
         lb_coef, ub_coef = self._ml_bounds_coeff
-        if lb_coef is not None and ml_target_val < lb_coef * lb:
-            return True
-        if ub_coef is not None and ml_target_val > ub_coef * ub:
-            return True
+        if lb_coef is not None:
+            if self._debug: print("Checking lower bound {}*{}={} vs {}".format(lb_coef, lb, lb_coef*lb, val))
+            if val < lb_coef*lb:
+                return True
+        if ub_coef is not None:
+            if self._debug: print("Checking upper bound {}*{}={} vs {}".format(ub_coef, ub, ub_coef*ub, val))
+            if val > ub_coef*ub:
+                return True
         return False
 
 
