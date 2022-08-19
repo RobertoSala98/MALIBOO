@@ -317,6 +317,30 @@ class UtilityFunction(object):
         return eic
 
 
+
+class StoppingCriterion(object):
+    """
+    An object that represents the algorithm stopping criterion.
+
+    Parameters
+    ----------
+    TODO
+    """
+    def __init__(self, conjunction='or', hard_stop=True, ml_bounds_coeff=None, debug=False):
+        self._debug = debug
+        if conjunction not in ('and', 'or'):
+            raise ValueError("'conjunction' option for Stopping Criterion must be 'and' or 'or'")
+        self.conjunction = conjunction
+        self.hard_stop = True
+        self.ml_bounds_coeff = ml_bounds_coeff
+        if self._debug: print("StoppingCriterion initialization completed")
+
+
+    def hard_stop(self):
+        return self.hard_stop
+
+
+
 def load_logs(optimizer, logs):
     """Load previous ...
 

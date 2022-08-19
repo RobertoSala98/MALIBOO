@@ -13,7 +13,7 @@ from sklearn.metrics import mean_absolute_percentage_error as mape
 from .target_space import TargetSpace
 from .event import Events, DEFAULT_EVENTS
 from .logger import _get_default_logger
-from .util import UtilityFunction, acq_max, ensure_rng
+from .util import UtilityFunction, StoppingCriterion, acq_max, ensure_rng
 
 
 class Observable(object):
@@ -270,6 +270,7 @@ class BayesianOptimization(Observable):
                  kappa_decay_delay=0,
                  xi=0.0,
                  acq_info={},
+                 stop_crit_info={},
                  memory_queue_len=0,
                  **gp_params):
         """
@@ -311,11 +312,14 @@ class BayesianOptimization(Observable):
         acq_info: dict, optional (default={})
             Information required for using some acquisition functions. Namely:
             * if using Machine Learning models, the 'ml_target' field is the name of the target
-              quantity and 'bounds' is a tuple with its lower and upper bounds;
+              quantity and 'ml_bounds' is a tuple with its lower and upper bounds;
             * if using EIC, it assumes that the target function has the form f(x) = P(x) g(x) + Q(x)
-              and is bound to the constraint Gmin <= g(x) <= Gmax. Then, 'bounds' is a tuple with
+              and is bound to the constraint Gmin <= g(x) <= Gmax. Then, 'eic_bounds' is a tuple with
               Gmin and Gmax, and 'eic_P_func'/'eic_Q_func' are the functions in the definition of f.
               The default values for the latter are P(x) == 1 and Q(x) == 0
+
+        stop_crit_info: dict, optional (default={})
+            TODO
 
         memory_queue_len: int, optional (default=0)
             Length of FIFO memory queue. If used alongside a dataset, at each iteration,
@@ -340,6 +344,8 @@ class BayesianOptimization(Observable):
                                kappa_decay_delay=kappa_decay_delay,
                                acq_info=acq_info,
                                debug=self._debug)
+        if self._debug: print("Initializing StoppingCriterion with stop_crit_info = {}".format(stop_crit_info))
+        stopcrit = StoppingCriterion(debug=self._debug, **stop_crit_info)
         iteration = 0
 
         while not self._queue.empty() or iteration < n_iter:
