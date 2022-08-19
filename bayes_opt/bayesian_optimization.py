@@ -411,6 +411,14 @@ class BayesianOptimization(Observable):
 
             if self._debug: print("End of current iteration", 24*"+", sep="\n")
 
+            # Check stopping conditions
+            if stopcrit.terminate(x_probe, target_value, iteration, util, ml_target_val):
+                if stopcrit.hard_stop():
+                    if self._debug: print("Ending loop early due to stopping condition(s)")
+                    break
+                else:
+                    terminated = True
+
 
         if self._bounds_transformer and iteration > 0:
             # The bounds transformer should only modify the bounds after the init_points points (only for the true

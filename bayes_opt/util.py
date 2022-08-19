@@ -343,11 +343,17 @@ class StoppingCriterion(object):
         return self._hard_stop
 
 
-    def terminate(self, x_point, target, iteration, ml_target_val=None, ml_bounds=None):
+    def terminate(self, x_point, target, iteration, utility, ml_target_val=None):
         return False  # TODO temporary, remove
         bool_list = []
         # Target value within given bounds
         if self.extra_bounds_coeff is not None:
+            try:
+                ml_bounds = utility.ml_bounds
+            except AttributeError:
+                raise ValueError("terminate(): 'extra_bounds_coeff' was initialized, but utility.ml_bounds was not")
+            if ml_target_val is None:
+                raise ValueError("terminate(): 'extra_bounds_coeff' was initialized, but ml_target_val was not given")
             bool_list.append(self._violate_ml_bounds(ml_target_val, ml_bounds))
         # Do not terminate if there was no stopping criterion required,
         # otherwise reduce list of bools according to the 'and'/'or' conjunction
@@ -360,10 +366,21 @@ class StoppingCriterion(object):
 
 
     def _violate_ml_bounds(self, ml_target_val, ml_bounds):
-        if ml_target_val is None:
-            raise ValueError("Since 'extra_bounds_coeff' was initialized, 'ml_target_val' must be passed to terminate()")
-        if ml_bounds is None:
-            raise ValueError("Since 'extra_bounds_coeff' was initialized, 'ml_bounds' must be passed to terminate()")
+        """
+        Checks if ml_target_val is not included in the [lb_coef * lb, ub_coef * ub] interval
+
+        Parameters
+        ----------
+        ml_target_val: float
+            Target of the ML model, which will be checked against the interval
+        ml_bounds: tuple
+            Contains lb and ub. If either is None, that extremity of the interval will not be checked
+
+        Returns
+        -------
+        ret: bool
+            Whether the bounds are violated or not
+        """
         lb, ub = ml_bounds
         lb_coef, ub_coef = self._ml_bounds_coeff
         if lb_coef is not None and ml_target_val < lb_coef * lb:
