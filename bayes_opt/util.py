@@ -355,25 +355,33 @@ class StoppingCriterion(object):
 
 
     def terminate(self, x_point, target, iteration, utility, ml_target_val=None):
-        return False  # TODO temporary, remove
         bool_list = []
         # Target value within given bounds
-        if self.extra_bounds_coeff is not None:
+        if self._ml_bounds_coeff is not None:
             try:
                 ml_bounds = utility.ml_bounds
             except AttributeError:
-                raise ValueError("terminate(): 'extra_bounds_coeff' was initialized, but utility.ml_bounds was not")
+                raise ValueError("terminate(): 'ml_bounds_coeff' was initialized, but utility.ml_bounds was not")
             if ml_target_val is None:
-                raise ValueError("terminate(): 'extra_bounds_coeff' was initialized, but ml_target_val was not given")
-            bool_list.append(self._violate_ml_bounds(ml_target_val, ml_bounds))
+                raise ValueError("terminate(): 'ml_bounds_coeff' was initialized, but ml_target_val was not given")
+            vi = self._violate_ml_bounds(ml_target_val, ml_bounds)
+            bool_list.append(vi)
+            if self._debug: print("_violate_ml_bounds() termination criterion:", vi)
+        # TODO temporary, remove
+        vi = (iteration == 3)
+        bool_list.append(vi)
+        if self._debug: print("Iteration termination criterion:", vi)
         # Do not terminate if there was no stopping criterion required,
         # otherwise reduce list of bools according to the 'and'/'or' conjunction
         if not bool_list:
-            return False
+            if self._debug: print("No termination criteria have been used")
+            term = False
         elif self._AND_join:
-            return np.product(bool_list)
+            term = np.product(bool_list)
         else:
-            return bool(np.sum(bool_list))
+            term = bool(np.sum(bool_list))
+        if self._debug: print("Result of termination criteria:", term)
+        return term
 
 
     def _violate_ml_bounds(self, ml_target_val, ml_bounds):

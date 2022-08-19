@@ -416,7 +416,7 @@ class BayesianOptimization(Observable):
             if self._debug: print("End of current iteration", 24*"+", sep="\n")
 
             # Check stopping conditions
-            if terminated:
+            if stopcrit.hard_stop() and terminated:
                 if self._debug: print("Ending loop early due to stopping condition(s)")
                 break
 
