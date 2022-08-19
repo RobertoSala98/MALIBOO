@@ -402,7 +402,7 @@ class BayesianOptimization(Observable):
                     target_value = self.dataset.loc[idx, self._space.target_column]
                 self.register(self._space.params_to_array(x_probe), target_value, idx)
 
-            # Check stopping condition
+            # Compute ML prediction and check stopping condition
             y_true_ml = self.get_ml_target_data(util.ml_target).iloc[-1] if hasattr(util, 'ml_model') else None
             if acq_val is None:
                 if self._debug: print("Point was selected from queue: skipping termination check")
