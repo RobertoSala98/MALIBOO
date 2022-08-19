@@ -373,7 +373,7 @@ class BayesianOptimization(Observable):
                 x_probe = self.max['params']
                 idx = None
                 acq_val = None
-                if self._debug: print("New iteration: sticking to the best point", x_probe)
+                if self._debug: print("New iteration after termination: using the current best point", x_probe)
             else:
                 # sample new point
                 if self._debug: print("New iteration {}: suggesting new point".format(iteration))
