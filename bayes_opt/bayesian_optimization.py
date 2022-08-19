@@ -401,7 +401,10 @@ class BayesianOptimization(Observable):
 
             # Check stopping condition
             y_true_ml = self.get_ml_target_data(util.ml_target).iloc[-1] if hasattr(util, 'ml_model') else None
-            terminated = terminated or stopcrit.terminate(x_probe, target_value, iteration, util, y_true_ml)
+            if acq_val is None:
+                if self._debug: print("Point was selected from queue: skipping termination check")
+            else:
+                terminated = terminated or stopcrit.terminate(x_probe, target_value, iteration, util, y_true_ml)
 
             # Register other information about the new point
             other_info = pd.DataFrame(index=[idx])
