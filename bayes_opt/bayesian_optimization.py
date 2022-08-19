@@ -326,7 +326,9 @@ class BayesianOptimization(Observable):
               The default values for the latter are P(x) == 1 and Q(x) == 0
 
         stop_crit_info: dict, optional (default={})
-            TODO
+            Information required for using termination criteria. See the `StoppingCriteria` constructor
+            in `util.py` for a description of the possible contents of this dict (except `debug`, which
+            is set separately to the value stored in this class)
 
         memory_queue_len: int, optional (default=0)
             Length of FIFO memory queue. If used alongside a dataset, at each iteration,

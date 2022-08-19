@@ -324,7 +324,18 @@ class StoppingCriterion(object):
 
     Parameters
     ----------
-    TODO
+    conjunction: str 'and' or 'or', optional (default='or')
+        Whether to apply AND or OR between the different termination criteria
+
+    hard_stop: bool, optional (default=True)
+        Whether to actually stop the optimization procedure once terminated
+
+    ml_bounds_coeff: tuple, optional (default=None)
+        Coefficients (lb_coef, ub_coef) to apply to ml_bounds (see _violate_ml_bounds() method).
+        Needs an ML-related acquisition function, which has the ml_bounds member
+
+    debug: bool, optional (default=False)
+        Whether or not to print detailed debugging information
     """
     def __init__(self, conjunction='or', hard_stop=True, ml_bounds_coeff=None, debug=False):
         if conjunction == 'and':
