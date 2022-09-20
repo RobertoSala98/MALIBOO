@@ -12,4 +12,4 @@ This library originates as a fork from the [BayesianOptimization](https://github
 Please check the [`main_examples.py`](https://github.com/brunoguindani/BayesianOptimization/blob/master/main_example.py) file for over 20 usage examples.
 
 ## Tutorial / Base documentation
-Coming soon™️. In the meantime, please refer directly to the well-documented [Python files](https://github.com/brunoguindani/BayesianOptimization/tree/master/bayes_opt) of the project.
+Coming soon™️. In the meantime, please refer directly to the well-documented [Python files](https://github.com/brunoguindani/BayesianOptimization/tree/master/maliboo) of the project.
