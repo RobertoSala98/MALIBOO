@@ -6,7 +6,9 @@ dist/
 scratch/
 .idea/
 .DS_Store
-bo_eg*.png
+*.png
+!bo_dark_4.png
+*.svg
 gif/
 output*
 
