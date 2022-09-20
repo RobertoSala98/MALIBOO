@@ -3,7 +3,7 @@ import os
 import pandas as pd
 import time
 
-from bayes_opt import BayesianOptimization as BO
+from maliboo import BayesianOptimization as BO
 
 def target_func(x, y):
     return -x ** 2 - (y - 1) ** 2 + 1
