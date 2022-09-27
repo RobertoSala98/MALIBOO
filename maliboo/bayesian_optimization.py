@@ -269,8 +269,8 @@ class BayesianOptimization(Observable):
 
 
     def maximize(self,
-                 init_points=5,
-                 n_iter=25,
+                 init_points,
+                 n_iter,
                  acq='ucb',
                  kappa=2.576,
                  kappa_decay=1,
@@ -286,11 +286,11 @@ class BayesianOptimization(Observable):
 
         Parameters
         ----------
-        init_points: int, optional (default=5)
+        init_points: int
             Number of iterations before the explorations starts the exploration
             for the maximum.
 
-        n_iter: int, optional (default=25)
+        n_iter: int
             Number of iterations where the method attempts to find the maximum
             value.
 
