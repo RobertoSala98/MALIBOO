@@ -12,7 +12,7 @@ This library originates as a fork from the [BayesianOptimization](https://github
 ## Installing
 Please `git clone` this repository directly.
 You will also need Python 3 and a few dependencies.
-The latter can be taken care of by heading too the root directory of this repository and running:
+The latter can be taken care of by heading to the root directory of this repository and running:
 ```
 pip3 install -r requirements.txt
 ```
