@@ -27,8 +27,8 @@ def target_func(x1, x2):
     return -x1 ** 2 - (x2 - 1) ** 2 + 1
 
 optimizer = BO(f=target_func, pbounds={'x1': (2, 4), 'x2': (-3, 3)},
-               random_state=1, output_path='outputs/tutorial', debug=False)
-optimizer.maximize(init_points=2, n_iter=5)
+               output_path='outputs/tutorial', random_state=1, debug=False)
+optimizer.maximize(init_points=2, n_iter=5, acq='ucb')
 ```
 The library is first initialized by the construction of the `optimizer` object, then we call its `maximize()` method to perform the optimization proocedure.
 
@@ -96,5 +96,12 @@ optimizer.maximize(init_points=2, n_iter=5)
 Notice the lack of the `f` function and the presence of the `target_column` argument.
 
 
-## File documentation
-For further documentation, please also refer to the well-documented [Python files](https://github.com/brunoguindani/BayesianOptimization/tree/master/maliboo) of the project.
+## Documentation
+Features of the library include:
+* new acquisition functions integrated with Machine Learning models
+* several classical acquisition functions for "unconstrained" optimization, such as `ucb` (Upper Confidence Bound), `ei` (Expected Improvement), `ei_ml`
+* black-box-constrained optimization with appropriate acquisition functions: `eic`, `eic_ml`
+* memory queue for discrete features: if activated by calling `maximize()` with `memory_queue_len=q`, a point visited at any iteration will not be sampled again for the next `q` iterations
+* termination criteria for the BO algorithm
+
+For further information, please also refer to the well-documented [Python files](https://github.com/brunoguindani/BayesianOptimization/tree/master/maliboo) of the project.
