@@ -63,10 +63,10 @@ The function is given as the `f` argument of the constructor of the library obje
 See the [Tutorial](#tutorial) section for such an example.
 Note that this does *not* necessarily mean that the optimized function must have an analytic, closed-form expression.
 For instance, a valid target function can contain a call to another command-line program (e.g. via the `subprocess` Python module), recover the output of this program, and return appropriate values based on such output.
-2) with **free functions having finite domain** ($X$ *-datset mode*): this is particularly useful for functions which have discrete input parameters.
+2) with **free functions having finite domain** ( $X$*-datset mode*): this is particularly useful for functions which have discrete input parameters.
 In this case, in addition to `f`, we must also pass the `dataset` argument, which is the dataset $X$ containing the list of all domain points (either in the form of a `pandas.DataFrame`, or of the path to a `.csv` file).
 The optimization process will only consider these points, and will never pick a point which is not included in the dataset.
-3) with **tabular logs of simulated executions** ($Xy$ *-dataset mode*). In this case, no function is given in the `f` argument, therefore no function evaluation ever takes place.
+3) with **tabular logs of simulated executions** ( $Xy$*-dataset mode*). In this case, no function is given in the `f` argument, therefore no function evaluation ever takes place.
 We only pass the `dataset` $Xy$, which in this case must contain both the points of the domain and the target values, whose column is is indicated by the `target_column` argument.
 Again, the process will only choose points included in the dataset.
 This mode is useful if, for instance, we are studying the converge of multiple algorithms, or versions thereof, but we already have a log of past executions.
