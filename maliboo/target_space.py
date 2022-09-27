@@ -4,11 +4,6 @@ import pandas as pd
 from .util import ensure_rng
 
 
-def _hashable(x):
-    """Ensure that an point is hashable by a Python dict"""
-    return tuple(map(float, x))
-
-
 class TargetSpace(object):
     """
     Holds the param-space coordinates (X) and target values (Y)
