@@ -52,25 +52,48 @@ You can also run the [`main_examples.py`](https://github.com/brunoguindani/Bayes
 There are multiple usage modes, as we shall see in the next section.
 In all cases, the mandatory arguments are:
 * for the constructor, either the `f` and/or the `dataset` argument, depending on the usage mode
+* for the constructor, the `pbounds` argument, a dictionary which maps the names of the optimization variables too a tuple containing their lower and upper bound
 * for `maximize()`, the `init_points` and the `n_iter` arguments. These are respectively the number of randomly chosen initial points, and the maximum number of iterations of the BO algorithm.
 
 
 ## Usage modes
-There are three main ways to use the MALIBOOO library:
+There are three main ways to use the MALIBOO library:
 1) with **free functions**, i.e. which can be coded in Python and return values (either a scalar, or a dictionary with a `'value'` field).
 This is the traditional method used in the original package and most other optimization libraries.
 The function is given as the `f` argument of the constructor of the library object.
 See the [Tutorial](#tutorial) section for such an example.
 Note that this does *not* necessarily mean that the optimized function must have an analytic, closed-form expression.
 For instance, a valid target function can contain a call to another command-line program (e.g. via the `subprocess` Python module), recover the output of this program, and return appropriate values based on such output.
+
 2) with **free functions having finite domain** (aka $X$*-datset mode*): this is particularly useful for functions which have discrete input parameters.
 In this case, in addition to `f`, we must also pass the `dataset` argument, which is the dataset $X$ containing the list of all domain points (either in the form of a `pandas.DataFrame`, or of the path to a `.csv` file).
 The optimization process will only consider these points, and will never pick a point which is not included in the dataset.
+Example:
+```py
+from maliboo import BayesianOptimization as BO
+
+def target_func(x1, x2):
+    return -x1 ** 2 - (x2 - 1) ** 2 + 1
+
+optimizer = BO(f=target_func, pbounds={'x1': (999,2501), 'x2': (1,50)},
+               dataset='resources/test_xyz.csv')
+optimizer.maximize(init_points=2, n_iter=5)
+```
+
 3) with **tabular logs of simulated executions** (aka $Xy$*-dataset mode*). In this case, no function is given in the `f` argument, therefore no function evaluation ever takes place.
 We only pass the `dataset` $Xy$, which in this case must contain both the points of the domain and the target values, whose column is is indicated by the `target_column` argument.
 Again, the process will only choose points included in the dataset.
 This mode is useful if, for instance, we are studying the converge of multiple algorithms, or versions thereof, but we already have a log of past executions.
 This way, we can study the convergence of those algorithms without having to run again the potentially expensive black-box function.
+Example:
+```py
+from maliboo import BayesianOptimization as BO
+
+optimizer = BO(f=None, pbounds={'x1': (999,2501), 'x2': (1,50)},
+               dataset='resources/test_xyz.csv', target_column='z')
+optimizer.maximize(init_points=2, n_iter=5)
+```
+Notice the lack of the `f` function and the presence of the `target_column` argument.
 
 
 ## File documentation
