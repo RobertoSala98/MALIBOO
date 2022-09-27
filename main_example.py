@@ -5,20 +5,21 @@ import time
 
 from maliboo import BayesianOptimization as BO
 
-def target_func(x, y):
-    return -x ** 2 - (y - 1) ** 2 + 1
+def target_func(x1, x2):
+    return -x1 ** 2 - (x2 - 1) ** 2 + 1
 
-def target_func_1D(y):
-    return -y ** 2
+def target_func_1D(x2):
+    return -x2 ** 2
 
-def target_func_dict(x, y):
+def target_func_dict(x1, x2):
     ret = {}
-    ret['value'] = -x ** 2 - (y - 1) ** 2 + 1
+    ret['value'] = -x1 ** 2 - (x2 - 1) ** 2 + 1
     ret['field'] = "idk"
-    ret['blackbox'] = 2.0 * x + 3.0 * y
+    ret['blackbox'] = 2.0 * x1 + 3.0 * x2
     return ret
 
-# User parameters (debug: ignored if None, otherwise it overrides the command-line argument)
+# User parameters (debug: ignored if None, otherwise it overrides the
+# command-line argument)
 seed = 1
 n0 = 2
 n_iter = 5
@@ -29,8 +30,10 @@ debug = None
 
 
 # Initialize argument parser
-parser = argparse.ArgumentParser(description="Use Bayesian Optimization to maximize a function")
-parser.add_argument('-d', "--debug", help="debug mode (ignored if debug is set in the script)", default=False, action="store_true")
+parser = argparse.ArgumentParser(description="Use Bayesian Optimization to "
+                                              "maximize a function")
+parser.add_argument('-d', "--debug", default=False, action="store_true",
+                    help="debug mode (ignored if debug is set in the script)")
 args = parser.parse_args()
 # Get debug flag
 debug = args.debug if debug is None else debug
@@ -50,9 +53,9 @@ def test00a_free_complex(output_path):
       return 2.0 * x[:, 0]
   def my_Q(x):
       return 5.0
-  optimizer = BO(f=target_func_dict, pbounds={'x': (2, 4), 'y': (-3, 3)},
+  optimizer = BO(f=target_func_dict, pbounds={'x1': (2, 4), 'x2': (-3, 3)},
                  random_state=seed, output_path=output_path, debug=debug)
-  init_points = ({'x': 3.1, 'y': 0.7}, {'x': 2.2, 'y': -2.8})
+  init_points = ({'x1': 3.1, 'x2': 0.7}, {'x1': 2.2, 'x2': -2.8})
   optimizer.add_initial_points(init_points)
   optimizer.maximize(init_points=0, n_iter=n_iter, acq='eic_ml',
                      memory_queue_len=3,
@@ -71,11 +74,12 @@ def test00b_dataset_Xy_complex(output_path):
       return 2.0 * x[:, 0]
   def my_Q(x):
       return 5.0
-  optimizer = BO(f=None, pbounds={'x': (7,73), 'y': (7,73)}, random_state=seed,
+  optimizer = BO(f=None, pbounds={'x1': (7,73), 'x2': (7,73)},
+                 random_state=seed,
                  dataset=os.path.join('resources', 'test_ml.csv'),
                  target_column='z', output_path=output_path, debug=debug)
-  optimizer.add_initial_points(dict(x=48, y=48))  # z=220.431, idx=0
-  optimizer.add_initial_points(dict(x=16, y=8))   # z=146.028, idx=1
+  optimizer.add_initial_points(dict(x1=48, x2=48))  # z=220.431, idx=0
+  optimizer.add_initial_points(dict(x1=16, x2=8))   # z=146.028, idx=1
   optimizer.maximize(init_points=0, n_iter=n_iter, acq='eic_ml',
                      memory_queue_len=3,
                      acq_info={'eic_ml_var': 'B',
@@ -90,13 +94,13 @@ def test00b_dataset_Xy_complex(output_path):
 
 
 def test01_free(output_path):
-  optimizer = BO(f=target_func, pbounds={'x': (2, 4), 'y': (-3, 3)},
+  optimizer = BO(f=target_func, pbounds={'x1': (2, 4), 'x2': (-3, 3)},
                  random_state=seed, output_path=output_path, debug=debug)
   optimizer.maximize(init_points=n0, n_iter=n_iter)
 
 
 def test02_dataset_Xy(output_path):
-  optimizer = BO(f=None, pbounds={'x': (999,2501), 'y': (1,50)},
+  optimizer = BO(f=None, pbounds={'x1': (999,2501), 'x2': (1,50)},
                  random_state=seed,
                  dataset=os.path.join('resources', 'test_xyz.csv'),
                  target_column='z', output_path=output_path, debug=debug)
@@ -105,7 +109,7 @@ def test02_dataset_Xy(output_path):
 
 def test03_dataset_X(output_path):
   data = pd.read_csv(os.path.join('resources', 'test_xyz.csv'))
-  optimizer = BO(f=target_func, pbounds={'x': (999,2501), 'y': (1,50)},
+  optimizer = BO(f=target_func, pbounds={'x1': (999,2501), 'x2': (1,50)},
                  random_state=seed, dataset=data, output_path=output_path,
                  debug=debug)
   optimizer.maximize(init_points=n0, n_iter=n_iter)
@@ -113,14 +117,15 @@ def test03_dataset_X(output_path):
 
 
 def test04_free_ml(output_path):
-  optimizer = BO(f=target_func_dict, pbounds={'x': (2, 4), 'y': (-3, 3)},
+  optimizer = BO(f=target_func_dict, pbounds={'x1': (2, 4), 'x2': (-3, 3)},
                  random_state=seed, output_path=output_path, debug=debug)
   optimizer.maximize(init_points=n0, n_iter=n_iter, acq='ei_ml',
                      acq_info={'ml_target': 'blackbox', 'ml_bounds': (2, 8)})
 
 
 def test05_dataset_Xy_ml(output_path):
-  optimizer = BO(f=None, pbounds={'x': (7,73), 'y': (7,73)}, random_state=seed,
+  optimizer = BO(f=None, pbounds={'x1': (7,73), 'x2': (7,73)},
+                 random_state=seed,
                  dataset=os.path.join('resources', 'test_ml.csv'),
                  target_column='z', output_path=output_path, debug=debug)
   optimizer.maximize(init_points=n0, n_iter=n_iter, acq='ei_ml',
@@ -128,7 +133,7 @@ def test05_dataset_Xy_ml(output_path):
 
 
 def test06_dataset_X_ml(output_path):
-  optimizer = BO(f=target_func_dict, pbounds={'x': (7,73), 'y': (7,73)},
+  optimizer = BO(f=target_func_dict, pbounds={'x1': (7,73), 'x2': (7,73)},
                  random_state=seed,
                  dataset=os.path.join('resources', 'test_ml.csv'),
                  output_path=output_path, debug=debug)
@@ -137,28 +142,28 @@ def test06_dataset_X_ml(output_path):
 
 
 def test07_dataset_Xy_queue(output_path):
-  optimizer = BO(f=None, pbounds={'y': (1,50)}, random_state=seed,
+  optimizer = BO(f=None, pbounds={'x2': (1,50)}, random_state=seed,
                  dataset=os.path.join('resources', 'test_xyz.csv'),
                  target_column='z', output_path=output_path, debug=debug)
   optimizer.maximize(init_points=n0, n_iter=n_iter, memory_queue_len=3)
 
 
 def test08_dataset_X_queue(output_path):
-  optimizer = BO(f=target_func_1D, pbounds={'y': (1,50)}, random_state=seed,
+  optimizer = BO(f=target_func_1D, pbounds={'x2': (1,50)}, random_state=seed,
                  dataset=os.path.join('resources', 'test_xyz.csv'),
                  output_path=output_path, debug=debug)
   optimizer.maximize(init_points=n0, n_iter=n_iter, memory_queue_len=3)
 
 
 def test09_free_eic_default(output_path):
-  optimizer = BO(f=target_func, pbounds={'x': (2, 4), 'y': (-3, 3)},
+  optimizer = BO(f=target_func, pbounds={'x1': (2, 4), 'x2': (-3, 3)},
                  random_state=seed, output_path=output_path, debug=debug)
   optimizer.maximize(init_points=n0, n_iter=n_iter, acq='eic',
                      acq_info={'eic_bounds': (-3.2, -3.0)})
 
 
 def test10_dataset_Xy_eic_default(output_path):
-  optimizer = BO(f=None, pbounds={'x': (999,2501), 'y': (1,50)},
+  optimizer = BO(f=None, pbounds={'x1': (999,2501), 'x2': (1,50)},
                  random_state=seed,
                  dataset=os.path.join('resources', 'test_xyz.csv'),
                  target_column='z', output_path=output_path, debug=debug)
@@ -171,7 +176,7 @@ def test11_free_eic_custom_PQ(output_path):
       return 2.0 * x[:, 0]
   def my_Q(x):
       return 5.0
-  optimizer = BO(f=target_func, pbounds={'x': (2, 4), 'y': (-3, 3)},
+  optimizer = BO(f=target_func, pbounds={'x1': (2, 4), 'x2': (-3, 3)},
                  random_state=seed, output_path=output_path, debug=debug)
   optimizer.maximize(init_points=n0, n_iter=n_iter, acq='eic',
                      acq_info={'eic_bounds': (-3.2, -3.0), 'eic_P_func': my_P,
@@ -179,35 +184,36 @@ def test11_free_eic_custom_PQ(output_path):
 
 
 def test12_free_init_points_tuple(output_path):
-  optimizer = BO(f=target_func, pbounds={'x': (2, 4), 'y': (-3, 3)},
+  optimizer = BO(f=target_func, pbounds={'x1': (2, 4), 'x2': (-3, 3)},
                  random_state=seed, output_path=output_path, debug=debug)
-  init_points = ({'x': 3.1, 'y': 0.7}, {'x': 2.2, 'y': -2.8})
+  init_points = ({'x1': 3.1, 'x2': 0.7}, {'x1': 2.2, 'x2': -2.8})
   optimizer.add_initial_points(init_points)
   optimizer.maximize(init_points=0, n_iter=n_iter)
 
 
 def test13_dataset_Xy_init_points_dicts(output_path):
-  optimizer = BO(f=None, pbounds={'x': (999,2501), 'y': (1,50)},
+  optimizer = BO(f=None, pbounds={'x1': (999,2501), 'x2': (1,50)},
                  random_state=seed,
                  dataset=os.path.join('resources', 'test_xyz.csv'),
                  target_column='z', output_path=output_path, debug=debug)
-  optimizer.add_initial_points(dict(x=1000, y=6))   # z=971359, idx=197
-  optimizer.add_initial_points(dict(x=2500, y=38))  # z=1544285, idx=12
+  optimizer.add_initial_points(dict(x1=1000, x2=6))   # z=971359, idx=197
+  optimizer.add_initial_points(dict(x1=2500, x2=38))  # z=1544285, idx=12
   optimizer.maximize(init_points=0, n_iter=n_iter)
 
 
 def test14_dataset_X_init_points_df(output_path):
-  optimizer = BO(f=target_func, pbounds={'x': (999,2501), 'y': (1,50)},
+  optimizer = BO(f=target_func, pbounds={'x1': (999,2501), 'x2': (1,50)},
                  random_state=seed,
                  dataset=os.path.join('resources', 'test_xyz.csv'),
                  output_path=output_path, debug=debug)
-  init_points = pd.DataFrame([dict(x=1000, y=6), dict(x=2500, y=38)])
+  init_points = pd.DataFrame([dict(x1=1000, x2=6),
+                              dict(x1=2500, x2=38)])
   optimizer.add_initial_points(init_points)
   optimizer.maximize(init_points=0, n_iter=n_iter)
 
 
 def test15_free_eic_ml_B(output_path):
-  optimizer = BO(f=target_func_dict, pbounds={'x': (2, 4), 'y': (-3, 3)},
+  optimizer = BO(f=target_func_dict, pbounds={'x1': (2, 4), 'x2': (-3, 3)},
                  random_state=seed, output_path=output_path, debug=debug)
   optimizer.maximize(init_points=n0, n_iter=n_iter, acq='eic_ml',
                      acq_info={'eic_ml_var': 'B',
@@ -218,7 +224,7 @@ def test15_free_eic_ml_B(output_path):
 
 
 def test16_free_eic_ml_C(output_path):
-  optimizer = BO(f=target_func_dict, pbounds={'x': (2, 4), 'y': (-3, 3)},
+  optimizer = BO(f=target_func_dict, pbounds={'x1': (2, 4), 'x2': (-3, 3)},
                  random_state=seed, output_path=output_path, debug=debug)
   optimizer.maximize(init_points=n0, n_iter=n_iter, acq='eic_ml',
                      acq_info={'eic_ml_var': 'C',
@@ -228,7 +234,7 @@ def test16_free_eic_ml_C(output_path):
 
 
 def test17_free_eic_ml_D(output_path):
-  optimizer = BO(f=target_func_dict, pbounds={'x': (2, 4), 'y': (-3, 3)},
+  optimizer = BO(f=target_func_dict, pbounds={'x1': (2, 4), 'x2': (-3, 3)},
                  random_state=seed, output_path=output_path, debug=debug)
   optimizer.maximize(init_points=n0, n_iter=n_iter, acq='eic_ml',
                      acq_info={'eic_ml_var': 'D',
@@ -238,7 +244,7 @@ def test17_free_eic_ml_D(output_path):
 
 
 def test18_free_stop_crit_soft(output_path):
-  optimizer = BO(f=target_func_dict, pbounds={'x': (2, 4), 'y': (-3, 3)},
+  optimizer = BO(f=target_func_dict, pbounds={'x1': (2, 4), 'x2': (-3, 3)},
                  random_state=seed, output_path=output_path, debug=debug)
   optimizer.maximize(init_points=n0, n_iter=n_iter, acq='eic_ml',
                      acq_info={'eic_ml_var': 'C',
@@ -252,7 +258,8 @@ def test18_free_stop_crit_soft(output_path):
 
 
 def test19_dataset_Xy_stop_crit_hard(output_path):
-  optimizer = BO(f=None, pbounds={'x': (7,73), 'y': (7,73)}, random_state=seed,
+  optimizer = BO(f=None, pbounds={'x1': (7,73), 'x2': (7,73)},
+                 random_state=seed,
                  dataset=os.path.join('resources', 'test_ml.csv'),
                  target_column='z', output_path=output_path, debug=debug)
   optimizer.maximize(init_points=n0, n_iter=n_iter, acq='eic_ml',
