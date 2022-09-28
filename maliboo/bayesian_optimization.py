@@ -346,7 +346,12 @@ class BayesianOptimization(Observable):
             will not be considered
 
         relaxation: bool, optional (default=False)
-            TODO
+            Only relevant if a dataset is provided. If True, the acquisition function will be maximized
+            over the relaxed real-numbered domain, then the maximizer found will be approximated to the
+            closest point in the dataset (wrt the Euclidean distance). This means that the point found
+            at the current iteration is the discrete approximation of the solution of a continuous relaxation.
+            If False, the acquisition function will only be evaluated on the dataset points as usual,
+            therefore an exact maximizer will be found, without any approximation taking place.
         """
         # Initialize the memory queue, a list of lists of forbidden indexes for the current iteration
         if self._debug: print("Starting maximize()")
@@ -453,7 +458,7 @@ class BayesianOptimization(Observable):
 
     def get_approximation(self, x_probe, dataset):
         """
-        Finds a point in dataset which is the nearest to x_probe (wrt Euclidean distance)
+        Finds a point in dataset which is the nearest to x_probe (wrt the Euclidean distance)
 
         Parameters
         ----------
