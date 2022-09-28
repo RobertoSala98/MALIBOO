@@ -4,7 +4,7 @@ from scipy.stats import norm
 from scipy.optimize import minimize
 
 
-def acq_max(ac, gp, y_max, bounds, random_state, n_warmup=10000, n_iter=10, dataset=None,
+def acq_max(ac, gp, y_max, bounds, random_state, n_warmup=10000, n_iter=10, dataset_grid=None,
             debug=False):
     """
     A function to find the maximum of the acquisition function
@@ -36,7 +36,7 @@ def acq_max(ac, gp, y_max, bounds, random_state, n_warmup=10000, n_iter=10, data
     n_iter: int, optional (default=10)
         Number of times to run scipy.minimize
 
-    dataset: pandas.DataFrame, optional (default=None)
+    dataset_grid: pandas.DataFrame, optional (default=None)
         The (possibly reduced) domain dataset, if any, on which the maximum is to be found
 
     debug: bool, optional (default=False)
@@ -55,9 +55,9 @@ def acq_max(ac, gp, y_max, bounds, random_state, n_warmup=10000, n_iter=10, data
     """
     # Warm up with random points or dataset points
     if debug: print("Starting acq_max()\nIncumbent target: y_max =", y_max)
-    if dataset is not None:
-        if debug: print("Dataset passed to initial grid has shape", dataset.shape)
-        x_tries = dataset.values
+    if dataset_grid is not None:
+        if debug: print("Dataset passed to initial grid has shape", dataset_grid.shape)
+        x_tries = dataset_grid.values
     else:
         if debug: print("No dataset, initial grid will be random with shape {}".format((n_warmup, bounds.shape[0])))
         x_tries = random_state.uniform(bounds[:, 0], bounds[:, 1],
@@ -68,9 +68,9 @@ def acq_max(ac, gp, y_max, bounds, random_state, n_warmup=10000, n_iter=10, data
     x_max = x_tries[idx]
     if debug: print("Grid index idx =", idx)
 
-    if dataset is not None:
+    if dataset_grid is not None:
         # idx becomes the true dataset index of the selected point, rather than being relative to x_tries
-        idx = dataset.index[idx]
+        idx = dataset_grid.index[idx]
         max_acq = ys[idx]
         if debug: print("End of acq_max(): maximizer of utility is x = data[{}] = {}, with ac(x) = {}".format(idx, x_max, max_acq))
         return x_max, idx, max_acq
