@@ -289,7 +289,20 @@ def test21_dataset_X_relaxation(output_path):
   optimizer.maximize(init_points=n0, n_iter=n_iter, relaxation=True)
 
 
-# TODO 22 and 23 with memory queue
+def test22_dataset_Xy_relaxation_queue(output_path):
+  optimizer = BO(f=None, pbounds={'x2': (1,50)}, random_state=seed,
+                 dataset=os.path.join('resources', 'test_xyz.csv'),
+                 target_column='z', output_path=output_path, debug=debug)
+  optimizer.maximize(init_points=n0, n_iter=n_iter, memory_queue_len=3,
+                     relaxation=True)
+
+
+def test23_dataset_X_relaxation_queue(output_path):
+  optimizer = BO(f=target_func_1D, pbounds={'x2': (1,50)}, random_state=seed,
+                 dataset=os.path.join('resources', 'test_xyz.csv'),
+                 output_path=output_path, debug=debug)
+  optimizer.maximize(init_points=n0, n_iter=n_iter, memory_queue_len=3,
+                     relaxation=True)
 
 
 if __name__ == '__main__':
@@ -314,5 +327,6 @@ if __name__ == '__main__':
   # perform_test(test17_free_eic_ml_D)
   # perform_test(test18_free_stop_crit_soft)
   # perform_test(test19_dataset_Xy_stop_crit_hard)
-  perform_test(test20_dataset_Xy_relaxation)
-  perform_test(test21_dataset_X_relaxation)
+  # perform_test(test20_dataset_Xy_relaxation)
+  # perform_test(test21_dataset_X_relaxation)
+  perform_test(test22_dataset_Xy_relaxation_queue)
