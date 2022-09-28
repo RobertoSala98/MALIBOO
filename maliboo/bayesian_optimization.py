@@ -449,7 +449,7 @@ class BayesianOptimization(Observable):
         self.dispatch(Events.OPTIMIZATION_END)
 
 
-    def get_approximation(self, dataset, x_probe):
+    def get_approximation(self, x_probe, dataset):
         """
         Finds a point in dataset which is the nearest to x_probe (wrt Euclidean distance)
 
@@ -476,10 +476,10 @@ class BayesianOptimization(Observable):
         approximations_idxs = []
 
         dataset_np = dataset.values  # recover numpy array for faster looping over rows
-        idx_cols = [dataset.columns.get_loc(c) for c in dataset.columns if c in dataset and c != self._target_column]  # works even if target col is None
+        idx_cols = [dataset.columns.get_loc(c) for c in dataset.columns if c in dataset and c != self._space.target_column]  # works even if target col is None
         for idx in range(dataset_np.shape[0]):
             row = dataset_np[idx, idx_cols]
-            dist = np.linalg.norm(x_array - row, 2)
+            dist = np.linalg.norm(x_probe - row, 2)
             if min_distance is None or dist <= min_distance:
                 if dist == min_distance:
                     # One of the tied best approximations
