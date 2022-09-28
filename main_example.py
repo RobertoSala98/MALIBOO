@@ -329,4 +329,5 @@ if __name__ == '__main__':
   # perform_test(test19_dataset_Xy_stop_crit_hard)
   # perform_test(test20_dataset_Xy_relaxation)
   # perform_test(test21_dataset_X_relaxation)
-  perform_test(test22_dataset_Xy_relaxation_queue)
+  # perform_test(test22_dataset_Xy_relaxation_queue)
+  perform_test(test23_dataset_X_relaxation_queue)
