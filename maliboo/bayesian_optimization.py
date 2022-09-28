@@ -243,7 +243,9 @@ class BayesianOptimization(Observable):
         )
 
         if self.relaxation:
+            sugg_old = suggestion
             idx, suggestion = self.get_approximation(suggestion, dataset_approx)
+            if self._debug: print("Relaxation converted", sugg_old, "to data[{}] = {}".format(idx, suggestion))
 
         if self.dataset is not None:
             self.update_memory_queue(self.dataset[self._space.keys], suggestion)
