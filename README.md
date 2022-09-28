@@ -103,5 +103,9 @@ Features of the library include:
 * black-box-constrained optimization with appropriate acquisition functions: `eic`, `eic_ml`
 * memory queue for discrete features: if activated by calling `maximize()` with `memory_queue_len=q`, a point visited at any iteration will not be sampled again for the next `q` iterations
 * termination criteria for the BO algorithm
+* `relaxation` mode when a dataset is used (i.e. in modes 2 and 3).
+If `maximize()` is called with such option set to `True`, the acquisition function will be maximized over the relaxed real-numbered domain, then the maximizer found will be approximated to the closest point in the dataset (wrt the Euclidean distance).
+This means that the point found at the current iteration is the discrete approximation of the solution of a continuous relaxation.
+If `False` (which is also the default value), the acquisition function will only be evaluated on the dataset points as usual, therefore an exact maximizer will be found, without any approximation taking place.
 
 For further information, please also refer to the well-documented [Python files](https://github.com/brunoguindani/BayesianOptimization/tree/master/maliboo) of the project.

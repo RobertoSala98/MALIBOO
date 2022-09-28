@@ -227,6 +227,9 @@ class BayesianOptimization(Observable):
             mask[idxs] = 0
             # Create dataset to be passed to acq_max()
             dataset_acq = self.dataset.loc[mask, self._space.keys]
+            if self.relaxation:
+                dataset_approx = dataset_acq
+                dataset_acq = None
 
         # Find argmax of the acquisition function
         suggestion, idx, acq_val = acq_max(
@@ -238,6 +241,11 @@ class BayesianOptimization(Observable):
             dataset=dataset_acq,
             debug=self._debug
         )
+
+        if self.relaxation:
+            sugg_old = suggestion
+            idx, suggestion = self.get_approximation(suggestion, dataset_approx)
+            if self._debug: print("Relaxation converted", sugg_old, "to data[{}] = {}".format(idx, suggestion))
 
         if self.dataset is not None:
             self.update_memory_queue(self.dataset[self._space.keys], suggestion)
@@ -279,6 +287,7 @@ class BayesianOptimization(Observable):
                  acq_info={},
                  stop_crit_info={},
                  memory_queue_len=0,
+                 relaxation=False,
                  **gp_params):
         """
         Probes the target space to find the parameters that yield the maximum
@@ -335,11 +344,20 @@ class BayesianOptimization(Observable):
             Length of FIFO memory queue. If used alongside a dataset, at each iteration,
             values which have already been chosen in the last memory_queue_len iterations
             will not be considered
+
+        relaxation: bool, optional (default=False)
+            Only relevant if a dataset is provided. If True, the acquisition function will be maximized
+            over the relaxed real-numbered domain, then the maximizer found will be approximated to the
+            closest point in the dataset (wrt the Euclidean distance). This means that the point found
+            at the current iteration is the discrete approximation of the solution of a continuous relaxation.
+            If False, the acquisition function will only be evaluated on the dataset points as usual,
+            therefore an exact maximizer will be found, without any approximation taking place.
         """
         # Initialize the memory queue, a list of lists of forbidden indexes for the current iteration
         if self._debug: print("Starting maximize()")
         self.memory_queue_len = memory_queue_len
         self.memory_queue = []
+        self.relaxation = relaxation
 
         # Initialize other stuff
         self._prime_subscriptions()
@@ -436,6 +454,53 @@ class BayesianOptimization(Observable):
         print("max:", self.max)
         self.save_res_to_csv()
         self.dispatch(Events.OPTIMIZATION_END)
+
+
+    def get_approximation(self, x_probe, dataset):
+        """
+        Finds a point in dataset which is the nearest to x_probe (wrt the Euclidean distance)
+
+        Parameters
+        ----------
+        dataset: pandas.DataFrame
+            dataset in which to find the approximated point
+
+        x_probe: numpy.ndarray
+            point found by the optimization process
+
+        Returns
+        -------
+        approx_idx_ret: int
+            dataset index of the approximation found
+        approx_ret: numpy.ndarray
+            approximated x_probe
+        """
+        if dataset is None:
+            raise ValueError("dataset is empty in get_approximation()")
+
+        min_distance = None
+        approximations = []
+        approximations_idxs = []
+
+        dataset_np = dataset.values  # recover numpy array for faster looping over rows
+        idx_cols = [dataset.columns.get_loc(c) for c in dataset.columns if c in dataset and c != self._space.target_column]  # works even if target col is None
+        for idx in range(dataset_np.shape[0]):
+            row = dataset_np[idx, idx_cols]
+            dist = np.linalg.norm(x_probe - row, 2)
+            if min_distance is None or dist <= min_distance:
+                if dist == min_distance:
+                    # One of the tied best approximations
+                    approximations.append(row)
+                    approximations_idxs.append(dataset.index[idx])
+                else:
+                    # The one new best approximation
+                    min_distance = dist
+                    approximations = [row]
+                    approximations_idxs = [dataset.index[idx]]
+
+        # If multiple, choose randomly
+        ret_idx = self._random_state.randint(0, len(approximations_idxs))
+        return approximations_idxs[ret_idx], approximations[ret_idx]
 
 
     def save_res_to_csv(self):
