@@ -486,12 +486,12 @@ class BayesianOptimization(Observable):
                 if dist == min_distance:
                     # One of the tied best approximations
                     approximations.append(row)
-                    approximations_idxs.append(idx)
+                    approximations_idxs.append(dataset.index[idx])
                 else:
                     # The one new best approximation
                     min_distance = dist
                     approximations = [row]
-                    approximations_idxs = [idx]
+                    approximations_idxs = [dataset.index[idx]]
 
         # If multiple, choose randomly
         ret_idx = self._random_state.randint(0, len(approximations_idxs))
