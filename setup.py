@@ -1,21 +1,22 @@
 from setuptools import setup, find_packages
 
 setup(
-    name='bayesian-optimization',
-    version='1.2.0',
-    url='https://github.com/fmfn/BayesianOptimization',
+    name="MALIBOO",
+    version="1.0.0",
+    url="https://github.com/brunoguindani/MALIBOO",
     packages=find_packages(),
-    author='Fernando Nogueira',
-    author_email="fmfnogueira@gmail.com",
-    description='Bayesian Optimization package',
-    long_description='A Python implementation of global optimization with gaussian processes.',
-    download_url='https://github.com/fmfn/BayesianOptimization/tarball/0.6',
+    author="Bruno Guindani",
+    author_email="bruno.guindani@polimi.it",
+    description="Machine Learning in Bayesian Optimization",
+    long_description="Bayesian Optimization algorithms integrated with Machine Learning techniques",
     install_requires=[
-        "numpy >= 1.9.0",
-        "scipy >= 0.14.0",
-        "scikit-learn >= 0.18.0",
+        "numpy",
+        "pandas",
+        "scikit_learn",
+        "scipy",
+        "setuptools"
     ],
     classifiers=[
-        'License :: OSI Approved :: MIT License',
+        "License :: OSI Approved :: MIT License",
     ]
 )
