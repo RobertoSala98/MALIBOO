@@ -47,7 +47,7 @@ max: {'target': -3.0471017620190217, 'params': {'x1': 2.0, 'x2': 0.7829705964183
 Results successfully saved to outputs/tutorial
 =================================================
 ```
-You can also run the [`main_examples.py`](https://github.com/brunoguindani/BayesianOptimization/blob/master/main_example.py) file, which contains over 20 usage examples using different features and techniques.
+You can also run the [`test.py`](https://github.com/brunoguindani/BayesianOptimization/blob/master/test.py) file, which contains over 20 usage examples using different features and techniques.
 
 There are multiple usage modes, as we shall see in the next section.
 In all cases, the mandatory arguments are:
