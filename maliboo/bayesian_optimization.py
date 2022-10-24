@@ -440,6 +440,9 @@ class BayesianOptimization(Observable):
 
             if self._debug: print("End of current iteration", 24*"+", sep="\n")
 
+            self.save_res_to_csv()
+            if self._debug: print("Saved current results to " + self._output_path)
+
             # Check stopping conditions
             if stopcrit.hard_stop() and terminated:
                 if self._debug: print("Ending loop early due to stopping condition(s)")
@@ -453,6 +456,7 @@ class BayesianOptimization(Observable):
                 self._bounds_transformer.transform(self._space))
         print("max:", self.max)
         self.save_res_to_csv()
+        print("Results successfully saved to " + self._output_path)
         self.dispatch(Events.OPTIMIZATION_END)
 
 
@@ -506,14 +510,12 @@ class BayesianOptimization(Observable):
     def save_res_to_csv(self):
         """Save results of the optimization to csv files located in results directory"""
         os.makedirs(self._output_path, exist_ok=True)
-        results = self._space.params
+        results = self._space.params.copy()
         results['target'] = self._space.target
         results = pd.concat((results, self._space._optimization_info), axis=1)
         results['index'] = results.index.fillna(-1).astype(int)
         results.set_index('index', inplace=True)
         results.to_csv(os.path.join(self._output_path, "results.csv"), index=True)
-
-        print("Results successfully saved to " + self._output_path)
 
 
     def set_bounds(self, new_bounds):
