@@ -8,6 +8,10 @@ from maliboo import BayesianOptimization as BO
 def target_func(x1, x2):
     return -x1 ** 2 - (x2 - 1) ** 2 + 1
 
+def target_func_slow(x1, x2):
+    time.sleep(1.5)
+    return -x1 ** 2 - (x2 - 1) ** 2 + 1
+
 def target_func_1D(x2):
     return -x2 ** 2
 
@@ -305,6 +309,12 @@ def test23_dataset_X_relaxation_queue(output_path):
                      relaxation=True)
 
 
+def test24_free_fault_tol(output_path):
+  optimizer = BO(f=target_func_slow, pbounds={'x1': (2, 4), 'x2': (-3, 3)},
+                 random_state=seed, output_path=output_path, debug=debug)
+  optimizer.maximize(init_points=n0, n_iter=n_iter)
+
+
 if __name__ == '__main__':
   perform_test(test00a_free_complex)
   perform_test(test00b_dataset_Xy_complex)
@@ -331,3 +341,4 @@ if __name__ == '__main__':
   perform_test(test21_dataset_X_relaxation)
   perform_test(test22_dataset_Xy_relaxation_queue)
   perform_test(test23_dataset_X_relaxation_queue)
+  perform_test(test24_free_fault_tol)
