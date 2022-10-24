@@ -9,7 +9,7 @@ def target_func(x1, x2):
     return -x1 ** 2 - (x2 - 1) ** 2 + 1
 
 def target_func_slow(x1, x2):
-    time.sleep(1.5)
+    time.sleep(2)
     return -x1 ** 2 - (x2 - 1) ** 2 + 1
 
 def target_func_1D(x2):
@@ -340,7 +340,7 @@ def test23_dataset_X_relaxation_queue(output_path):
 def test24_free_fault_tol(output_path):
   optimizer = BO(f=target_func_slow, pbounds={'x1': (2, 4), 'x2': (-3, 3)},
                  random_state=seed, output_path=output_path, debug=debug)
-  optimizer.maximize(init_points=n0, n_iter=n_iter)
+  optimizer.maximize(init_points=3, n_iter=5)
 
 
 if __name__ == '__main__':

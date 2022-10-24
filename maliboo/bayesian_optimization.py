@@ -92,6 +92,8 @@ class BayesianOptimization(Observable):
         self._debug = debug
         self._bounds_transformer = bounds_transformer
         self._output_path = os.getcwd() if output_path is None else os.path.join(output_path)
+        self._results_file     = os.path.join(self._output_path, 'results.csv')
+        self._results_file_tmp = os.path.join(self._output_path, 'results.csv.tmp')
 
         # Check for coherence among constructor arguments
         if pbounds is None:
@@ -380,6 +382,18 @@ class BayesianOptimization(Observable):
         if self._debug: print(24*"+", "Starting optimization loop", sep="\n")
 
         while not self._queue.empty() or iteration < n_iter:
+            # Fault tolerance mechanism: read data from temp file, if any
+            if self._space.params.empty and os.path.exists(self._results_file_tmp):
+                self.load_res_from_csv(self._results_file_tmp)
+                old_iters = len(self._space.params)
+                # TODO
+                # print(f"init = {init_points}, iter = {n_iter}, curr = {iteration}, old = {old_iters}")
+                if not self._queue.empty():
+                    for i in range(min(old_iters, self._queue.qsize())):
+                        self._queue.get()
+                if old_iters > init_points:
+                    iteration += old_iters - init_points
+
             # Sample new point from GP
             if not self._queue.empty():
                 # get point from queue
@@ -440,7 +454,7 @@ class BayesianOptimization(Observable):
 
             if self._debug: print("End of current iteration", 24*"+", sep="\n")
 
-            self.save_res_to_csv()
+            self.save_res_to_csv(self._results_file_tmp)
             if self._debug: print("Saved current results to " + self._output_path)
 
             # Check stopping conditions
@@ -455,7 +469,8 @@ class BayesianOptimization(Observable):
             self.set_bounds(
                 self._bounds_transformer.transform(self._space))
         print("max:", self.max)
-        self.save_res_to_csv()
+        self.save_res_to_csv(self._results_file)
+        os.remove(self._results_file_tmp)
         print("Results successfully saved to " + self._output_path)
         self.dispatch(Events.OPTIMIZATION_END)
 
@@ -507,15 +522,25 @@ class BayesianOptimization(Observable):
         return approximations_idxs[ret_idx], approximations[ret_idx]
 
 
-    def save_res_to_csv(self):
-        """Save results of the optimization to csv files located in results directory"""
+    def save_res_to_csv(self, file_path):
+        """Save results of the optimization to the given .csv file"""
         os.makedirs(self._output_path, exist_ok=True)
         results = self._space.params.copy()
         results['target'] = self._space.target
         results = pd.concat((results, self._space._optimization_info), axis=1)
         results['index'] = results.index.fillna(-1).astype(int)
         results.set_index('index', inplace=True)
-        results.to_csv(os.path.join(self._output_path, "results.csv"), index=True)
+        results.to_csv(file_path, index=True)
+
+
+    def load_res_from_csv(self, file_path):
+        """Load partial results of the optimization from the given .csv file"""
+        results = pd.read_csv(file_path, index_col='index')
+        results.rename(index={-1: None}, inplace=True)
+        self._space._params = results[self._space.keys]
+        self._space._target = results['target']
+        other_cols = [_ for _ in results.columns if _ not in self._space.keys+['target'] ]
+        self._space._optimization_info = results[other_cols]
 
 
     def set_bounds(self, new_bounds):
