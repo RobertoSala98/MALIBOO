@@ -386,13 +386,15 @@ class BayesianOptimization(Observable):
             if self._space.params.empty and os.path.exists(self._results_file_tmp):
                 self.load_res_from_csv(self._results_file_tmp)
                 old_iters = len(self._space.params)
-                # TODO
-                # print(f"init = {init_points}, iter = {n_iter}, curr = {iteration}, old = {old_iters}")
+                # Advance iteration counter:
+                ## Remove values from queue, up to a maximum of old_iters
                 if not self._queue.empty():
-                    for i in range(min(old_iters, self._queue.qsize())):
+                    for i in range(min(old_iters, init_points)):
                         self._queue.get()
+                ## If there still are iterations left, advance counter by the difference
                 if old_iters > init_points:
                     iteration += old_iters - init_points
+                if self._debug: print(f"Recovered {old_iters} values from temporary file")
 
             # Sample new point from GP
             if not self._queue.empty():
