@@ -44,14 +44,17 @@ debug = args.debug if debug is None else debug
 
 
 def perform_test(testfunc):
-  print("Starting", testfunc.__name__, "...")
-  output_path = os.path.join('outputs', testfunc.__name__)
-  start = time.time()
-  testfunc(output_path)
-  stop = time.time()
-  print("Done in", stop-start, "seconds\n\n\n")
+    def ret():
+        print("Starting", testfunc.__name__, "...")
+        output_path = os.path.join('outputs', testfunc.__name__)
+        start = time.time()
+        testfunc(output_path)
+        stop = time.time()
+        print("Done in", stop-start, "seconds\n\n\n")
+    return ret
 
 
+@perform_test
 def test00a_free_complex(output_path):
   def my_P(x):
       return 2.0 * x[:, 0]
@@ -73,6 +76,7 @@ def test00a_free_complex(output_path):
                                     })
 
 
+@perform_test
 def test00b_dataset_Xy_complex(output_path):
   def my_P(x):
       return 2.0 * x[:, 0]
@@ -97,12 +101,14 @@ def test00b_dataset_Xy_complex(output_path):
                                     })
 
 
+@perform_test
 def test01_free(output_path):
   optimizer = BO(f=target_func, pbounds={'x1': (2, 4), 'x2': (-3, 3)},
                  random_state=seed, output_path=output_path, debug=debug)
   optimizer.maximize(init_points=n0, n_iter=n_iter)
 
 
+@perform_test
 def test02_dataset_Xy(output_path):
   optimizer = BO(f=None, pbounds={'x1': (999,2501), 'x2': (1,50)},
                  random_state=seed,
@@ -111,6 +117,7 @@ def test02_dataset_Xy(output_path):
   optimizer.maximize(init_points=n0, n_iter=n_iter)
 
 
+@perform_test
 def test03_dataset_X(output_path):
   data = pd.read_csv(os.path.join('resources', 'test_xyz.csv'))
   optimizer = BO(f=target_func, pbounds={'x1': (999,2501), 'x2': (1,50)},
@@ -120,6 +127,7 @@ def test03_dataset_X(output_path):
   print("res:", optimizer.res)
 
 
+@perform_test
 def test04_free_ml(output_path):
   optimizer = BO(f=target_func_dict, pbounds={'x1': (2, 4), 'x2': (-3, 3)},
                  random_state=seed, output_path=output_path, debug=debug)
@@ -127,6 +135,7 @@ def test04_free_ml(output_path):
                      acq_info={'ml_target': 'blackbox', 'ml_bounds': (2, 8)})
 
 
+@perform_test
 def test05_dataset_Xy_ml(output_path):
   optimizer = BO(f=None, pbounds={'x1': (7,73), 'x2': (7,73)},
                  random_state=seed,
@@ -136,6 +145,7 @@ def test05_dataset_Xy_ml(output_path):
                      acq_info={'ml_target': 'z_pred', 'ml_bounds': (0, 2.2)})
 
 
+@perform_test
 def test06_dataset_X_ml(output_path):
   optimizer = BO(f=target_func_dict, pbounds={'x1': (7,73), 'x2': (7,73)},
                  random_state=seed,
@@ -145,6 +155,7 @@ def test06_dataset_X_ml(output_path):
                      acq_info={'ml_target': 'z_pred', 'ml_bounds': (0, 2.2)})
 
 
+@perform_test
 def test07_dataset_Xy_queue(output_path):
   optimizer = BO(f=None, pbounds={'x2': (1,50)}, random_state=seed,
                  dataset=os.path.join('resources', 'test_xyz.csv'),
@@ -152,6 +163,7 @@ def test07_dataset_Xy_queue(output_path):
   optimizer.maximize(init_points=n0, n_iter=n_iter, memory_queue_len=3)
 
 
+@perform_test
 def test08_dataset_X_queue(output_path):
   optimizer = BO(f=target_func_1D, pbounds={'x2': (1,50)}, random_state=seed,
                  dataset=os.path.join('resources', 'test_xyz.csv'),
@@ -159,6 +171,7 @@ def test08_dataset_X_queue(output_path):
   optimizer.maximize(init_points=n0, n_iter=n_iter, memory_queue_len=3)
 
 
+@perform_test
 def test09_free_eic_default(output_path):
   optimizer = BO(f=target_func, pbounds={'x1': (2, 4), 'x2': (-3, 3)},
                  random_state=seed, output_path=output_path, debug=debug)
@@ -166,6 +179,7 @@ def test09_free_eic_default(output_path):
                      acq_info={'eic_bounds': (-3.2, -3.0)})
 
 
+@perform_test
 def test10_dataset_Xy_eic_default(output_path):
   optimizer = BO(f=None, pbounds={'x1': (999,2501), 'x2': (1,50)},
                  random_state=seed,
@@ -175,6 +189,7 @@ def test10_dataset_Xy_eic_default(output_path):
                      acq_info={'eic_bounds': (2_500_000, 2_700_000)})
 
 
+@perform_test
 def test11_free_eic_custom_PQ(output_path):
   def my_P(x):
       return 2.0 * x[:, 0]
@@ -187,6 +202,7 @@ def test11_free_eic_custom_PQ(output_path):
                                                            'eic_Q_func': my_Q})
 
 
+@perform_test
 def test12_free_init_points_tuple(output_path):
   optimizer = BO(f=target_func, pbounds={'x1': (2, 4), 'x2': (-3, 3)},
                  random_state=seed, output_path=output_path, debug=debug)
@@ -195,6 +211,7 @@ def test12_free_init_points_tuple(output_path):
   optimizer.maximize(init_points=0, n_iter=n_iter)
 
 
+@perform_test
 def test13_dataset_Xy_init_points_dicts(output_path):
   optimizer = BO(f=None, pbounds={'x1': (999,2501), 'x2': (1,50)},
                  random_state=seed,
@@ -205,6 +222,7 @@ def test13_dataset_Xy_init_points_dicts(output_path):
   optimizer.maximize(init_points=0, n_iter=n_iter)
 
 
+@perform_test
 def test14_dataset_X_init_points_df(output_path):
   optimizer = BO(f=target_func, pbounds={'x1': (999,2501), 'x2': (1,50)},
                  random_state=seed,
@@ -216,6 +234,7 @@ def test14_dataset_X_init_points_df(output_path):
   optimizer.maximize(init_points=0, n_iter=n_iter)
 
 
+@perform_test
 def test15_free_eic_ml_B(output_path):
   optimizer = BO(f=target_func_dict, pbounds={'x1': (2, 4), 'x2': (-3, 3)},
                  random_state=seed, output_path=output_path, debug=debug)
@@ -227,6 +246,7 @@ def test15_free_eic_ml_B(output_path):
                                })
 
 
+@perform_test
 def test16_free_eic_ml_C(output_path):
   optimizer = BO(f=target_func_dict, pbounds={'x1': (2, 4), 'x2': (-3, 3)},
                  random_state=seed, output_path=output_path, debug=debug)
@@ -237,6 +257,7 @@ def test16_free_eic_ml_C(output_path):
                                })
 
 
+@perform_test
 def test17_free_eic_ml_D(output_path):
   optimizer = BO(f=target_func_dict, pbounds={'x1': (2, 4), 'x2': (-3, 3)},
                  random_state=seed, output_path=output_path, debug=debug)
@@ -247,6 +268,7 @@ def test17_free_eic_ml_D(output_path):
                                })
 
 
+@perform_test
 def test18_free_stop_crit_soft(output_path):
   optimizer = BO(f=target_func_dict, pbounds={'x1': (2, 4), 'x2': (-3, 3)},
                  random_state=seed, output_path=output_path, debug=debug)
@@ -261,6 +283,7 @@ def test18_free_stop_crit_soft(output_path):
                                     })
 
 
+@perform_test
 def test19_dataset_Xy_stop_crit_hard(output_path):
   optimizer = BO(f=None, pbounds={'x1': (7,73), 'x2': (7,73)},
                  random_state=seed,
@@ -277,6 +300,7 @@ def test19_dataset_Xy_stop_crit_hard(output_path):
                                     })
 
 
+@perform_test
 def test20_dataset_Xy_relaxation(output_path):
   optimizer = BO(f=None, pbounds={'x1': (999,2501), 'x2': (1,50)},
                  random_state=seed,
@@ -285,6 +309,7 @@ def test20_dataset_Xy_relaxation(output_path):
   optimizer.maximize(init_points=n0, n_iter=n_iter, relaxation=True)
 
 
+@perform_test
 def test21_dataset_X_relaxation(output_path):
   optimizer = BO(f=target_func, pbounds={'x1': (999,2501), 'x2': (1,50)},
                  random_state=seed,
@@ -293,6 +318,7 @@ def test21_dataset_X_relaxation(output_path):
   optimizer.maximize(init_points=n0, n_iter=n_iter, relaxation=True)
 
 
+@perform_test
 def test22_dataset_Xy_relaxation_queue(output_path):
   optimizer = BO(f=None, pbounds={'x2': (1,50)}, random_state=seed,
                  dataset=os.path.join('resources', 'test_xyz.csv'),
@@ -301,6 +327,7 @@ def test22_dataset_Xy_relaxation_queue(output_path):
                      relaxation=True)
 
 
+@perform_test
 def test23_dataset_X_relaxation_queue(output_path):
   optimizer = BO(f=target_func_1D, pbounds={'x2': (1,50)}, random_state=seed,
                  dataset=os.path.join('resources', 'test_xyz.csv'),
@@ -309,6 +336,7 @@ def test23_dataset_X_relaxation_queue(output_path):
                      relaxation=True)
 
 
+@perform_test
 def test24_free_fault_tol(output_path):
   optimizer = BO(f=target_func_slow, pbounds={'x1': (2, 4), 'x2': (-3, 3)},
                  random_state=seed, output_path=output_path, debug=debug)
@@ -316,29 +344,29 @@ def test24_free_fault_tol(output_path):
 
 
 if __name__ == '__main__':
-  perform_test(test00a_free_complex)
-  perform_test(test00b_dataset_Xy_complex)
-  perform_test(test01_free)
-  perform_test(test02_dataset_Xy)
-  perform_test(test03_dataset_X)
-  perform_test(test04_free_ml)
-  perform_test(test05_dataset_Xy_ml)
-  perform_test(test06_dataset_X_ml)
-  perform_test(test07_dataset_Xy_queue)
-  perform_test(test08_dataset_X_queue)
-  perform_test(test09_free_eic_default)
-  perform_test(test10_dataset_Xy_eic_default)
-  perform_test(test11_free_eic_custom_PQ)
-  perform_test(test12_free_init_points_tuple)
-  perform_test(test13_dataset_Xy_init_points_dicts)
-  perform_test(test14_dataset_X_init_points_df)
-  perform_test(test15_free_eic_ml_B)
-  perform_test(test16_free_eic_ml_C)
-  perform_test(test17_free_eic_ml_D)
-  perform_test(test18_free_stop_crit_soft)
-  perform_test(test19_dataset_Xy_stop_crit_hard)
-  perform_test(test20_dataset_Xy_relaxation)
-  perform_test(test21_dataset_X_relaxation)
-  perform_test(test22_dataset_Xy_relaxation_queue)
-  perform_test(test23_dataset_X_relaxation_queue)
-  perform_test(test24_free_fault_tol)
+  test00a_free_complex()
+  test00b_dataset_Xy_complex()
+  test01_free()
+  test02_dataset_Xy()
+  test03_dataset_X()
+  test04_free_ml()
+  test05_dataset_Xy_ml()
+  test06_dataset_X_ml()
+  test07_dataset_Xy_queue()
+  test08_dataset_X_queue()
+  test09_free_eic_default()
+  test10_dataset_Xy_eic_default()
+  test11_free_eic_custom_PQ()
+  test12_free_init_points_tuple()
+  test13_dataset_Xy_init_points_dicts()
+  test14_dataset_X_init_points_df()
+  test15_free_eic_ml_B()
+  test16_free_eic_ml_C()
+  test17_free_eic_ml_D()
+  test18_free_stop_crit_soft()
+  test19_dataset_Xy_stop_crit_hard()
+  test20_dataset_Xy_relaxation()
+  test21_dataset_X_relaxation()
+  test22_dataset_Xy_relaxation_queue()
+  test23_dataset_X_relaxation_queue()
+  test24_free_fault_tol()
