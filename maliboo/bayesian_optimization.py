@@ -385,6 +385,7 @@ class BayesianOptimization(Observable):
             # Fault tolerance mechanism: read data from temp file, if any
             if self._space.params.empty and os.path.exists(self._results_file_tmp):
                 self.load_res_from_csv(self._results_file_tmp)
+                terminated = self._space._optimization_info.iloc[-1]['terminated']
                 old_iters = len(self._space.params)
                 # Advance iteration counter:
                 ## Remove values from queue, up to a maximum of old_iters
