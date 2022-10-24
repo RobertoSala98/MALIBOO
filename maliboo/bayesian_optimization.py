@@ -530,6 +530,7 @@ class BayesianOptimization(Observable):
         os.makedirs(self._output_path, exist_ok=True)
         results = self._space.params.copy()
         results['target'] = self._space.target
+        results['memory_queue'] = '//'.join(['/'.join([str(_) for _ in l]) for l in self.memory_queue])
         results = pd.concat((results, self._space._optimization_info), axis=1)
         results['index'] = results.index.fillna(-1).astype(int)
         results.set_index('index', inplace=True)
@@ -544,6 +545,9 @@ class BayesianOptimization(Observable):
         self._space._target = results['target']
         other_cols = [_ for _ in results.columns if _ not in self._space.keys+['target'] ]
         self._space._optimization_info = results[other_cols]
+        if 'memory_queue' in results:
+            memory_queue_packed = results.iloc[-1]['memory_queue']
+            self.memory_queue = [[int(_) for _ in l.split('/')] for l in memory_queue_packed.split('//')]
 
 
     def set_bounds(self, new_bounds):

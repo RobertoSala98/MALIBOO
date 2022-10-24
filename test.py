@@ -9,10 +9,14 @@ def target_func(x1, x2):
     return -x1 ** 2 - (x2 - 1) ** 2 + 1
 
 def target_func_slow(x1, x2):
-    time.sleep(2)
+    time.sleep(1.5)
     return -x1 ** 2 - (x2 - 1) ** 2 + 1
 
 def target_func_1D(x2):
+    return -x2 ** 2
+
+def target_func_1D_slow(x2):
+    time.sleep(1.5)
     return -x2 ** 2
 
 def target_func_dict(x1, x2):
@@ -343,6 +347,15 @@ def test24_free_fault_tol(output_path):
   optimizer.maximize(init_points=3, n_iter=5)
 
 
+@perform_test
+def test25_dataset_X_queue_fault_tol(output_path):
+  optimizer = BO(f=target_func_1D_slow, pbounds={'x2': (1,50)},
+                 random_state=seed,
+                 dataset=os.path.join('resources', 'test_xyz.csv'),
+                 output_path=output_path, debug=debug)
+  optimizer.maximize(init_points=3, n_iter=5, memory_queue_len=3)
+
+
 if __name__ == '__main__':
   test00a_free_complex()
   test00b_dataset_Xy_complex()
@@ -370,3 +383,4 @@ if __name__ == '__main__':
   test22_dataset_Xy_relaxation_queue()
   test23_dataset_X_relaxation_queue()
   test24_free_fault_tol()
+  test25_dataset_X_queue_fault_tol()
