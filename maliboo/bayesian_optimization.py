@@ -395,7 +395,7 @@ class BayesianOptimization(Observable):
                 ## If there still are iterations left, advance counter by the difference
                 if old_iters > init_points:
                     iteration += old_iters - init_points
-                if self._debug: print(f"Recovered {old_iters} values from temporary file")
+                print(f"Recovered {old_iters} values from temporary file")
 
             # Sample new point from GP
             if not self._queue.empty():
