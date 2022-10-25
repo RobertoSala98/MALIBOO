@@ -547,7 +547,8 @@ class BayesianOptimization(Observable):
         self._space._optimization_info = results[other_cols]
         if 'memory_queue' in results:
             memory_queue_packed = results.iloc[-1]['memory_queue']
-            self.memory_queue = [[int(_) for _ in l.split('/')] for l in memory_queue_packed.split('//')]
+            if not pd.isna(memory_queue_packed):
+                self.memory_queue = [[int(_) for _ in l.split('/')] for l in memory_queue_packed.split('//')]
 
 
     def set_bounds(self, new_bounds):
