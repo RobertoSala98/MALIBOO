@@ -225,7 +225,7 @@ class BayesianOptimization(Observable):
             # Flatten memory queue (a list of indexes lists) to one single list
             idxs = list(itertools.chain.from_iterable(self.memory_queue))
             # Create mask to select rows whose index is not included in idxs
-            mask = np.ones(self.dataset.shape[0], np.bool)
+            mask = np.ones(self.dataset.shape[0], bool)
             mask[idxs] = 0
             # Create dataset to be passed to acq_max()
             dataset_acq = self.dataset.loc[mask, self._space.keys]

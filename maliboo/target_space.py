@@ -181,7 +181,7 @@ class TargetSpace(object):
         if self._debug: print("Registering params", params, "with index", idx, "and target value", target)
         value, info = self.extract_value_and_info(target)
 
-        x_df = pd.DataFrame(params.reshape(1, -1), columns=self._keys, index=[idx], dtype=np.float)
+        x_df = pd.DataFrame(params.reshape(1, -1), columns=self._keys, index=[idx], dtype=float)
         self._params = pd.concat((self._params, x_df))
         self._target = np.concatenate([self._target, [value]])
         if info:  # The return value of the target function is a dict
