@@ -69,9 +69,9 @@ def acq_max(ac, gp, y_max, bounds, random_state, n_warmup=10000, n_iter=10, data
     if debug: print("Grid index idx =", idx)
 
     if dataset is not None:
+        max_acq = ys[idx]
         # idx becomes the true dataset index of the selected point, rather than being relative to x_tries
         idx = dataset.index[idx]
-        max_acq = ys[idx]
         if debug: print("End of acq_max(): maximizer of utility is x = data[{}] = {}, with ac(x) = {}".format(idx, x_max, max_acq))
         return x_max, idx, max_acq
 
