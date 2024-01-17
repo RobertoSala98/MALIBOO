@@ -189,7 +189,7 @@ class BayesianOptimization(Observable):
             return target_val
 
 
-    def suggest(self, utility_function):
+    def suggest(self, utility_function, oldX = None, oldY = None):
         """
         Get most promising point to probe next
 
@@ -241,7 +241,9 @@ class BayesianOptimization(Observable):
             bounds=self._space.bounds,
             random_state=self._random_state,
             dataset=dataset_acq,
-            debug=self._debug
+            debug=self._debug,
+            oldX = oldX,
+            oldY = oldY
         )
 
         if self.relaxation:
@@ -367,13 +369,18 @@ class BayesianOptimization(Observable):
         self._prime_queue(init_points)
         self.set_gp_params(**gp_params)
 
+        datasetX=None
+        if acq == 'MIVABO':
+            datasetX = self.dataset.values[:,:self._space.bounds.shape[0]]
+        
         util = UtilityFunction(kind=acq,
                                kappa=kappa,
                                xi=xi,
                                kappa_decay=kappa_decay,
                                kappa_decay_delay=kappa_decay_delay,
                                acq_info=acq_info,
-                               debug=self._debug)
+                               debug=self._debug,
+                               datasetX=datasetX)
         if self._debug: print("Initializing StoppingCriterion with stop_crit_info = {}".format(stop_crit_info))
         stopcrit = StoppingCriterion(debug=self._debug, **stop_crit_info)
         iteration = 0
@@ -417,7 +424,7 @@ class BayesianOptimization(Observable):
                 if 'ml' in acq:  # if requird, train ML model
                     ml_model = self.train_ml_model(y_name=util.ml_target)
                     util.set_ml_model(ml_model)
-                x_probe, idx, acq_val = self.suggest(util)
+                x_probe, idx, acq_val = self.suggest(util, self._space.params, self._space.target)
                 if self._debug: print("Suggested point: index {}, value {}, acquisition {}".format(idx, x_probe, acq_val))
 
             if x_probe is None:

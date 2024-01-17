@@ -4,8 +4,33 @@ from scipy.stats import norm
 from scipy.optimize import minimize
 
 
+def compute_phi(x_):
+
+    phi = []
+    
+    if len(x_.shape) > 1:
+
+        n = x_.shape[1]
+
+        for x in x_:
+
+            phi_ = [1.0]
+            phi_.extend(x)
+            phi_.extend([x[i] * x[j] for i in range(n-1) for j in range(i+1, n)])
+            phi.append(phi_)
+
+    else:
+        
+        n = x_.shape[0]
+        phi = [1.0]
+        phi.extend(x_)
+        phi.extend([x_[i] * x_[j] for i in range(n-1) for j in range(i+1, n)])
+    
+    return np.array(phi)
+
+
 def acq_max(ac, gp, y_max, bounds, random_state, n_warmup=10000, n_iter=10, dataset=None,
-            debug=False):
+            debug=False, oldX=None, oldY=None):
     """
     A function to find the maximum of the acquisition function
 
@@ -62,7 +87,7 @@ def acq_max(ac, gp, y_max, bounds, random_state, n_warmup=10000, n_iter=10, data
         if debug: print("No dataset, initial grid will be random with shape {}".format((n_warmup, bounds.shape[0])))
         x_tries = random_state.uniform(bounds[:, 0], bounds[:, 1],
                                        size=(n_warmup, bounds.shape[0]))
-    ys = ac(x_tries, gp=gp, y_max=y_max)
+    ys = ac(x_tries, gp=gp, y_max=y_max, oldX=oldX, oldY=oldY)
     if debug: print("Acquisition evaluated successfully on grid")
     idx = ys.argmax()  # this index is relative to the local x_tries values matrix
     x_max = x_tries[idx]
@@ -112,7 +137,7 @@ class UtilityFunction(object):
 
     See the maximize() function in bayesian_optimization.py for a description of the constructor arguments.
     """
-    def __init__(self, kind, kappa, xi, kappa_decay=1, kappa_decay_delay=0, acq_info={}, debug=False):
+    def __init__(self, kind, kappa, xi, kappa_decay=1, kappa_decay_delay=0, acq_info={}, debug=False, datasetX=None):
 
         self._debug = debug
         self.kappa = kappa
@@ -123,6 +148,9 @@ class UtilityFunction(object):
         self._iters_counter = 0
 
         self.initialize_acq_info(acq_info, kind)
+        
+        if self.kind == 'MIVABO':
+            self.PhiX = compute_phi(datasetX)
 
         if self._debug: print("UtilityFunction initialization completed")
 
@@ -203,7 +231,7 @@ class UtilityFunction(object):
         self.ml_model = model
 
 
-    def utility(self, x, gp, y_max):
+    def utility(self, x, gp, y_max, oldX = None, oldY = None):
         if self.kind == 'ucb':
             return self._ucb(x, gp, self.kappa)
         if self.kind == 'poi':
@@ -217,6 +245,23 @@ class UtilityFunction(object):
         if self.kind == 'eic_ml':
             return self._eic_ml(x, gp, y_max, self.xi, self.eic_ml_var, self.ml_model, self.ml_bounds,
                                 self.eic_bounds, self.eic_P_func, self.eic_Q_func, self.eic_ml_exp_B)
+        if self.kind == 'MIVABO':
+            
+            alpha = 1
+            beta = 0.01
+
+            Phi = []
+            for ii in range(oldX.shape[0]):
+                Phi.append(compute_phi(oldX.values[ii]))
+            Phi = np.array(Phi)
+            
+            S = alpha*np.eye(1 + sum(ii for ii in range(oldX.shape[1]+1))) + beta*np.dot(Phi.T,Phi)
+            invS = np.linalg.inv(S)
+            avg = np.dot(np.dot(beta*invS,Phi.T),oldY)
+            tilde_w = np.random.multivariate_normal(avg, invS)
+
+            return -np.dot(self.PhiX,tilde_w)
+
         raise NotImplementedError("The utility function {} has not been implemented.".format(self.kind))
 
 
