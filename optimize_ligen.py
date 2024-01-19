@@ -3,8 +3,8 @@ from maliboo import BayesianOptimization as BO
 seed = 1
 n0 = 11
 n_iter = 60
-debug = None
-output_path = "./outputs_ligen_MIVABO"
+debug = False
+output_path = "./outputs_ligen_MIVABO_ml"
 delete_previous_output = True
 
 if delete_previous_output:
@@ -18,7 +18,7 @@ optimizer = BO(f=None,
                         'N_RESTART': [256, 1024.01], 
                         'CLIPPING': [10, 256.01],
                         'SIM_THRESH': [1, 4.01], 
-                        'BUFFER_SIZE': [1048576, 52428800.01]},
+                        'BUFFER_SIZE': [1, 50.01]},
                dataset='resources/ligen_synth_table.csv', 
                target_column='-RMSD^3*TIME',
                random_state=seed, 
@@ -30,7 +30,8 @@ optimizer = BO(f=None,
 #optimizer.maximize(init_points=n0, n_iter=n_iter, acq='poi', memory_queue_len=n_iter)
 #optimizer.maximize(init_points=n0, n_iter=n_iter, acq='ei_ml', acq_info={'ml_target': 'RMSD_0.75', 'ml_bounds': (0.0, 2.1)}, memory_queue_len=n_iter)
 #optimizer.maximize(init_points=n0, n_iter=n_iter, acq='ei_ml', acq_info={'ml_target': 'RMSD_0.75', 'ml_bounds': (0.0, 2.1)})
-optimizer.maximize(init_points=n0, n_iter=n_iter, acq='MIVABO', memory_queue_len=n_iter)
+#optimizer.maximize(init_points=n0, n_iter=n_iter, acq='MIVABO', memory_queue_len=n0+n_iter)
+optimizer.maximize(init_points=n0, n_iter=n_iter, acq='MIVABO_ml', memory_queue_len=n0+n_iter)
 
 obtained_max = optimizer.max['target']
 real_max = -567.312555400384

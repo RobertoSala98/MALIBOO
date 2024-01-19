@@ -1,10 +1,10 @@
 from maliboo import BayesianOptimization as BO
 
-seed = 1
+seed = 55
 n0 = 3
 n_iter = 60
-debug = None
-output_path = "./outputs_MIVABO"
+debug = False
+output_path = "./outputs_stereomatch_ei_ml"
 delete_previous_output = True
 
 if delete_previous_output:
@@ -21,8 +21,15 @@ optimizer = BO(f=None,
                output_path=output_path, 
                debug=debug)
 
-#optimizer.maximize(init_points=n0, n_iter=n_iter, acq='ei', memory_queue_len=n_iter)
-optimizer.maximize(init_points=n0, n_iter=n_iter, acq='MIVABO', memory_queue_len=n_iter)
+acq_info = {'eic_ml_var': 'B', 'ml_target': 'time',
+                    'eic_bounds': (0, 17000), 'ml_bounds': (0, 17000)}
+stop_crit_info = {'hard_stop': False, 'conjunction': 'or',
+                    'ml_bounds_coeff': (0.9, None)}
+optimizer.maximize(init_points=0, n_iter=n_iter, acq='eic_ml',
+                    memory_queue_len=5, acq_info=acq_info,
+                    stop_crit_info=stop_crit_info, relaxation=False)
+
+#optimizer.maximize(init_points=n0, n_iter=n_iter, acq='MIVABO', memory_queue_len=n_iter+n0)
 
 obtained_max = optimizer.max['target']
 real_max = -36791

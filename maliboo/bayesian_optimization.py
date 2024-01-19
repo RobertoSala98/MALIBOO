@@ -368,10 +368,6 @@ class BayesianOptimization(Observable):
         self.dispatch(Events.OPTIMIZATION_START)
         self._prime_queue(init_points)
         self.set_gp_params(**gp_params)
-
-        datasetX=None
-        if acq == 'MIVABO':
-            datasetX = self.dataset.values[:,:self._space.bounds.shape[0]]
         
         util = UtilityFunction(kind=acq,
                                kappa=kappa,
@@ -379,8 +375,7 @@ class BayesianOptimization(Observable):
                                kappa_decay=kappa_decay,
                                kappa_decay_delay=kappa_decay_delay,
                                acq_info=acq_info,
-                               debug=self._debug,
-                               datasetX=datasetX)
+                               debug=self._debug)
         if self._debug: print("Initializing StoppingCriterion with stop_crit_info = {}".format(stop_crit_info))
         stopcrit = StoppingCriterion(debug=self._debug, **stop_crit_info)
         iteration = 0

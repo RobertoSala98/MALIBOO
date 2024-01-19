@@ -87,7 +87,7 @@ def acq_max(ac, gp, y_max, bounds, random_state, n_warmup=10000, n_iter=10, data
         if debug: print("No dataset, initial grid will be random with shape {}".format((n_warmup, bounds.shape[0])))
         x_tries = random_state.uniform(bounds[:, 0], bounds[:, 1],
                                        size=(n_warmup, bounds.shape[0]))
-    ys = ac(x_tries, gp=gp, y_max=y_max, oldX=oldX, oldY=oldY)
+    ys = ac(x_tries, gp=gp, y_max=y_max, oldX=oldX, oldY=oldY, random_state=random_state)
     if debug: print("Acquisition evaluated successfully on grid")
     idx = ys.argmax()  # this index is relative to the local x_tries values matrix
     x_max = x_tries[idx]
@@ -137,7 +137,7 @@ class UtilityFunction(object):
 
     See the maximize() function in bayesian_optimization.py for a description of the constructor arguments.
     """
-    def __init__(self, kind, kappa, xi, kappa_decay=1, kappa_decay_delay=0, acq_info={}, debug=False, datasetX=None):
+    def __init__(self, kind, kappa, xi, kappa_decay=1, kappa_decay_delay=0, acq_info={}, debug=False):
 
         self._debug = debug
         self.kappa = kappa
@@ -148,9 +148,6 @@ class UtilityFunction(object):
         self._iters_counter = 0
 
         self.initialize_acq_info(acq_info, kind)
-        
-        if self.kind == 'MIVABO':
-            self.PhiX = compute_phi(datasetX)
 
         if self._debug: print("UtilityFunction initialization completed")
 
@@ -231,7 +228,7 @@ class UtilityFunction(object):
         self.ml_model = model
 
 
-    def utility(self, x, gp, y_max, oldX = None, oldY = None):
+    def utility(self, x, gp, y_max, oldX = None, oldY = None, random_state = None):
         if self.kind == 'ucb':
             return self._ucb(x, gp, self.kappa)
         if self.kind == 'poi':
@@ -246,23 +243,40 @@ class UtilityFunction(object):
             return self._eic_ml(x, gp, y_max, self.xi, self.eic_ml_var, self.ml_model, self.ml_bounds,
                                 self.eic_bounds, self.eic_P_func, self.eic_Q_func, self.eic_ml_exp_B)
         if self.kind == 'MIVABO':
-            
-            alpha = 1
-            beta = 0.01
-
-            Phi = []
-            for ii in range(oldX.shape[0]):
-                Phi.append(compute_phi(oldX.values[ii]))
-            Phi = np.array(Phi)
-            
-            S = alpha*np.eye(1 + sum(ii for ii in range(oldX.shape[1]+1))) + beta*np.dot(Phi.T,Phi)
-            invS = np.linalg.inv(S)
-            avg = np.dot(np.dot(beta*invS,Phi.T),oldY)
-            tilde_w = np.random.multivariate_normal(avg, invS)
-
-            return -np.dot(self.PhiX,tilde_w)
+            return self._MIVABO(x, oldX, oldY, random_state)
 
         raise NotImplementedError("The utility function {} has not been implemented.".format(self.kind))
+    
+
+    @staticmethod
+    def _MIVABO(self, x, oldX, oldY, random_state):
+        alpha = 1
+        beta = 0.1
+
+        Phi = []
+        for ii in range(oldX.shape[0]):
+            Phi.append(compute_phi(oldX.values[ii]))
+        Phi = np.array(Phi)
+
+        S = alpha*np.eye(1 + sum(ii for ii in range(oldX.shape[1]+1))) + beta*np.dot(Phi.T,Phi)
+        invS = np.linalg.inv(S)
+        avg = np.dot(np.dot(beta*invS,Phi.T),oldY)
+        tilde_w = random_state.multivariate_normal(avg, invS)
+
+        return -np.dot(compute_phi(x),tilde_w)
+    
+
+    @staticmethod
+    def _MIVABO_ml(self, x, oldX, oldY, random_state, ml_model, bounds):
+        
+        MIVABO = UtilityFunction._MIVABO(x, oldX, oldY, random_state)
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            y_hat = ml_model.predict(x)
+        lb, ub = bounds
+        indicator = np.array([lb <= y and y <= ub for y in y_hat])
+
+        return MIVABO * indicator
 
 
     @staticmethod
