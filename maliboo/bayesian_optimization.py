@@ -7,7 +7,7 @@ from queue import Queue
 
 from sklearn.gaussian_process.kernels import Matern
 from sklearn.gaussian_process import GaussianProcessRegressor
-from sklearn.linear_model import Ridge
+from sklearn.linear_model import Ridge, RidgeClassifier
 from sklearn.metrics import mean_absolute_percentage_error as mape
 
 from .target_space import TargetSpace
@@ -417,7 +417,7 @@ class BayesianOptimization(Observable):
                 if self._debug: print("New iteration {}: suggesting new point".format(iteration))
                 util.update_params()
                 if 'ml' in acq:  # if requird, train ML model
-                    ml_model = self.train_ml_model(y_name=util.ml_target)
+                    ml_model = self.train_ml_model(y_name=util.ml_target, acq_info=acq_info)
                     util.set_ml_model(ml_model)
                 x_probe, idx, acq_val = self.suggest(util, self._space.params, self._space.target)
                 if self._debug: print("Suggested point: index {}, value {}, acquisition {}".format(idx, x_probe, acq_val))
@@ -452,7 +452,7 @@ class BayesianOptimization(Observable):
             other_info.loc[idx, 'acquisition'] = acq_val
             other_info.loc[idx, 'terminated'] = terminated
             if hasattr(util, 'ml_model'):  # register validation MAPE on new point
-                y_bar = util.ml_model.predict(pd.DataFrame(x_probe, index=[idx]))
+                y_bar = util.ml_model[0].predict(pd.DataFrame(x_probe, index=[idx]))
                 if self._debug: print("True vs predicted '{}' value: {} vs {}".format(util.ml_target, y_true_ml, y_bar[0]))
                 other_info['ml_mape'] = mape([y_true_ml], y_bar)
             self.register_optimization_info(other_info)
@@ -570,7 +570,7 @@ class BayesianOptimization(Observable):
         self._gp.set_params(**params)
 
 
-    def train_ml_model(self, y_name):
+    def train_ml_model(self, y_name, acq_info):
         """
         Returns the Machine Learning model trained on the current history
 
@@ -593,6 +593,10 @@ class BayesianOptimization(Observable):
         model = Ridge()
         model.fit(X, y)
 
+        classifier = RidgeClassifier()
+        lb, ub = acq_info['ml_bounds']
+        classifier.fit(X, (y >= lb)*(y <= ub))
+
         if self._debug:
             try:
                 print("Trained ML model:")
@@ -600,7 +604,7 @@ class BayesianOptimization(Observable):
                 print("Coefficients =", model.coef_)
             except:
                 pass
-        return model
+        return [model, classifier]
 
 
     def get_ml_target_data(self, y_name):

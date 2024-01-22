@@ -2,20 +2,13 @@ from maliboo import BayesianOptimization as BO
 
 seed = 21111998
 n0 = 6
-n_iter = 10
+n_iter = 4
 debug = False
 output_path = "./outputs_oscarp_combinatorial_ei_ml"
 delete_previous_output = True
 
 if delete_previous_output:
     import os; os.system("rm -rf %s" %output_path)
-
-#observed_throughput_ffmpeg-0;avg_response_time_ffmpeg-0;parallelism_ffmpeg-0;
-#observed_throughput_librosa;avg_response_time_librosa;parallelism_librosa;
-#observed_throughput_ffmpeg-1;avg_response_time_ffmpeg-1;parallelism_ffmpeg-1;
-#observed_throughput_ffmpeg-2;avg_response_time_ffmpeg-2;parallelism_ffmpeg-2;
-#observed_throughput_deepspeech;avg_response_time_deepspeech;parallelism_deepspeech;
-#total_time;cost
 
 optimizer = BO(f=None, 
                pbounds = {'parallelism_ffmpeg-0': [2,4.00001], 

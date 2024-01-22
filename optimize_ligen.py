@@ -25,13 +25,10 @@ optimizer = BO(f=None,
                output_path=output_path, 
                debug=debug)
 
-#optimizer.maximize(init_points=n0, n_iter=n_iter, acq='ucb', memory_queue_len=n_iter)
-#optimizer.maximize(init_points=n0, n_iter=n_iter, acq='ei', memory_queue_len=n_iter)
-#optimizer.maximize(init_points=n0, n_iter=n_iter, acq='poi', memory_queue_len=n_iter)
-#optimizer.maximize(init_points=n0, n_iter=n_iter, acq='ei_ml', acq_info={'ml_target': 'RMSD_0.75', 'ml_bounds': (0.0, 2.1)}, memory_queue_len=n_iter)
-#optimizer.maximize(init_points=n0, n_iter=n_iter, acq='ei_ml', acq_info={'ml_target': 'RMSD_0.75', 'ml_bounds': (0.0, 2.1)})
-#optimizer.maximize(init_points=n0, n_iter=n_iter, acq='MIVABO', memory_queue_len=n0+n_iter)
-optimizer.maximize(init_points=n0, n_iter=n_iter, acq='MIVABO_ml', memory_queue_len=n0+n_iter)
+acq_info={'ml_target': 'RMSD_0.75', 'ml_bounds': (0.0, 2.1), 'alpha': 1, 'beta': 0.1}
+
+#optimizer.maximize(init_points=n0, n_iter=n_iter, acq='ei_ml', acq_info=acq_info, memory_queue_len=n0+n_iter)
+optimizer.maximize(init_points=n0, n_iter=n_iter, acq='MIVABO', acq_info=acq_info, memory_queue_len=n0+n_iter)
 
 obtained_max = optimizer.max['target']
 real_max = -567.312555400384

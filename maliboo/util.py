@@ -216,6 +216,11 @@ class UtilityFunction(object):
                 acq_info['eic_ml_exp_B'] = 2.0
             self.set_acq_info_field(acq_info, 'eic_ml_exp_B')
 
+        # For MIVABO
+        if 'MIVABO' in kind:
+            self.set_acq_info_field(acq_info, 'alpha')
+            self.set_acq_info_field(acq_info, 'beta')
+
 
     def update_params(self):
         self._iters_counter += 1
@@ -243,15 +248,15 @@ class UtilityFunction(object):
             return self._eic_ml(x, gp, y_max, self.xi, self.eic_ml_var, self.ml_model, self.ml_bounds,
                                 self.eic_bounds, self.eic_P_func, self.eic_Q_func, self.eic_ml_exp_B)
         if self.kind == 'MIVABO':
-            return self._MIVABO(x, oldX, oldY, random_state)
+            return self._MIVABO(x, oldX, oldY, random_state, self.alpha, self.beta)
+        if self.kind == 'MIVABO_ml':
+            return self._MIVABO_ml(x, oldX, oldY, random_state, self.ml_model, self.ml_bounds, self.alpha, self.beta)
 
         raise NotImplementedError("The utility function {} has not been implemented.".format(self.kind))
     
 
     @staticmethod
-    def _MIVABO(self, x, oldX, oldY, random_state):
-        alpha = 1
-        beta = 0.1
+    def _MIVABO(x, oldX, oldY, random_state, alpha, beta):
 
         Phi = []
         for ii in range(oldX.shape[0]):
@@ -267,16 +272,15 @@ class UtilityFunction(object):
     
 
     @staticmethod
-    def _MIVABO_ml(self, x, oldX, oldY, random_state, ml_model, bounds):
+    def _MIVABO_ml(x, oldX, oldY, random_state, ml_model, bounds, alpha, beta):
         
-        MIVABO = UtilityFunction._MIVABO(x, oldX, oldY, random_state)
+        MIVABO = UtilityFunction._MIVABO(x, oldX, oldY, random_state, alpha, beta)
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
-            y_hat = ml_model.predict(x)
-        lb, ub = bounds
-        indicator = np.array([lb <= y and y <= ub for y in y_hat])
+            indicator = ml_model[1].decision_function(x)
+        probabilities = 1 / (1 + np.exp(-indicator))
 
-        return MIVABO * indicator
+        return MIVABO * probabilities
 
 
     @staticmethod
@@ -318,10 +322,12 @@ class UtilityFunction(object):
         ei = UtilityFunction._ei(x, gp, y_max, xi)
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
-            y_hat = ml_model.predict(x)
+            y_hat = ml_model[0].predict(x)
+            indicator = ml_model[1].decision_function(x)
         lb, ub = bounds
-        indicator = np.array([lb <= y and y <= ub for y in y_hat])
-        return ei * indicator
+        #indicator = np.array([lb <= y and y <= ub for y in y_hat])
+        probabilities = 1 / (1 + np.exp(-indicator))
+        return ei * probabilities
 
 
     @staticmethod
@@ -360,7 +366,9 @@ class UtilityFunction(object):
         # Call ML model
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
-            y_hat = ml_model.predict(x)
+            y_hat = ml_model[0].predict(x)
+            if variant in ('C', 'D'):
+                indicator = ml_model[1].decision_function(x)
         # Compute exponential coefficient for variant B (and D)
         lb, ub = ml_bounds
         if variant in ('B', 'D'):
@@ -370,8 +378,8 @@ class UtilityFunction(object):
             eic *= coeff * norm_const
         # Compute indicator coefficient for variant C (and D)
         if variant in ('C', 'D'):
-            indicator = np.array([lb <= y and y <= ub for y in y_hat])
-            eic *= indicator
+            probabilities = 1 / (1 + np.exp(-indicator))
+            eic *= probabilities
 
         return eic
 

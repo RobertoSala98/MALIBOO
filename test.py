@@ -28,9 +28,9 @@ def target_func_dict(x1, x2):
 
 # User parameters (debug: ignored if None, otherwise it overrides the
 # command-line argument)
-seed = 1
-n0 = 2
-n_iter = 5
+seed = 2
+n0 = 10
+n_iter = 100
 debug = None
 
 
@@ -118,7 +118,7 @@ def test02_dataset_Xy(output_path):
                  random_state=seed,
                  dataset=os.path.join('resources', 'test_xyz.csv'),
                  target_column='z', output_path=output_path, debug=debug)
-  optimizer.maximize(init_points=n0, n_iter=n_iter)
+  optimizer.maximize(init_points=n0, n_iter=n_iter, acq='MIVABO', memory_queue_len=5)
 
 
 @perform_test
@@ -357,6 +357,7 @@ def test25_dataset_X_queue_fault_tol(output_path):
 
 
 if __name__ == '__main__':
+  """
   test00a_free_complex()
   test00b_dataset_Xy_complex()
   test01_free()
@@ -384,3 +385,6 @@ if __name__ == '__main__':
   test23_dataset_X_relaxation_queue()
   test24_free_fault_tol()
   test25_dataset_X_queue_fault_tol()
+  """
+
+  test02_dataset_Xy()

@@ -1,6 +1,6 @@
 from maliboo import BayesianOptimization as BO
 
-seed = 55
+seed = 22121998
 n0 = 3
 n_iter = 60
 debug = False
@@ -21,15 +21,17 @@ optimizer = BO(f=None,
                output_path=output_path, 
                debug=debug)
 
-acq_info = {'eic_ml_var': 'B', 'ml_target': 'time',
-                    'eic_bounds': (0, 17000), 'ml_bounds': (0, 17000)}
-stop_crit_info = {'hard_stop': False, 'conjunction': 'or',
-                    'ml_bounds_coeff': (0.9, None)}
+
+stop_crit_info = {'hard_stop': False, 'conjunction': 'or', 'ml_bounds_coeff': (0.9, None)}
+"""
+acq_info = {'eic_ml_var': 'C', 'ml_target': 'time', 'eic_bounds': (0, 17000), 'ml_bounds': (0, 17000)}
 optimizer.maximize(init_points=0, n_iter=n_iter, acq='eic_ml',
                     memory_queue_len=5, acq_info=acq_info,
                     stop_crit_info=stop_crit_info, relaxation=False)
-
-#optimizer.maximize(init_points=n0, n_iter=n_iter, acq='MIVABO', memory_queue_len=n_iter+n0)
+"""
+acq_info = {'eic_ml_var': 'C', 'ml_target': 'time', 'ml_bounds': (0, 17000), 'alpha': 1, 'beta': 0.1}
+optimizer.maximize(init_points=n0, n_iter=n_iter, acq='MIVABO_ml', 
+                   memory_queue_len=n_iter+n0, acq_info=acq_info) 
 
 obtained_max = optimizer.max['target']
 real_max = -36791
