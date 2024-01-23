@@ -278,7 +278,7 @@ class UtilityFunction(object):
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
             indicator = ml_model[1].decision_function(x)
-        probabilities = 1 / (1 + np.exp(-indicator))
+            probabilities = 1 / (1 + np.exp(-indicator))
 
         return MIVABO * probabilities
 
@@ -324,9 +324,10 @@ class UtilityFunction(object):
             warnings.simplefilter("ignore")
             y_hat = ml_model[0].predict(x)
             indicator = ml_model[1].decision_function(x)
-        lb, ub = bounds
+        #lb, ub = bounds
         #indicator = np.array([lb <= y and y <= ub for y in y_hat])
-        probabilities = 1 / (1 + np.exp(-indicator))
+            probabilities = 1 / (1 + np.exp(-indicator))
+            
         return ei * probabilities
 
 
@@ -378,8 +379,9 @@ class UtilityFunction(object):
             eic *= coeff * norm_const
         # Compute indicator coefficient for variant C (and D)
         if variant in ('C', 'D'):
-            probabilities = 1 / (1 + np.exp(-indicator))
-            eic *= probabilities
+            with warnings.catch_warnings():
+                probabilities = 1 / (1 + np.exp(-indicator))
+                eic *= probabilities
 
         return eic
 

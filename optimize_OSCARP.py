@@ -1,8 +1,8 @@
 from maliboo import BayesianOptimization as BO
 
-seed = 21111998
+seed = 16
 n0 = 6
-n_iter = 4
+n_iter = 9
 debug = False
 output_path = "./outputs_oscarp_combinatorial_ei_ml"
 delete_previous_output = True
@@ -27,6 +27,6 @@ optimizer.maximize(init_points=n0, n_iter=n_iter, acq='ei_ml', acq_info={'ml_tar
 obtained_max = optimizer.max['target']
 real_max = -0.173553833333333
 
-print("\nObtained min: " + str(round(-obtained_max,2)))
-print("Real min: " + str(round(-real_max,2)))
-print("Error: " + str(round(100*(obtained_max - real_max)/real_max,2)) + " %\n")
+print("\nObtained min: " + str(round(-obtained_max,5)))
+print("Real min: " + str(round(-real_max,5)))
+print("Error: " + str(round(100*(obtained_max - real_max)/real_max,5)) + " %\n")

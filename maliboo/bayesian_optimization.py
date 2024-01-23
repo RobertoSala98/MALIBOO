@@ -9,6 +9,8 @@ from sklearn.gaussian_process.kernels import Matern
 from sklearn.gaussian_process import GaussianProcessRegressor
 from sklearn.linear_model import Ridge, RidgeClassifier
 from sklearn.metrics import mean_absolute_percentage_error as mape
+from sklearn.preprocessing import PolynomialFeatures, StandardScaler
+from sklearn.pipeline import make_pipeline
 
 from .target_space import TargetSpace
 from .event import Events, DEFAULT_EVENTS
@@ -590,10 +592,10 @@ class BayesianOptimization(Observable):
         y = self.get_ml_target_data(y_name)
 
         # Initialize and train model
-        model = Ridge()
+        model = make_pipeline(PolynomialFeatures(2), Ridge())
         model.fit(X, y)
 
-        classifier = RidgeClassifier()
+        classifier = make_pipeline(PolynomialFeatures(2), RidgeClassifier())
         lb, ub = acq_info['ml_bounds']
         classifier.fit(X, (y >= lb)*(y <= ub))
 
