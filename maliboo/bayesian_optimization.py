@@ -191,7 +191,7 @@ class BayesianOptimization(Observable):
             return target_val
 
 
-    def suggest(self, utility_function, oldX = None, oldY = None):
+    def suggest(self, utility_function):
         """
         Get most promising point to probe next
 
@@ -244,8 +244,6 @@ class BayesianOptimization(Observable):
             random_state=self._random_state,
             dataset=dataset_acq,
             debug=self._debug,
-            oldX = oldX,
-            oldY = oldY
         )
 
         if self.relaxation:
@@ -286,6 +284,8 @@ class BayesianOptimization(Observable):
                  init_points,
                  n_iter,
                  acq='ucb',
+                 ml_on_bounds=False,
+                 ml_on_target=False,
                  kappa=2.576,
                  kappa_decay=1,
                  kappa_decay_delay=0,
@@ -377,6 +377,8 @@ class BayesianOptimization(Observable):
                                kappa_decay=kappa_decay,
                                kappa_decay_delay=kappa_decay_delay,
                                acq_info=acq_info,
+                               ml_on_bounds=ml_on_bounds,
+                               ml_on_target=ml_on_target,
                                debug=self._debug)
         if self._debug: print("Initializing StoppingCriterion with stop_crit_info = {}".format(stop_crit_info))
         stopcrit = StoppingCriterion(debug=self._debug, **stop_crit_info)
@@ -418,10 +420,13 @@ class BayesianOptimization(Observable):
                 # sample new point
                 if self._debug: print("New iteration {}: suggesting new point".format(iteration))
                 util.update_params()
-                if 'ml' in acq:  # if requird, train ML model
+                if ml_on_bounds:
                     ml_model = self.train_ml_model(y_name=util.ml_target, acq_info=acq_info)
                     util.set_ml_model(ml_model)
-                x_probe, idx, acq_val = self.suggest(util, self._space.params, self._space.target)
+                if ml_on_target:
+                    objective_ml_model = self.train_objective_ml_model()
+                    util.set_objective_ml_model(objective_ml_model)
+                x_probe, idx, acq_val = self.suggest(util)
                 if self._debug: print("Suggested point: index {}, value {}, acquisition {}".format(idx, x_probe, acq_val))
 
             if x_probe is None:
@@ -607,6 +612,19 @@ class BayesianOptimization(Observable):
             except:
                 pass
         return [model, classifier]
+
+
+    def train_objective_ml_model(self):
+
+        # Build training dataset for the ML model
+        X = self._space.params
+        y = self._space.target
+
+        # Initialize and train model
+        model = make_pipeline(PolynomialFeatures(2), Ridge())
+        model.fit(X, y)
+
+        return model
 
 
     def get_ml_target_data(self, y_name):

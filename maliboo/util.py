@@ -2,35 +2,22 @@ import warnings
 import numpy as np
 from scipy.stats import norm
 from scipy.optimize import minimize
+import pandas as pd
 
 
-def compute_phi(x_):
+def min_max_normalize(vector):
 
-    phi = []
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        min_val = min(vector)
+        max_val = max(vector)
+        normalized_vector = [(x - min_val) / (max_val - min_val) for x in vector]
     
-    if len(x_.shape) > 1:
-
-        n = x_.shape[1]
-
-        for x in x_:
-
-            phi_ = [1.0]
-            phi_.extend(x)
-            phi_.extend([x[i] * x[j] for i in range(n-1) for j in range(i+1, n)])
-            phi.append(phi_)
-
-    else:
-        
-        n = x_.shape[0]
-        phi = [1.0]
-        phi.extend(x_)
-        phi.extend([x_[i] * x_[j] for i in range(n-1) for j in range(i+1, n)])
-    
-    return np.array(phi)
+    return normalized_vector
 
 
 def acq_max(ac, gp, y_max, bounds, random_state, n_warmup=10000, n_iter=10, dataset=None,
-            debug=False, oldX=None, oldY=None):
+            debug=False):
     """
     A function to find the maximum of the acquisition function
 
@@ -87,7 +74,7 @@ def acq_max(ac, gp, y_max, bounds, random_state, n_warmup=10000, n_iter=10, data
         if debug: print("No dataset, initial grid will be random with shape {}".format((n_warmup, bounds.shape[0])))
         x_tries = random_state.uniform(bounds[:, 0], bounds[:, 1],
                                        size=(n_warmup, bounds.shape[0]))
-    ys = ac(x_tries, gp=gp, y_max=y_max, oldX=oldX, oldY=oldY, random_state=random_state)
+    ys = ac(x_tries, gp=gp, y_max=y_max)
     if debug: print("Acquisition evaluated successfully on grid")
     idx = ys.argmax()  # this index is relative to the local x_tries values matrix
     x_max = x_tries[idx]
@@ -137,7 +124,7 @@ class UtilityFunction(object):
 
     See the maximize() function in bayesian_optimization.py for a description of the constructor arguments.
     """
-    def __init__(self, kind, kappa, xi, kappa_decay=1, kappa_decay_delay=0, acq_info={}, debug=False):
+    def __init__(self, kind, kappa, xi, kappa_decay=1, kappa_decay_delay=0, acq_info={}, ml_on_bounds=None, ml_on_target=None, debug=False):
 
         self._debug = debug
         self.kappa = kappa
@@ -148,6 +135,9 @@ class UtilityFunction(object):
         self._iters_counter = 0
 
         self.initialize_acq_info(acq_info, kind)
+
+        self._ml_on_bounds = ml_on_bounds
+        self.ml_on_target = ml_on_target
 
         if self._debug: print("UtilityFunction initialization completed")
 
@@ -181,7 +171,7 @@ class UtilityFunction(object):
         if self._debug: print("Initializing UtilityFunction of kind '{}' with acq_info = {}".format(kind, acq_info))
 
         # For Machine Learning-based acquisitions
-        if 'ml' in kind:
+        if self._ml_on_bounds:
             self.set_acq_info_field(acq_info, 'ml_target')
             self.set_acq_info_field(acq_info, 'ml_bounds')
 
@@ -205,7 +195,7 @@ class UtilityFunction(object):
             self.set_acq_info_field(acq_info, 'eic_Q_func')
 
         # For EIC-ML hybrid acquisitions
-        if 'eic_ml' in kind:
+        if 'eic' in kind and self._ml_on_bounds:
             self.set_acq_info_field(acq_info, 'eic_ml_var')
             if self.eic_ml_var not in ('B', 'C', 'D'):
                 raise ValueError("'eic_ml_var' field must be B/C/D, not {}".format(self.eic_ml_var))
@@ -215,11 +205,6 @@ class UtilityFunction(object):
                 if self._debug: print("Using default eic_ml_exp_B = 2")
                 acq_info['eic_ml_exp_B'] = 2.0
             self.set_acq_info_field(acq_info, 'eic_ml_exp_B')
-
-        # For MIVABO
-        if 'MIVABO' in kind:
-            self.set_acq_info_field(acq_info, 'alpha')
-            self.set_acq_info_field(acq_info, 'beta')
 
 
     def update_params(self):
@@ -232,56 +217,44 @@ class UtilityFunction(object):
     def set_ml_model(self, model):
         self.ml_model = model
 
+    
+    def set_objective_ml_model(self, model):
+        self.objective_ml_model = model
 
-    def utility(self, x, gp, y_max, oldX = None, oldY = None, random_state = None):
+
+    def utility(self, x, gp, y_max):
+
         if self.kind == 'ucb':
-            return self._ucb(x, gp, self.kappa)
-        if self.kind == 'poi':
-            return self._poi(x, gp, y_max, self.xi)
-        if self.kind == 'ei':
-            return self._ei(x, gp, y_max, self.xi)
-        if self.kind == 'ei_ml':
-            return self._ei_ml(x, gp, y_max, self.xi, self.ml_model, self.ml_bounds)
-        if self.kind == 'eic':
-            return self._eic(x, gp, y_max, self.xi, self.eic_bounds, self.eic_P_func, self.eic_Q_func)
-        if self.kind == 'eic_ml':
-            return self._eic_ml(x, gp, y_max, self.xi, self.eic_ml_var, self.ml_model, self.ml_bounds,
-                                self.eic_bounds, self.eic_P_func, self.eic_Q_func, self.eic_ml_exp_B)
-        if self.kind == 'MIVABO':
-            return self._MIVABO(x, oldX, oldY, random_state, self.alpha, self.beta)
-        if self.kind == 'MIVABO_ml':
-            return self._MIVABO_ml(x, oldX, oldY, random_state, self.ml_model, self.ml_bounds, self.alpha, self.beta)
+            res = self._ucb(x, gp, self.kappa)
+        elif self.kind == 'poi':
+            res = self._poi(x, gp, y_max, self.xi)
+        elif self.kind == 'ei':
+            res = self._ei(x, gp, y_max, self.xi)
 
-        raise NotImplementedError("The utility function {} has not been implemented.".format(self.kind))
+        elif self.kind == 'eic':
+            res = self._eic(x, gp, y_max, self.xi, self.eic_bounds, self.eic_P_func, self.eic_Q_func)
+
+            if self._ml_on_bounds:
+                if self.eic_ml_var in ('B', 'D'):
+                    lb, ub = self.ml_bounds
+                    y_hat = self.ml_model[0].predict(x)
+                    coeff = np.exp(-self.eic_ml_exp_B * y_hat)
+                    norm_const = self.eic_ml_exp_B * (lb-ub) - 0.5 * self.eic_ml_exp_B ** 2 * (lb ** 2 - ub ** 2)
+                    res *= coeff * norm_const
+                if self.eic_ml_var in ('C', 'D'):
+                    res *= self._ml_on_bounds
+
+        else:
+            raise NotImplementedError("The utility function {} has not been implemented.".format(self.kind))
+
+        if self._ml_on_bounds and self.kind != 'eic':
+            res *= self._ml_on_bounds(x, self.ml_model)
+        if self.ml_on_target:
+            res *= self._ml_on_target(x, self.objective_ml_model)
+
+        return res
     
-
-    @staticmethod
-    def _MIVABO(x, oldX, oldY, random_state, alpha, beta):
-
-        Phi = []
-        for ii in range(oldX.shape[0]):
-            Phi.append(compute_phi(oldX.values[ii]))
-        Phi = np.array(Phi)
-
-        S = alpha*np.eye(1 + sum(ii for ii in range(oldX.shape[1]+1))) + beta*np.dot(Phi.T,Phi)
-        invS = np.linalg.inv(S)
-        avg = np.dot(np.dot(beta*invS,Phi.T),oldY)
-        tilde_w = random_state.multivariate_normal(avg, invS)
-
-        return -np.dot(compute_phi(x),tilde_w)
     
-
-    @staticmethod
-    def _MIVABO_ml(x, oldX, oldY, random_state, ml_model, bounds, alpha, beta):
-        
-        MIVABO = UtilityFunction._MIVABO(x, oldX, oldY, random_state, alpha, beta)
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore")
-            indicator = ml_model[1].decision_function(x)
-            probabilities = 1 / (1 + np.exp(-indicator))
-
-        return MIVABO * probabilities
-
 
     @staticmethod
     def _ucb(x, gp, kappa):
@@ -317,19 +290,24 @@ class UtilityFunction(object):
 
 
     @staticmethod
-    def _ei_ml(x, gp, y_max, xi, ml_model, bounds):
-        """Compute Expected Improvement - ML indicator version"""
-        ei = UtilityFunction._ei(x, gp, y_max, xi)
+    def _ml_on_bounds(x, ml_model):
+
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
-            y_hat = ml_model[0].predict(x)
             indicator = ml_model[1].decision_function(x)
-        #lb, ub = bounds
-        #indicator = np.array([lb <= y and y <= ub for y in y_hat])
             probabilities = 1 / (1 + np.exp(-indicator))
-            
-        return ei * probabilities
 
+        return probabilities
+    
+
+    @staticmethod
+    def _ml_on_target(x, objective_ml_model):
+
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            f_tilde = objective_ml_model.predict(x)
+            return min_max_normalize(f_tilde)
+    
 
     @staticmethod
     def _eic(x, gp, y_max, xi, bounds, P, Q):
@@ -357,33 +335,6 @@ class UtilityFunction(object):
         prob_lb = norm.cdf( (mean_Gmin - mean) / std )
 
         return ei * (prob_ub - prob_lb)
-
-
-    @staticmethod
-    def _eic_ml(x, gp, y_max, xi, variant, ml_model, ml_bounds, eic_bounds, P, Q, exp_B):
-        """Compute Expected Improvement with Constraints, ML variants B/C/D"""
-        # Compute regular Expected Improvement with Constraints
-        eic = UtilityFunction._eic(x, gp, y_max, xi, eic_bounds, P, Q)
-        # Call ML model
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore")
-            y_hat = ml_model[0].predict(x)
-            if variant in ('C', 'D'):
-                indicator = ml_model[1].decision_function(x)
-        # Compute exponential coefficient for variant B (and D)
-        lb, ub = ml_bounds
-        if variant in ('B', 'D'):
-            coeff = np.exp(-exp_B * y_hat)
-            # normalization constant (positive when 0.5 k (lb + ub) > 1)
-            norm_const = exp_B * (lb-ub) - 0.5 * exp_B ** 2 * (lb ** 2 - ub ** 2)
-            eic *= coeff * norm_const
-        # Compute indicator coefficient for variant C (and D)
-        if variant in ('C', 'D'):
-            with warnings.catch_warnings():
-                probabilities = 1 / (1 + np.exp(-indicator))
-                eic *= probabilities
-
-        return eic
 
 
 
@@ -520,6 +471,31 @@ def ensure_rng(random_state=None):
     else:
         assert isinstance(random_state, np.random.RandomState)
     return random_state
+
+
+def evaluate_max(original_dataset, results_dataset, target_name='', bounds={}):
+
+    indices = pd.read_csv(results_dataset)['index'].tolist()
+    df = pd.read_csv(original_dataset).loc[indices].sort_values(by=target_name, ascending=False)
+
+    for index, row in df.iterrows():
+
+        constraints_respected = True
+        
+        for key, value in bounds.items():
+            
+            lb, ub = value
+
+            if row[key] < lb or row[key] > ub:
+                constraints_respected = False
+                
+        if constraints_respected:
+            
+            print("\nMax feasible:")
+            print(row)
+            return row[target_name]
+        
+    return -np.inf
 
 
 class Colours:

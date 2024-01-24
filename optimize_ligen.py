@@ -33,11 +33,12 @@ def apply_BO(seed, n0, n_iter, debug, output_path, delete_previous_output):
     print("Real min: " + str(round(-real_max,2)))
     print("Error: " + str(round(100*(obtained_max - real_max)/real_max,2)) + " %\n")
 
+    return obtained_max
+
 
 
 if __name__ == '__main__':
 
-    seed = 1
     n0 = 11
     n_iter = 60
     debug = False
@@ -46,7 +47,7 @@ if __name__ == '__main__':
 
     real_max = -567.312555400384
 
-    repetitions = 10
+    repetitions = 1
     avg = 0
 
     #for seed in randint(0,1000,repetitions).tolist():
