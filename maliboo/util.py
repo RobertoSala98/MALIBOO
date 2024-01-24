@@ -3,6 +3,7 @@ import numpy as np
 from scipy.stats import norm
 from scipy.optimize import minimize
 import pandas as pd
+from math import exp
 
 
 def min_max_normalize(vector):
@@ -11,13 +12,17 @@ def min_max_normalize(vector):
         warnings.simplefilter("ignore")
         min_val = min(vector)
         max_val = max(vector)
-        normalized_vector = [(x - min_val) / (max_val - min_val) for x in vector]
-    
-    return normalized_vector
+
+        if max_val > min_val:
+            return [(x - min_val) / (max_val - min_val) for x in vector]
+        
+        else:
+            # should be a vector of ones
+            return vector
 
 
 def acq_max(ac, gp, y_max, bounds, random_state, n_warmup=10000, n_iter=10, dataset=None,
-            debug=False):
+            debug=False, iter_num=0):
     """
     A function to find the maximum of the acquisition function
 
@@ -74,7 +79,7 @@ def acq_max(ac, gp, y_max, bounds, random_state, n_warmup=10000, n_iter=10, data
         if debug: print("No dataset, initial grid will be random with shape {}".format((n_warmup, bounds.shape[0])))
         x_tries = random_state.uniform(bounds[:, 0], bounds[:, 1],
                                        size=(n_warmup, bounds.shape[0]))
-    ys = ac(x_tries, gp=gp, y_max=y_max)
+    ys = ac(x_tries, gp=gp, y_max=y_max, iter_num=iter_num)
     if debug: print("Acquisition evaluated successfully on grid")
     idx = ys.argmax()  # this index is relative to the local x_tries values matrix
     x_max = x_tries[idx]
@@ -124,7 +129,7 @@ class UtilityFunction(object):
 
     See the maximize() function in bayesian_optimization.py for a description of the constructor arguments.
     """
-    def __init__(self, kind, kappa, xi, kappa_decay=1, kappa_decay_delay=0, acq_info={}, ml_on_bounds=None, ml_on_target=None, debug=False):
+    def __init__(self, kind, kappa, xi, kappa_decay=1, kappa_decay_delay=0, acq_info={}, ml_on_bounds=False, ml_on_target=False, debug=False):
 
         self._debug = debug
         self.kappa = kappa
@@ -134,10 +139,10 @@ class UtilityFunction(object):
         self.kind = kind
         self._iters_counter = 0
 
-        self.initialize_acq_info(acq_info, kind)
-
         self._ml_on_bounds = ml_on_bounds
-        self.ml_on_target = ml_on_target
+        self._ml_on_target = ml_on_target
+
+        self.initialize_acq_info(acq_info, kind)
 
         if self._debug: print("UtilityFunction initialization completed")
 
@@ -206,6 +211,16 @@ class UtilityFunction(object):
                 acq_info['eic_ml_exp_B'] = 2.0
             self.set_acq_info_field(acq_info, 'eic_ml_exp_B')
 
+        if self._ml_on_target:
+
+            self.set_acq_info_field(acq_info, 'ml_target_type')
+
+            if self.ml_target_type == 'sum':
+
+                self.set_acq_info_field(acq_info, 'ml_target_gamma_iter0')
+                self.set_acq_info_field(acq_info, 'ml_target_gamma_iterN')
+                self.set_acq_info_field(acq_info, 'ml_target_gamma_max')
+
 
     def update_params(self):
         self._iters_counter += 1
@@ -222,7 +237,7 @@ class UtilityFunction(object):
         self.objective_ml_model = model
 
 
-    def utility(self, x, gp, y_max):
+    def utility(self, x, gp, y_max, iter_num):
 
         if self.kind == 'ucb':
             res = self._ucb(x, gp, self.kappa)
@@ -246,12 +261,24 @@ class UtilityFunction(object):
 
         else:
             raise NotImplementedError("The utility function {} has not been implemented.".format(self.kind))
+        
 
         if self._ml_on_bounds and self.kind != 'eic':
-            res *= self._ml_on_bounds(x, self.ml_model)
-        if self.ml_on_target:
-            res *= self._ml_on_target(x, self.objective_ml_model)
+            res *= self._consider_ml_on_bounds(x, self.ml_model)
+        
+        if self._ml_on_target:
 
+            norm_prediction = self._consider_ml_on_target(x, self.objective_ml_model)
+            
+            if self.ml_target_type == 'product':
+                res *= norm_prediction
+
+            elif self.ml_target_type == 'sum':
+                
+                if iter_num > self.ml_target_gamma_iter0:
+                    gamma = self.ml_target_gamma_max * (1 - exp(-5*(iter_num-self.ml_target_gamma_iter0)/(self.ml_target_gamma_iterN-self.ml_target_gamma_iter0)))
+                    res = (1 - gamma) * np.array(min_max_normalize(res)) + gamma * np.array(norm_prediction)
+                
         return res
     
     
@@ -290,7 +317,7 @@ class UtilityFunction(object):
 
 
     @staticmethod
-    def _ml_on_bounds(x, ml_model):
+    def _consider_ml_on_bounds(x, ml_model):
 
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
@@ -301,7 +328,7 @@ class UtilityFunction(object):
     
 
     @staticmethod
-    def _ml_on_target(x, objective_ml_model):
+    def _consider_ml_on_target(x, objective_ml_model):
 
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")

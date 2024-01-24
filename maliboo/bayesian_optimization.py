@@ -191,7 +191,7 @@ class BayesianOptimization(Observable):
             return target_val
 
 
-    def suggest(self, utility_function):
+    def suggest(self, utility_function, iter_num=0):
         """
         Get most promising point to probe next
 
@@ -244,6 +244,7 @@ class BayesianOptimization(Observable):
             random_state=self._random_state,
             dataset=dataset_acq,
             debug=self._debug,
+            iter_num=iter_num
         )
 
         if self.relaxation:
@@ -426,7 +427,7 @@ class BayesianOptimization(Observable):
                 if ml_on_target:
                     objective_ml_model = self.train_objective_ml_model()
                     util.set_objective_ml_model(objective_ml_model)
-                x_probe, idx, acq_val = self.suggest(util)
+                x_probe, idx, acq_val = self.suggest(util, iter_num=iteration)
                 if self._debug: print("Suggested point: index {}, value {}, acquisition {}".format(idx, x_probe, acq_val))
 
             if x_probe is None:

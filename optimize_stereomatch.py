@@ -23,7 +23,8 @@ def apply_BO(seed, n0, n_iter, debug, output_path, delete_previous_output):
 
     stop_crit_info = {'hard_stop': False, 'conjunction': 'or', 'ml_bounds_coeff': (0.9, None)}
     
-    acq_info = {'eic_ml_var': 'C', 'ml_target': 'time', 'eic_bounds': (0, 17000), 'eic_P_func': P, 'ml_bounds': (0, 17000)}
+    acq_info = {'eic_ml_var': 'C', 'ml_target': 'time', 'eic_bounds': (0, 17000), 'eic_P_func': P, 'ml_bounds': (0, 17000),
+                'ml_target_type': 'sum', 'ml_target_gamma_iter0': 10, 'ml_target_gamma_iterN': 30, 'ml_target_gamma_max': 0.5}
     optimizer.maximize(init_points=0, n_iter=n_iter, acq='eic',
                        ml_on_bounds=True, ml_on_target=True,
                        memory_queue_len=n_iter+n0, acq_info=acq_info,
