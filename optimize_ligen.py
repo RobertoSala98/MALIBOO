@@ -21,10 +21,9 @@ def apply_BO(seed, n0, n_iter, debug, output_path, delete_previous_output):
                 output_path=output_path, 
                 debug=debug)
 
-    acq_info={'ml_target': 'RMSD_0.75', 'ml_bounds': (0.0, 2.1), 'alpha': 1, 'beta': 0.1}
+    acq_info={'ml_target': 'RMSD_0.75', 'ml_bounds': (0.0, 2.1)}
 
     optimizer.maximize(init_points=n0, n_iter=n_iter, acq='ei_ml', acq_info=acq_info, memory_queue_len=n0+n_iter)
-    #optimizer.maximize(init_points=n0, n_iter=n_iter, acq='MIVABO', acq_info=acq_info, memory_queue_len=n0+n_iter)
 
     obtained_max = optimizer.max['target']
     real_max = -567.312555400384

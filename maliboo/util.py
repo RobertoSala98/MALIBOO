@@ -239,7 +239,9 @@ class UtilityFunction(object):
 
     def utility(self, x, gp, y_max, iter_num):
 
-        if self.kind == 'ucb':
+        if self.kind == 'no_BO':
+            res = self._no_BO(x)
+        elif self.kind == 'ucb':
             res = self._ucb(x, gp, self.kappa)
         elif self.kind == 'poi':
             res = self._poi(x, gp, y_max, self.xi)
@@ -278,10 +280,15 @@ class UtilityFunction(object):
                 if iter_num > self.ml_target_gamma_iter0:
                     gamma = self.ml_target_gamma_max * (1 - exp(-5*(iter_num-self.ml_target_gamma_iter0)/(self.ml_target_gamma_iterN-self.ml_target_gamma_iter0)))
                     res = (1 - gamma) * np.array(min_max_normalize(res)) + gamma * np.array(norm_prediction)
-                
+        
         return res
     
     
+    @staticmethod
+    def _no_BO(x):
+
+        return np.ones(x.shape[0])
+
 
     @staticmethod
     def _ucb(x, gp, kappa):

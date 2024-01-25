@@ -22,15 +22,10 @@ def apply_BO(seed, n0, n_iter, debug, output_path, delete_previous_output):
     stop_crit_info = {'hard_stop': False, 'conjunction': 'or', 'ml_bounds_coeff': (0.9, None)}
     
     acq_info = {'eic_ml_var': 'C', 'ml_target': 'time', 'eic_bounds': (0, 205000), 'eic_P_func': P, 'ml_bounds': (0, 205000)}
-    optimizer.maximize(init_points=0, n_iter=n_iter, acq='eic',
+    optimizer.maximize(init_points=n0, n_iter=n_iter, acq='eic',
                        ml_on_bounds=True, ml_on_target=True,
                         memory_queue_len=n_iter+n0, acq_info=acq_info,
                         stop_crit_info=stop_crit_info, relaxation=False)
-    """
-    acq_info = {'eic_ml_var': 'C', 'ml_target': 'time', 'ml_bounds': (0, 205000), 'alpha': 1, 'beta': 0.1}
-    optimizer.maximize(init_points=n0, n_iter=n_iter, acq='MIVABO_ml', 
-                    memory_queue_len=n_iter+n0, acq_info=acq_info) 
-    """
 
     obtained_max = evaluate_max('resources/query26_vm_ram.csv', output_path + "/results.csv", '-cost', {'time': (0, 205000)})
     real_max = -4079658
@@ -48,7 +43,7 @@ if __name__ == '__main__':
     n0 = 3
     n_iter = 30
     debug = False
-    output_path = "./outputs_query26_eic_ml"
+    output_path = "./outputs/outputs_query26_eic_ml"
     delete_previous_output = True
 
     real_max = -4079658

@@ -36,7 +36,7 @@ if __name__ == '__main__':
     n0 = 6
     n_iter = 9
     debug = False
-    output_path = "./outputs_oscarp_combinatorial_ei_ml"
+    output_path = "./outputs/outputs_oscarp_combinatorial_ei_ml"
     delete_previous_output = True
 
     real_max = -0.173553833333333

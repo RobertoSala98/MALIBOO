@@ -24,16 +24,11 @@ def apply_BO(seed, n0, n_iter, debug, output_path, delete_previous_output):
     stop_crit_info = {'hard_stop': False, 'conjunction': 'or', 'ml_bounds_coeff': (0.9, None)}
     
     acq_info = {'eic_ml_var': 'C', 'ml_target': 'time', 'eic_bounds': (0, 17000), 'eic_P_func': P, 'ml_bounds': (0, 17000),
-                'ml_target_type': 'sum', 'ml_target_gamma_iter0': 10, 'ml_target_gamma_iterN': 30, 'ml_target_gamma_max': 0.5}
-    optimizer.maximize(init_points=0, n_iter=n_iter, acq='eic',
+                'ml_target_type': 'product', 'ml_target_gamma_iter0': 10, 'ml_target_gamma_iterN': 30, 'ml_target_gamma_max': 0.5}
+    optimizer.maximize(init_points=n0, n_iter=n_iter, acq='eic',
                        ml_on_bounds=True, ml_on_target=True,
                        memory_queue_len=n_iter+n0, acq_info=acq_info,
                        stop_crit_info=stop_crit_info, relaxation=False)
-    """
-    acq_info = {'eic_ml_var': 'C', 'ml_target': 'time', 'ml_bounds': (0, 17000), 'alpha': 1, 'beta': 0.1}
-    optimizer.maximize(init_points=n0, n_iter=n_iter, acq='MIVABO_ml', 
-                    memory_queue_len=n_iter+n0, acq_info=acq_info) 
-    """
 
     obtained_max = evaluate_max('resources/stereomatch.csv', output_path + "/results.csv", '-cost', {'time': (0, 17000)})
     real_max = -40196
@@ -51,12 +46,13 @@ if __name__ == '__main__':
     n0 = 3
     n_iter = 60
     debug = False
-    output_path = "./outputs_stereomatch_eic_ml"
+    output_path = "./outputs/outputs_stereomatch_eic_ml"
     delete_previous_output = True
 
     real_max = -40196
 
     repetitions = 10
+
     avg = 0
 
     #for seed in randint(0,1000,repetitions).tolist():
