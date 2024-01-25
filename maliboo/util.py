@@ -179,6 +179,7 @@ class UtilityFunction(object):
         if self._ml_on_bounds:
             self.set_acq_info_field(acq_info, 'ml_target')
             self.set_acq_info_field(acq_info, 'ml_bounds')
+            self.set_acq_info_field(acq_info, 'ml_bounds_type')
 
         # For Expected Improvement with Constraints-based acquisitions
         if 'eic' in kind:
@@ -259,14 +260,14 @@ class UtilityFunction(object):
                     norm_const = self.eic_ml_exp_B * (lb-ub) - 0.5 * self.eic_ml_exp_B ** 2 * (lb ** 2 - ub ** 2)
                     res *= coeff * norm_const
                 if self.eic_ml_var in ('C', 'D'):
-                    res *= self._ml_on_bounds
+                    res *= self._consider_ml_on_bounds(x, self.ml_model, self.ml_bounds, self.ml_bounds_type)
 
         else:
             raise NotImplementedError("The utility function {} has not been implemented.".format(self.kind))
         
 
         if self._ml_on_bounds and self.kind != 'eic':
-            res *= self._consider_ml_on_bounds(x, self.ml_model)
+            res *= self._consider_ml_on_bounds(x, self.ml_model, self.ml_bounds, self.ml_bounds_type)
         
         if self._ml_on_target:
 
@@ -324,15 +325,20 @@ class UtilityFunction(object):
 
 
     @staticmethod
-    def _consider_ml_on_bounds(x, ml_model):
+    def _consider_ml_on_bounds(x, ml_model, ml_bounds, ml_bounds_type):
 
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
-            indicator = ml_model[1].decision_function(x)
-            probabilities = 1 / (1 + np.exp(-indicator))
 
-        return probabilities
-    
+            if ml_bounds_type == 'indicator':
+                y_hat = ml_model[0].predict(x)
+                lb, ub = ml_bounds
+                return np.array([lb <= y and y <= ub for y in y_hat])
+            
+            elif ml_bounds_type == 'probability' or ml_bounds_type == 'probabilities':
+                indicator = ml_model[1].decision_function(x)
+                return 1 / (1 + np.exp(-indicator))
+
 
     @staticmethod
     def _consider_ml_on_target(x, objective_ml_model):

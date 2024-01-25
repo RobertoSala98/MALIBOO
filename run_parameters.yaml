@@ -5,7 +5,7 @@ general_setting:
   repetitions: 100
   random_seed: True
   seeds: [1,2,3,4,5,6,7,8,9,10]
-  output_path: "./outputs/outputs_stereomatch_ML_sum"
+  output_path: "./outputs/outputs_stereomatch_ML_product"
   delete_previous_output: True
   debug: False
   max: -40196
@@ -39,8 +39,9 @@ acquisition_info:
   ml_on_bounds_parameters:
     ml_target: "time"
     ml_bounds: [0, 17000]
+    ml_bounds_type: "probability"
   ml_on_target_parameters:
-    ml_target_type: "sum"
+    ml_target_type: "product"
     sum_parameters:
       ml_target_gamma_iter0: 10
       ml_target_gamma_iterN: 30

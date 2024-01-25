@@ -135,6 +135,8 @@ def main(yaml_file_path):
             
         acquisition_info['ml_bounds'] = (lb, ub)
 
+        acquisition_info['ml_bounds_type'] = parsed_data['acquisition_info']['ml_on_bounds_parameters']['ml_bounds_type']
+
     if ml_on_target:
         acquisition_info['ml_target_type'] = parsed_data['acquisition_info']['ml_on_target_parameters']['ml_target_type']
 
