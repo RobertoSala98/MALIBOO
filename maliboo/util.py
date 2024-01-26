@@ -22,7 +22,7 @@ def min_max_normalize(vector):
 
 
 def acq_max(ac, gp, y_max, bounds, random_state, n_warmup=10000, n_iter=10, dataset=None,
-            debug=False, iter_num=0):
+            debug=False, iter_num=0, at_least_one_feasible_found=True):
     """
     A function to find the maximum of the acquisition function
 
@@ -79,7 +79,7 @@ def acq_max(ac, gp, y_max, bounds, random_state, n_warmup=10000, n_iter=10, data
         if debug: print("No dataset, initial grid will be random with shape {}".format((n_warmup, bounds.shape[0])))
         x_tries = random_state.uniform(bounds[:, 0], bounds[:, 1],
                                        size=(n_warmup, bounds.shape[0]))
-    ys = ac(x_tries, gp=gp, y_max=y_max, iter_num=iter_num)
+    ys = ac(x_tries, gp=gp, y_max=y_max, iter_num=iter_num, at_least_one_feasible_found=at_least_one_feasible_found)
     if debug: print("Acquisition evaluated successfully on grid")
     idx = ys.argmax()  # this index is relative to the local x_tries values matrix
     x_max = x_tries[idx]
@@ -184,7 +184,6 @@ class UtilityFunction(object):
         # For Expected Improvement with Constraints-based acquisitions
         if 'eic' in kind:
             self.set_acq_info_field(acq_info, 'eic_bounds')
-
             # Check for other needed fields, and provide default values if not present
             if 'eic_P_func' not in acq_info:
                 if self._debug: print("Using default eic_P_func, P(x) == 1")
@@ -238,9 +237,11 @@ class UtilityFunction(object):
         self.objective_ml_model = model
 
 
-    def utility(self, x, gp, y_max, iter_num):
+    def utility(self, x, gp, y_max, iter_num, at_least_one_feasible_found):
 
-        if self.kind == 'no_BO':
+        if self.kind == 'no_BO' or not at_least_one_feasible_found:
+            if not at_least_one_feasible_found:
+                print("Using only ML")
             res = self._no_BO(x)
         elif self.kind == 'ucb':
             res = self._ucb(x, gp, self.kappa)
@@ -250,6 +251,7 @@ class UtilityFunction(object):
             res = self._ei(x, gp, y_max, self.xi)
 
         elif self.kind == 'eic':
+
             res = self._eic(x, gp, y_max, self.xi, self.eic_bounds, self.eic_P_func, self.eic_Q_func)
 
             if self._ml_on_bounds:
@@ -358,6 +360,7 @@ class UtilityFunction(object):
         this function multiplies the regular Expected Improvement with the probability
         that Gmin <= g(x) <= Gmax, with Gmin = bounds[0] and Gmax = bounds[1].
         """
+
         # Compute regular Expected Improvement
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")

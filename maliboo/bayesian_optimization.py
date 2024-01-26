@@ -139,7 +139,7 @@ class BayesianOptimization(Observable):
         return self._space
 
     @property
-    def max(self):
+    def max(self): 
         return self._space.max()
 
     @property
@@ -151,9 +151,9 @@ class BayesianOptimization(Observable):
         return self._space.dataset
 
 
-    def register(self, params, target, idx=None):
+    def register(self, params, target, idx=None, feasibility=True):
         """Expect observation with known target"""
-        self._space.register(params, target, idx)
+        self._space.register(params, target, idx, feasibility)
         self.dispatch(Events.OPTIMIZATION_STEP)
 
 
@@ -191,7 +191,7 @@ class BayesianOptimization(Observable):
             return target_val
 
 
-    def suggest(self, utility_function, iter_num=0):
+    def suggest(self, utility_function, iter_num=0, ml_on_bounds=False, consider_max_only_on_feasible=False):
         """
         Get most promising point to probe next
 
@@ -235,6 +235,11 @@ class BayesianOptimization(Observable):
                 dataset_approx = dataset_acq
                 dataset_acq = None
 
+        if ml_on_bounds and consider_max_only_on_feasible:
+            at_least_one_feasible_found = np.any(self.get_ml_target_data(utility_function.ml_target) > utility_function.ml_bounds[0]) * np.any(self.get_ml_target_data(utility_function.ml_target) < utility_function.ml_bounds[1])
+        else:
+            at_least_one_feasible_found = True
+
         # Find argmax of the acquisition function
         suggestion, idx, acq_val = acq_max(
             ac=utility_function.utility,
@@ -244,7 +249,8 @@ class BayesianOptimization(Observable):
             random_state=self._random_state,
             dataset=dataset_acq,
             debug=self._debug,
-            iter_num=iter_num
+            iter_num=iter_num,
+            at_least_one_feasible_found=at_least_one_feasible_found
         )
 
         if self.relaxation:
@@ -295,6 +301,7 @@ class BayesianOptimization(Observable):
                  stop_crit_info={},
                  memory_queue_len=0,
                  relaxation=False,
+                 consider_max_only_on_feasible=False,
                  **gp_params):
         """
         Probes the target space to find the parameters that yield the maximum
@@ -427,9 +434,9 @@ class BayesianOptimization(Observable):
                 if ml_on_target:
                     objective_ml_model = self.train_objective_ml_model()
                     util.set_objective_ml_model(objective_ml_model)
-                x_probe, idx, acq_val = self.suggest(util, iter_num=iteration)
+                x_probe, idx, acq_val = self.suggest(util, iter_num=iteration, ml_on_bounds=ml_on_bounds, consider_max_only_on_feasible=consider_max_only_on_feasible)
                 if self._debug: print("Suggested point: index {}, value {}, acquisition {}".format(idx, x_probe, acq_val))
-
+            
             if x_probe is None:
                 raise ValueError("No point found")
             iteration += 1
@@ -443,10 +450,15 @@ class BayesianOptimization(Observable):
                 # Dataset for both X and y: register point entirely from dataset without probe()
                 if self._debug: print("Dataset Xy: registering dataset point")
                 if idx is None:
-                    idx, target_value = self._space.find_point_in_dataset(x_probe)
+                    idx, target_value, _ml_target = self._space.find_point_in_dataset(x_probe)
                 else:
                     target_value = self.dataset.loc[idx, self._space.target_column]
-                self.register(self._space.params_to_array(x_probe), target_value, idx)
+                    if ml_on_bounds and consider_max_only_on_feasible:
+                        _ml_target = self.dataset.loc[idx, util.ml_target]
+                        feasibility = _ml_target >= util.ml_bounds[0] and _ml_target <= util.ml_bounds[1]
+                    else:
+                        feasibility = True
+                self.register(self._space.params_to_array(x_probe), target_value, idx, feasibility)
 
             # Compute ML prediction and check stopping condition
             y_true_ml = self.get_ml_target_data(util.ml_target).iloc[-1] if hasattr(util, 'ml_model') else None
@@ -454,7 +466,7 @@ class BayesianOptimization(Observable):
                 if self._debug: print("Point was not selected by suggest(): skipping termination check")
             else:
                 terminated = terminated or stopcrit.terminate(x_probe, target_value, iteration, util, y_true_ml)
-
+            
             # Register other information about the new point
             other_info = pd.DataFrame(index=[idx])
             other_info.loc[idx, 'acquisition'] = acq_val

@@ -2,9 +2,9 @@ general_setting:
   num_initial_points: 3
   initial_points: []
   num_iterations: 60
-  repetitions: 100
-  random_seed: True
-  seeds: [1,2,3,4,5,6,7,8,9,10]
+  repetitions: 1
+  random_seed: False
+  seeds: [0,1,2,3,4,5,6,7,8,9]
   output_path: "./outputs/outputs_stereomatch_ML_product"
   delete_previous_output: True
   debug: False
@@ -19,11 +19,11 @@ stopping_criteria:
   stopping_criteria: True
   hard_stop: False
   conjunction: "or"
-  ml_bounds_coeff: [0.9, None]
 acquisition_info:
   acquisition_function: "eic"
   ml_on_bounds: True
-  ml_on_target: True
+  ml_on_target: False
+  consider_max_only_on_feasible: False
   memory_queue_len: 63
   relaxation: False
   eic:
@@ -39,7 +39,8 @@ acquisition_info:
   ml_on_bounds_parameters:
     ml_target: "time"
     ml_bounds: [0, 17000]
-    ml_bounds_type: "probability"
+    ml_bounds_coeff: [0.9, None]
+    ml_bounds_type: "indicator"
   ml_on_target_parameters:
     ml_target_type: "product"
     sum_parameters:

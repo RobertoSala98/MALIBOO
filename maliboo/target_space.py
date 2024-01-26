@@ -57,6 +57,7 @@ class TargetSpace(object):
         # preallocated memory for X and Y points
         self._params = pd.DataFrame()
         self._target = np.empty(shape=(0))
+        self._feasibility = np.empty(shape=(0))
 
         # Other information to be recorded
         self._target_dict_info = pd.DataFrame()
@@ -67,6 +68,7 @@ class TargetSpace(object):
 
     def __len__(self):
         assert len(self._params) == len(self._target)
+        assert len(self._params) == len(self._feasibility)
         return len(self._target)
 
 
@@ -81,6 +83,10 @@ class TargetSpace(object):
     @property
     def target(self):
         return self._target
+    
+    @property
+    def feasibility(self):
+        return self._feasibility
 
     @property
     def dim(self):
@@ -146,7 +152,7 @@ class TargetSpace(object):
         return x
 
 
-    def register(self, params, target, idx=None):
+    def register(self, params, target, idx=None, feasibility=True):
         """
         Append a point and its target value to the known data.
 
@@ -184,6 +190,7 @@ class TargetSpace(object):
         x_df = pd.DataFrame(params.reshape(1, -1), columns=self._keys, index=[idx], dtype=float)
         self._params = pd.concat((self._params, x_df))
         self._target = np.concatenate([self._target, [value]])
+        self._feasibility = np.concatenate([self._feasibility, [feasibility]])
         if info:  # The return value of the target function is a dict
             if self._target_dict_info.empty:
                 # Initialize member
@@ -267,15 +274,29 @@ class TargetSpace(object):
 
     def max(self):
         """Get maximum target value found and corresponding parameters."""
-        try:
+
+        if np.any(self._feasibility > 0):
+            try:
+                res = {
+                    'target': np.array(self.target * self._feasibility).max(),
+                    'params': dict(
+                        zip(self.keys, self.params.values[(self.target * self._feasibility).argmax()])
+                    ),
+                    'feasible': True
+                }
+            except ValueError:
+                res = {}
+            
+        else:
+            #print("Returning the max, but unfeasible")
             res = {
-                'target': self.target.max(),
-                'params': dict(
-                    zip(self.keys, self.params.values[self.target.argmax()])
-                )
+                    'target': -np.inf,
+                    'params': dict(
+                        zip(self.keys, self.params.values[self.target.argmax()])
+                    ),
+                    'feasible': False
             }
-        except ValueError:
-            res = {}
+
         return res
 
 
@@ -337,7 +358,7 @@ class TargetSpace(object):
             raise ValueError("Unrecognized return type '{}' in target function".format(type(target)))
 
 
-    def initialize_dataset(self, dataset=None, target_column=None):
+    def initialize_dataset(self, dataset=None, target_column=None, ml_target_column=None):
         """
         Checks and loads the dataset as well as other utilities. The dataset loaded in this class by
         this method is constant and will not change throughout the optimization procedure.
@@ -379,6 +400,7 @@ class TargetSpace(object):
 
         # Set target column and check for missing columns
         self._target_column = target_column
+        self._ml_target_column = ml_target_column
         missing_cols = set(self._keys) - set(self._dataset.columns)
         if missing_cols:
             raise ValueError("Columns {} indicated in pbounds are missing "
@@ -418,5 +440,6 @@ class TargetSpace(object):
         idx = self.random_state.choice(matches)
         target_val = self.dataset.loc[idx, self._target_column]
         if self._debug: print("Located {} as data[{}], with target value {}".format(x, idx, target_val))
+        _ml_target = self.dataset.loc[idx, self._ml_target_column]
 
-        return idx, target_val
+        return idx, target_val, _ml_target

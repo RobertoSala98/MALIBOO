@@ -82,18 +82,10 @@ def main(yaml_file_path):
         stopping_criteria['hard_stop'] = parsed_data['stopping_criteria']['hard_stop']
         stopping_criteria['conjunction'] = parsed_data['stopping_criteria']['conjunction']
 
-        lb, ub = parsed_data['stopping_criteria']['ml_bounds_coeff']
-
-        if lb == 'None':
-            lb = None
-        if ub == 'None':
-            ub = None
-
-        stopping_criteria['ml_bounds_coeff'] = (lb, ub)
-
     acq = parsed_data['acquisition_info']['acquisition_function']
     ml_on_bounds = parsed_data['acquisition_info']['ml_on_bounds']
     ml_on_target = parsed_data['acquisition_info']['ml_on_target']
+    consider_max_only_on_feasible = parsed_data['acquisition_info']['consider_max_only_on_feasible']
     memory_queue_len = parsed_data['acquisition_info']['memory_queue_len']
     relaxation = parsed_data['acquisition_info']['relaxation']
 
@@ -111,11 +103,11 @@ def main(yaml_file_path):
 
         if parsed_data['acquisition_info']['eic']['eic_P_function'] != 'None':
             eic_P_function = load_function_definition('eic_P_function', parsed_data['acquisition_info']['eic']['eic_P_function'])
-            acquisition_info['eic_P_function'] = eic_P_function
+            acquisition_info['eic_P_func'] = eic_P_function
 
         if parsed_data['acquisition_info']['eic']['eic_Q_function'] != 'None':
             eic_Q_function = load_function_definition('eic_Q_function', parsed_data['acquisition_info']['eic']['eic_Q_function'])
-            acquisition_info['eic_Q_function'] = eic_Q_function
+            acquisition_info['eic_Q_func'] = eic_Q_function
 
         if parsed_data['acquisition_info']['eic']['eic_ml_exp_B'] != 'None':
             acquisition_info['eic_ml_exp_B'] = parsed_data['acquisition_info']['eic']['eic_ml_exp_B']
@@ -136,6 +128,17 @@ def main(yaml_file_path):
         acquisition_info['ml_bounds'] = (lb, ub)
 
         acquisition_info['ml_bounds_type'] = parsed_data['acquisition_info']['ml_on_bounds_parameters']['ml_bounds_type']
+
+        if parsed_data['stopping_criteria']['stopping_criteria']:
+
+            lb, ub = parsed_data['acquisition_info']['ml_on_bounds_parameters']['ml_bounds_coeff']
+
+            if lb == 'None':
+                lb = None
+            if ub == 'None':
+                ub = None
+
+            stopping_criteria['ml_bounds_coeff'] = (lb, ub)
 
     if ml_on_target:
         acquisition_info['ml_target_type'] = parsed_data['acquisition_info']['ml_on_target_parameters']['ml_target_type']
@@ -175,7 +178,8 @@ def main(yaml_file_path):
                            memory_queue_len=memory_queue_len, 
                            acq_info=acquisition_info,
                            stop_crit_info=stopping_criteria, 
-                           relaxation=relaxation)
+                           relaxation=relaxation,
+                           consider_max_only_on_feasible=consider_max_only_on_feasible)
         
         obtained_max = evaluate_max(dataset, output_path + "/results.csv", target_column, {acquisition_info['ml_target']: acquisition_info['ml_bounds']})
 
