@@ -2,6 +2,7 @@ from numbers import Number
 import numpy as np
 import pandas as pd
 from .util import ensure_rng
+from sys import float_info
 
 
 class TargetSpace(object):
@@ -278,9 +279,9 @@ class TargetSpace(object):
         if np.any(self._feasibility > 0):
             try:
                 res = {
-                    'target': np.array(self.target * self._feasibility).max(),
+                    'target': np.array(self.target - (1-self._feasibility)*float_info.max).max(),
                     'params': dict(
-                        zip(self.keys, self.params.values[(self.target * self._feasibility).argmax()])
+                        zip(self.keys, self.params.values[(self.target - (1-self._feasibility)*float_info.max).argmax()])
                     ),
                     'feasible': True
                 }
@@ -290,7 +291,7 @@ class TargetSpace(object):
         else:
             #print("Returning the max, but unfeasible")
             res = {
-                    'target': -np.inf,
+                    'target': -float_info.max,
                     'params': dict(
                         zip(self.keys, self.params.values[self.target.argmax()])
                     ),

@@ -8,8 +8,9 @@ from queue import Queue
 from sklearn.gaussian_process.kernels import Matern
 from sklearn.gaussian_process import GaussianProcessRegressor
 from sklearn.linear_model import Ridge, RidgeClassifier
+from sklearn.compose import ColumnTransformer
 from sklearn.metrics import mean_absolute_percentage_error as mape
-from sklearn.preprocessing import PolynomialFeatures, StandardScaler
+from sklearn.preprocessing import PolynomialFeatures, FunctionTransformer
 from sklearn.pipeline import make_pipeline
 
 from .target_space import TargetSpace
@@ -239,12 +240,12 @@ class BayesianOptimization(Observable):
             at_least_one_feasible_found = np.any(self.get_ml_target_data(utility_function.ml_target) > utility_function.ml_bounds[0]) * np.any(self.get_ml_target_data(utility_function.ml_target) < utility_function.ml_bounds[1])
         else:
             at_least_one_feasible_found = True
-
+        
         # Find argmax of the acquisition function
         suggestion, idx, acq_val = acq_max(
             ac=utility_function.utility,
             gp=self._gp,
-            y_max=self._space.target.max(),
+            y_max=self._space.max()['target'],
             bounds=self._space.bounds,
             random_state=self._random_state,
             dataset=dataset_acq,
@@ -432,7 +433,7 @@ class BayesianOptimization(Observable):
                     ml_model = self.train_ml_model(y_name=util.ml_target, acq_info=acq_info)
                     util.set_ml_model(ml_model)
                 if ml_on_target:
-                    objective_ml_model = self.train_objective_ml_model()
+                    objective_ml_model = self.train_objective_ml_model(acq_info=acq_info)
                     util.set_objective_ml_model(objective_ml_model)
                 x_probe, idx, acq_val = self.suggest(util, iter_num=iteration, ml_on_bounds=ml_on_bounds, consider_max_only_on_feasible=consider_max_only_on_feasible)
                 if self._debug: print("Suggested point: index {}, value {}, acquisition {}".format(idx, x_probe, acq_val))
@@ -609,13 +610,41 @@ class BayesianOptimization(Observable):
         if self._debug: print("Dataset for ML model has shape", X.shape)
         y = self.get_ml_target_data(y_name)
 
-        # Initialize and train model
-        model = make_pipeline(PolynomialFeatures(2), Ridge())
+        log_transformer = FunctionTransformer(np.log1p, validate=False)
+        inv_transformer = FunctionTransformer(lambda x: 1 / x, validate=False)
+
+        # Create a pipeline with the specified transformations
+        model = make_pipeline(
+            ColumnTransformer(
+                transformers=[
+                    ('log', log_transformer, []),
+                    ('inv', inv_transformer, [])
+                ],
+                remainder='passthrough'  # This allows the columns not specified to be passed through unchanged
+            ),
+            PolynomialFeatures(2),
+            Ridge(alpha=acq_info['ml_bounds_alpha'])
+        )
+
         model.fit(X, y)
 
-        classifier = make_pipeline(PolynomialFeatures(2), RidgeClassifier())
-        lb, ub = acq_info['ml_bounds']
-        classifier.fit(X, (y >= lb)*(y <= ub))
+        if acq_info['ml_bounds_type'] == 'probability':
+            classifier = make_pipeline(
+                ColumnTransformer(
+                    transformers=[
+                        ('log', log_transformer, []),
+                        ('inv', inv_transformer, [])
+                    ],
+                    remainder='passthrough'  # This allows the columns not specified to be passed through unchanged
+                ),
+                PolynomialFeatures(2),
+                RidgeClassifier(alpha=acq_info['ml_bounds_alpha'])
+            )
+            
+            lb, ub = acq_info['ml_bounds']
+            classifier.fit(X, (y >= lb)*(y <= ub))
+
+            return [model, classifier]
 
         if self._debug:
             try:
@@ -624,20 +653,60 @@ class BayesianOptimization(Observable):
                 print("Coefficients =", model.coef_)
             except:
                 pass
-        return [model, classifier]
+        return [model]
 
 
-    def train_objective_ml_model(self):
+    def train_objective_ml_model(self, acq_info):
 
         # Build training dataset for the ML model
         X = self._space.params
         y = self._space.target
 
-        # Initialize and train model
-        model = make_pipeline(PolynomialFeatures(2), Ridge())
+        log_transformer = FunctionTransformer(np.log1p, validate=False)
+        inv_transformer = FunctionTransformer(lambda x: 1 / x, validate=False)
+
+        # Create a pipeline with the specified transformations
+        model = make_pipeline(
+            ColumnTransformer(
+                transformers=[
+                    ('log', log_transformer, []),
+                    ('inv', inv_transformer, [])
+                ],
+                remainder='passthrough'  # This allows the columns not specified to be passed through unchanged
+            ),
+            PolynomialFeatures(2, include_bias=False),
+            Ridge(alpha=acq_info['ml_target_alpha'])
+        )
+
         model.fit(X, y)
 
-        return model
+        if acq_info['ml_target_type'] == 'probability':
+            classifier = make_pipeline(
+                ColumnTransformer(
+                    transformers=[
+                        ('log', log_transformer, []),
+                        ('inv', inv_transformer, [])
+                    ],
+                    remainder='passthrough'  # This allows the columns not specified to be passed through unchanged
+                ),
+                PolynomialFeatures(2, include_bias=False),
+                RidgeClassifier(alpha=acq_info['ml_target_alpha'])
+            )
+
+            lb, ub = acq_info['ml_target_coeff']
+            y_max = self._space.max()['target']
+
+            y_train = np.ones(y.shape)
+            if lb != None:
+                y_train *= (y >= lb*y_max)
+            if ub != None:
+                y_train *= (y <= ub*y_max)
+
+            classifier.fit(X, y_train)
+
+            return [model, classifier]
+        
+        return [model]
 
 
     def get_ml_target_data(self, y_name):

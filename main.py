@@ -85,7 +85,6 @@ def main(yaml_file_path):
     acq = parsed_data['acquisition_info']['acquisition_function']
     ml_on_bounds = parsed_data['acquisition_info']['ml_on_bounds']
     ml_on_target = parsed_data['acquisition_info']['ml_on_target']
-    consider_max_only_on_feasible = parsed_data['acquisition_info']['consider_max_only_on_feasible']
     memory_queue_len = parsed_data['acquisition_info']['memory_queue_len']
     relaxation = parsed_data['acquisition_info']['relaxation']
 
@@ -115,8 +114,12 @@ def main(yaml_file_path):
         if ml_on_bounds:
             acquisition_info['eic_ml_var'] = parsed_data['acquisition_info']['eic']['eic_ml_var']
 
+    consider_max_only_on_feasible = False
+
     if ml_on_bounds:
+        consider_max_only_on_feasible = parsed_data['acquisition_info']['consider_max_only_on_feasible']
         acquisition_info['ml_target'] = parsed_data['acquisition_info']['ml_on_bounds_parameters']['ml_target']
+        acquisition_info['ml_bounds_alpha'] = parsed_data['acquisition_info']['ml_on_bounds_parameters']['ml_bounds_alpha']
 
         lb, ub = parsed_data['acquisition_info']['ml_on_bounds_parameters']['ml_bounds']
 
@@ -142,6 +145,18 @@ def main(yaml_file_path):
 
     if ml_on_target:
         acquisition_info['ml_target_type'] = parsed_data['acquisition_info']['ml_on_target_parameters']['ml_target_type']
+        acquisition_info['ml_target_alpha'] = parsed_data['acquisition_info']['ml_on_target_parameters']['ml_target_alpha']
+
+        if parsed_data['acquisition_info']['ml_on_target_parameters']['ml_target_type'] in ['probability', 'indicator']:
+            
+            lb, ub = parsed_data['acquisition_info']['ml_on_target_parameters']['indicator_parameters']['coeff']
+
+            if lb == 'None':
+                lb = None
+            if ub == 'None':
+                ub = None
+
+            acquisition_info['ml_target_coeff'] = (lb, ub)
 
         if parsed_data['acquisition_info']['ml_on_target_parameters']['ml_target_type'] == 'sum':
             acquisition_info['ml_target_gamma_iter0'] = parsed_data['acquisition_info']['ml_on_target_parameters']['sum_parameters']['ml_target_gamma_iter0']
@@ -189,7 +204,7 @@ def main(yaml_file_path):
 
         avg += obtained_max/repetitions
 
-    print("Average error: %s\n" %(round(100*(avg - real_max)/real_max,2)) + "%")
+    print("Average error: %s" %(round(100*(avg - real_max)/real_max,2)) + "%\n")
 
 
 if __name__ == "__main__":

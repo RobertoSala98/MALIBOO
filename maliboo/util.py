@@ -4,6 +4,7 @@ from scipy.stats import norm
 from scipy.optimize import minimize
 import pandas as pd
 from math import exp
+from sys import float_info
 
 
 def min_max_normalize(vector):
@@ -180,6 +181,7 @@ class UtilityFunction(object):
             self.set_acq_info_field(acq_info, 'ml_target')
             self.set_acq_info_field(acq_info, 'ml_bounds')
             self.set_acq_info_field(acq_info, 'ml_bounds_type')
+            self.set_acq_info_field(acq_info, 'ml_bounds_alpha')
 
         # For Expected Improvement with Constraints-based acquisitions
         if 'eic' in kind:
@@ -214,6 +216,7 @@ class UtilityFunction(object):
         if self._ml_on_target:
 
             self.set_acq_info_field(acq_info, 'ml_target_type')
+            self.set_acq_info_field(acq_info, 'ml_target_alpha')
 
             if self.ml_target_type == 'sum':
 
@@ -221,6 +224,8 @@ class UtilityFunction(object):
                 self.set_acq_info_field(acq_info, 'ml_target_gamma_iterN')
                 self.set_acq_info_field(acq_info, 'ml_target_gamma_max')
 
+            if self.ml_target_type in ['indicator', 'probability']:
+                self.set_acq_info_field(acq_info, 'ml_target_coeff')
 
     def update_params(self):
         self._iters_counter += 1
@@ -273,17 +278,20 @@ class UtilityFunction(object):
         
         if self._ml_on_target:
 
-            norm_prediction = self._consider_ml_on_target(x, self.objective_ml_model)
-            
-            if self.ml_target_type == 'product':
-                res *= norm_prediction
+            parameters = {}
 
-            elif self.ml_target_type == 'sum':
-                
-                if iter_num > self.ml_target_gamma_iter0:
-                    gamma = self.ml_target_gamma_max * (1 - exp(-5*(iter_num-self.ml_target_gamma_iter0)/(self.ml_target_gamma_iterN-self.ml_target_gamma_iter0)))
-                    res = (1 - gamma) * np.array(min_max_normalize(res)) + gamma * np.array(norm_prediction)
-        
+            if self.ml_target_type == 'sum':
+
+                parameters = {'ml_target_gamma_iter0': self.ml_target_gamma_iter0,
+                              'ml_target_gamma_iterN': self.ml_target_gamma_iterN,
+                              'ml_target_gamma_max': self.ml_target_gamma_max}
+
+            elif self.ml_target_type == 'indicator':
+
+                parameters = {'ml_target_coeff': self.ml_target_coeff}
+
+            res = self._consider_ml_on_target(x, self.objective_ml_model, self.ml_target_type, res, iter_num, y_max, parameters)
+
         return res
     
     
@@ -337,18 +345,47 @@ class UtilityFunction(object):
                 lb, ub = ml_bounds
                 return np.array([lb <= y and y <= ub for y in y_hat])
             
-            elif ml_bounds_type == 'probability' or ml_bounds_type == 'probabilities':
+            elif ml_bounds_type == 'probability':
                 indicator = ml_model[1].decision_function(x)
                 return 1 / (1 + np.exp(-indicator))
 
 
     @staticmethod
-    def _consider_ml_on_target(x, objective_ml_model):
+    def _consider_ml_on_target(x, objective_ml_model, ml_target_type, res, iter_num, y_max, parameters):
 
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
-            f_tilde = objective_ml_model.predict(x)
-            return min_max_normalize(f_tilde)
+            f_tilde = objective_ml_model[0].predict(x)
+
+            ml_target_type = ml_target_type
+            
+            if ml_target_type == 'product':
+                res *= min_max_normalize(f_tilde)
+
+            elif ml_target_type == 'sum':
+
+                if iter_num > parameters['ml_target_gamma_iter0']:
+                    gamma = parameters['ml_target_gamma_max'] * (1 - exp(-5*(iter_num - parameters['ml_target_gamma_iter0'])/(parameters['ml_target_gamma_iterN'] - parameters['ml_target_gamma_iter0'])))
+                    res = (1 - gamma) * np.array(min_max_normalize(res)) + gamma * np.array(min_max_normalize(f_tilde))    
+
+            elif ml_target_type == 'probability':
+                indicator = objective_ml_model[1].decision_function(x)
+                res *= 1 / (1 + np.exp(-indicator))
+            
+            elif ml_target_type == 'indicator':
+                lb_coeff, ub_coeff = parameters['ml_target_coeff']
+
+                for idx in range(len(f_tilde)):
+
+                    if lb_coeff != None:
+                        if f_tilde[idx] < lb_coeff*y_max:
+                            res[idx] = -float_info.max
+
+                    if ub_coeff != None:
+                        if f_tilde[idx] > ub_coeff*y_max:
+                            res[idx] = -float_info.max
+            
+        return res
     
 
     @staticmethod
