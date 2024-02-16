@@ -17,7 +17,7 @@ def apply_BO(seed, n0, n_iter, debug, output_path, delete_previous_output):
                 output_path=output_path, 
                 debug=debug)
 
-    optimizer.maximize(init_points=n0, n_iter=n_iter, acq='ei_ml', acq_info={'ml_target': 'total_time', 'ml_bounds': (0.0, 300.00001)}, memory_queue_len=n_iter+n0)
+    optimizer.maximize(init_points=n0, n_iter=n_iter, acq='DiscreteBO', acq_info={'ml_target': 'total_time', 'ml_bounds': (0.0, 300.00001)}, memory_queue_len=n_iter+n0)
 
     obtained_max = optimizer.max['target']
     real_max = -0.173553833333333
@@ -41,7 +41,7 @@ if __name__ == '__main__':
 
     real_max = -0.173553833333333
 
-    repetitions = 10
+    repetitions = 1
     avg = 0
 
     #for seed in randint(0,1000,repetitions).tolist():

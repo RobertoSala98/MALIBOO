@@ -5,7 +5,7 @@ general_setting:
   repetitions: 30
   random_seed: True
   seeds: [0,1,2,3,4,5,6,7,8,9]
-  output_path: "./outputs/outputs_ligen"
+  output_path: ./outputs/ligen/config_11
   delete_previous_output: True
   debug: False
   verbose: 0
@@ -41,7 +41,7 @@ acquisition_info:
     ml_target: 'RMSD_0.75'
     ml_bounds: [0.0, 2.1]
     ml_bounds_coeff: [None, None]
-    ml_bounds_type: indicator
+    ml_bounds_type: probability
     ml_bounds_alpha: 0.099
   ml_on_target_parameters:
     ml_target_type: None

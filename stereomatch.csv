@@ -1,0 +1,21 @@
+ml_bounds,ml_target,consider_only_true_max,error (%),error_cleaned (%),feasible_values_found (%)
+indicator,None,True,inf,-100.0,0.0
+indicator,None,False,inf,-100.0,0.0
+indicator,indicator,True,inf,-100.0,0.0
+indicator,indicator,False,inf,-100.0,0.0
+indicator,probability,True,inf,-100.0,0.0
+indicator,probability,False,inf,-100.0,0.0
+indicator,sum,True,inf,-100.0,0.0
+indicator,sum,False,inf,-100.0,0.0
+indicator,product,True,inf,-100.0,0.0
+indicator,product,False,inf,-100.0,0.0
+probability,None,True,inf,-100.0,0.0
+probability,None,False,inf,-100.0,0.0
+probability,indicator,True,inf,-100.0,0.0
+probability,indicator,False,inf,-100.0,0.0
+probability,probability,True,inf,-100.0,0.0
+probability,probability,False,inf,-100.0,0.0
+probability,sum,True,inf,-100.0,0.0
+probability,sum,False,inf,-100.0,0.0
+probability,product,True,inf,-100.0,0.0
+probability,product,False,inf,-100.0,0.0

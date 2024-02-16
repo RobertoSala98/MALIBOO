@@ -5,6 +5,9 @@ from scipy.optimize import minimize
 import pandas as pd
 from math import exp
 from sys import float_info
+import os
+import csv
+import matplotlib.pyplot as plt
 
 
 def min_max_normalize(vector):
@@ -245,8 +248,6 @@ class UtilityFunction(object):
     def utility(self, x, gp, y_max, iter_num, at_least_one_feasible_found):
 
         if self.kind == 'no_BO' or not at_least_one_feasible_found:
-            if not at_least_one_feasible_found:
-                print("Using only ML")
             res = self._no_BO(x)
         elif self.kind == 'ucb':
             res = self._ucb(x, gp, self.kappa)
@@ -553,7 +554,7 @@ def ensure_rng(random_state=None):
     return random_state
 
 
-def evaluate_max(original_dataset, results_dataset, target_name='', bounds={}):
+def evaluate_max(original_dataset, results_dataset, target_name='', bounds={}, print_res=False):
 
     indices = pd.read_csv(results_dataset)['index'].tolist()
     df = pd.read_csv(original_dataset).loc[indices].sort_values(by=target_name, ascending=False)
@@ -570,12 +571,95 @@ def evaluate_max(original_dataset, results_dataset, target_name='', bounds={}):
                 constraints_respected = False
                 
         if constraints_respected:
-            
-            print("\nMax feasible:")
-            print(row)
+            if print_res:
+                print("\nMax feasible:")
+                print(row)
             return row[target_name]
         
     return -np.inf
+
+
+def print_final_results(output_path, real_max, init_points):
+
+    repetitions_dir = os.listdir(output_path)
+    repetitions = len(repetitions_dir)
+
+    errors_ = []
+    feasible_ = []
+   
+    for dir in repetitions_dir:
+
+        errors = []
+        
+        with open(output_path + "/" + dir + "/results.csv") as csvfile:
+            reader = csv.reader(csvfile)
+            header = next(reader)
+
+            target_index = header.index('target')
+            feasibility_index = header.index('feasible')
+            
+            act_err = np.inf
+
+            idx = 0
+
+            for row in reader:
+
+                if row[feasibility_index] == "True":
+                    if (float(row[target_index]) - real_max)/real_max < act_err:
+                        act_err = (float(row[target_index]) - real_max)/real_max
+
+                        if act_err < 0:
+                            import pdb; pdb.set_trace()
+                    
+                errors.append(act_err)
+
+                if len(feasible_) < idx:
+                    import pdb; pdb.set_trace()
+                elif len(feasible_) == idx:
+                    feasible_.append(0)
+
+                if act_err < np.inf:
+                    feasible_[idx] += 1/repetitions
+
+                idx += 1
+
+        errors_.append(errors)
+
+
+    values_ = []
+    found_first_not_inf = False
+
+    for idx in range(init_points-1, len(feasible_)):
+
+        value = 0
+        non_inf = 0
+
+        for rep in range(repetitions):
+            
+            if errors_[rep][idx] != np.inf:
+                value += errors_[rep][idx]
+                non_inf += 1
+
+        if non_inf == 0:
+            values_.append(np.inf)
+        else:
+            values_.append(value/non_inf*100)
+            if not found_first_not_inf:
+                found_first_not_inf = True
+                first_not_inf = value/non_inf*100
+
+    plt.plot([ii for ii in range(init_points-1, len(feasible_))], values_, alpha=0.5, color='green', linewidth=2) 
+    plt.scatter([ii for ii in range(init_points-1, len(feasible_))], values_, alpha=feasible_[init_points-1:len(feasible_)], color='blue', s=50)
+
+    if found_first_not_inf:
+        plt.plot([init_points, init_points], [0, first_not_inf], '--', color='red')
+
+    plt.xlabel('step number')
+    plt.ylabel('Error [%]')
+    plt.savefig(output_path + "/results.png")
+    plt.close()
+    
+    return
 
 
 class Colours:

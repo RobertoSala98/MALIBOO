@@ -3,7 +3,8 @@ import yaml
 import pandas as pd
 from maliboo import BayesianOptimization as BO
 from numpy.random import randint
-from maliboo.util import evaluate_max
+from maliboo.util import evaluate_max, print_final_results
+import numpy as np
 
 
 def parse_yaml_file(file_path):
@@ -22,7 +23,7 @@ def load_function_definition(function_name, function_data):
     return locals()[function_name]
 
 
-def main(yaml_file_path):
+def main(yaml_file_path, print_res=False):
     parsed_data = parse_yaml_file(yaml_file_path)
 
     n0 = parsed_data['general_setting']['num_initial_points']
@@ -42,6 +43,8 @@ def main(yaml_file_path):
     n_iter = parsed_data['general_setting']['num_iterations']
 
     debug = parsed_data['general_setting']['debug']
+    verbose = parsed_data['general_setting']['verbose']
+
     output_path = parsed_data['general_setting']['output_path']
     delete_previous_output = parsed_data['general_setting']['delete_previous_output']
 
@@ -169,18 +172,23 @@ def main(yaml_file_path):
 
 
     avg = 0.0
+    avg_cleaned = 0.0
+    number_non_inf = 0
 
-    for seed in seeds:
+    for idx in range(len(seeds)):
 
-        print("\nSeed: %s\n" %seed)
+        seed = seeds[idx]
+
+        print("\nSimulation %s out of %s, Seed: %s\n" %(idx+1,len(seeds),seed))
 
         optimizer = BO(f=f, 
                     pbounds=pbounds,
                     dataset=dataset, 
                     target_column=target_column,
                     random_state=seed, 
-                    output_path=output_path, 
-                    debug=debug)
+                    output_path=output_path+"/%s" %idx, 
+                    debug=debug,
+                    verbose=verbose)
         
         if init_points != None:
             optimizer.add_initial_points(init_points)
@@ -196,15 +204,25 @@ def main(yaml_file_path):
                            relaxation=relaxation,
                            consider_max_only_on_feasible=consider_max_only_on_feasible)
         
-        obtained_max = evaluate_max(dataset, output_path + "/results.csv", target_column, {acquisition_info['ml_target']: acquisition_info['ml_bounds']})
+        obtained_max = evaluate_max(dataset, output_path+"/%s" %idx + "/results.csv", target_column, {acquisition_info['ml_target']: acquisition_info['ml_bounds']}, print_res)
 
-        print("\nObtained min: " + str(round(-obtained_max,2)))
-        print("Real min: " + str(round(-real_max,2)))
-        print("Error: " + str(round(100*(obtained_max - real_max)/real_max,2)) + " %\n")
+        if print_res:
+            print("\nObtained min: " + str(round(-obtained_max,2)))
+            print("Real min: " + str(round(-real_max,2)))
+            print("Error: " + str(round(100*(obtained_max - real_max)/real_max,2)) + " %\n")
 
         avg += obtained_max/repetitions
 
-    print("Average error: %s" %(round(100*(avg - real_max)/real_max,2)) + "%\n")
+        if obtained_max > -np.inf:
+            avg_cleaned += obtained_max
+            number_non_inf += 1
+
+    if print_res:
+        print("Average error: %s" %(round(100*(avg - real_max)/real_max,2)) + "%\n")
+
+    print_final_results(output_path, real_max, n0)
+
+    return 100*(avg - real_max)/real_max, 100*(avg_cleaned - real_max)/real_max, 100*number_non_inf/repetitions
 
 
 if __name__ == "__main__":
