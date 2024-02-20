@@ -5,7 +5,7 @@ import pandas as pd
 import warnings
 from queue import Queue
 
-from sklearn.gaussian_process.kernels import Matern
+from sklearn.gaussian_process.kernels import Matern, RBF
 from sklearn.gaussian_process import GaussianProcessRegressor
 from sklearn.linear_model import Ridge, RidgeClassifier
 from sklearn.compose import ColumnTransformer
@@ -120,15 +120,6 @@ class BayesianOptimization(Observable):
             except (AttributeError, TypeError):
                 raise TypeError('The transformer must be an instance of '
                                 'DomainTransformer')
-
-        # Internal GP regressor
-        self._gp = GaussianProcessRegressor(
-            kernel=Matern(nu=2.5),
-            alpha=1e-6,
-            normalize_y=True,
-            n_restarts_optimizer=5,
-            random_state=self._random_state,
-        )
 
         super(BayesianOptimization, self).__init__(events=DEFAULT_EVENTS)
 
@@ -251,7 +242,14 @@ class BayesianOptimization(Observable):
             dataset=dataset_acq,
             debug=self._debug,
             iter_num=iter_num,
-            at_least_one_feasible_found=at_least_one_feasible_found
+            at_least_one_feasible_found=at_least_one_feasible_found,
+            kind=utility_function.kind,
+            beta=self.beta,
+            l=self.l,
+            old_x=self._space.params,
+            sigma_2=self.sigma_2,
+            beta_h=self.beta_h,
+            l_h=self.l_h
         )
 
         if self.relaxation:
@@ -368,6 +366,54 @@ class BayesianOptimization(Observable):
             If False, the acquisition function will only be evaluated on the dataset points as usual,
             therefore an exact maximizer will be found, without any approximation taking place.
         """
+
+        # Internal GP regressor
+        self.beta = 1.0
+        self.beta_h = -1.0
+        self.l = 1.0
+        self.l_h = -1.0
+
+        if acq == "DiscreteBO":
+            self.beta = acq_info['initial_beta']
+            self.beta_h = acq_info['beta_h']
+            self.l = acq_info['initial_l']
+            self.l_h = acq_info['l_h']
+            self.sigma_2 = acq_info['sigma_2']
+            memory_queue_len = 0
+
+            class CustomRBFKernel(RBF):
+                def __init__(self, length_scale=1.0, sigma_2=1.0, **kwargs):
+                    super().__init__(length_scale=length_scale, **kwargs)
+                    self.sigma_2 = sigma_2
+
+                def __call__(self, X, Y=None, eval_gradient=False):
+                    K = super().__call__(X, Y, eval_gradient=eval_gradient)
+                    if not eval_gradient:
+                        return self.sigma_2 * K
+                    else:
+                        try:
+                            K, K_gradient = K
+                            return self.sigma_2 * K, self.sigma_2 * K_gradient
+                        except TypeError:  # K is not a tuple, indicating no gradient
+                            return self.sigma_2 * K, None
+        
+            self._gp = self._gp = GaussianProcessRegressor(
+                kernel=CustomRBFKernel(length_scale=self.l, sigma_2=self.sigma_2),
+                alpha=1e-6,
+                normalize_y=True,
+                n_restarts_optimizer=5,
+                random_state=self._random_state,
+            )
+            
+        else:
+            self._gp = GaussianProcessRegressor(
+                kernel=Matern(nu=2.5),
+                alpha=1e-6,
+                normalize_y=True,
+                n_restarts_optimizer=5,
+                random_state=self._random_state,
+            )
+
         # Initialize the memory queue, a list of lists of forbidden indexes for the current iteration
         if self._debug: print("Starting maximize()")
         self.memory_queue_len = memory_queue_len

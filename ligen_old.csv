@@ -1,0 +1,21 @@
+ml_bounds,ml_target,consider_only_true_max,error (%)
+indicator,None,True,181.91597406396295
+indicator,None,False,179.48017663010376
+indicator,indicator,True,152.71989588038844
+indicator,indicator,False,189.0459982886718
+indicator,probability,True,133.07301810013556
+indicator,probability,False,169.74034075042772
+indicator,sum,True,152.93278945246445
+indicator,sum,False,158.23686940679164
+indicator,product,True,131.73782855004507
+indicator,product,False,153.20612330017985
+probability,None,True,inf
+probability,None,False,inf
+probability,indicator,True,inf
+probability,indicator,False,inf
+probability,probability,True,inf
+probability,probability,False,152.5483553274068
+probability,sum,True,159.08957947474534
+probability,sum,False,143.37505301817566
+probability,product,True,147.95737527922273
+probability,product,False,158.37183687896524

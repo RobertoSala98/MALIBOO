@@ -23,7 +23,7 @@ def load_function_definition(function_name, function_data):
     return locals()[function_name]
 
 
-def main(yaml_file_path, print_res=False):
+def main(yaml_file_path, print_res=True):
     parsed_data = parse_yaml_file(yaml_file_path)
 
     n0 = parsed_data['general_setting']['num_initial_points']
@@ -92,6 +92,15 @@ def main(yaml_file_path, print_res=False):
     relaxation = parsed_data['acquisition_info']['relaxation']
 
     acquisition_info = {}
+
+    if acq == 'DiscreteBO':
+
+        acquisition_info['initial_beta'] = parsed_data['acquisition_info']['DiscreteBO']['initial_beta']
+        acquisition_info['beta_h'] = parsed_data['acquisition_info']['DiscreteBO']['beta_h']
+        acquisition_info['initial_l'] = parsed_data['acquisition_info']['DiscreteBO']['initial_l']
+        acquisition_info['l_h'] = parsed_data['acquisition_info']['DiscreteBO']['l_h']
+        acquisition_info['sigma_2'] = parsed_data['acquisition_info']['DiscreteBO']['sigma_2']
+
     if acq == 'eic':
 
         lb, ub = parsed_data['acquisition_info']['eic']['eic_bounds']
@@ -222,7 +231,7 @@ def main(yaml_file_path, print_res=False):
 
     print_final_results(output_path, real_max, n0)
 
-    return 100*(avg - real_max)/real_max, 100*(avg_cleaned - real_max)/real_max, 100*number_non_inf/repetitions
+    return 100*(avg - real_max)/real_max, 100*(avg_cleaned/number_non_inf - real_max)/(real_max), 100*number_non_inf/repetitions
 
 
 if __name__ == "__main__":
