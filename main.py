@@ -5,6 +5,7 @@ from maliboo import BayesianOptimization as BO
 from numpy.random import randint
 from maliboo.util import evaluate_max, print_final_results
 import numpy as np
+from math import sqrt
 
 
 def parse_yaml_file(file_path):
@@ -21,6 +22,23 @@ def load_function_definition(function_name, function_data):
     exec(f'def {function_name}({", ".join(parameters)}): {body}')
 
     return locals()[function_name]
+
+
+def mean(lst):
+    if len(lst) == 0:
+        return 0
+    return sum(lst) / len(lst)
+
+
+def variance(lst):
+    if len(lst) == 0:
+        return 0 
+
+    mean_val = sum(lst) / len(lst)
+    squared_diff = [(x - mean_val) ** 2 for x in lst]
+    variance_val = sum(squared_diff) / len(lst)
+
+    return variance_val
 
 
 def main(yaml_file_path, print_res=True):
@@ -179,10 +197,7 @@ def main(yaml_file_path, print_res=True):
         from os import system 
         system("rm -rf %s" %output_path)
 
-
-    avg = 0.0
-    avg_cleaned = 0.0
-    number_non_inf = 0
+    results = []
 
     for idx in range(len(seeds)):
 
@@ -220,18 +235,16 @@ def main(yaml_file_path, print_res=True):
             print("Real min: " + str(round(-real_max,2)))
             print("Error: " + str(round(100*(obtained_max - real_max)/real_max,2)) + " %\n")
 
-        avg += obtained_max/repetitions
+        results.append(obtained_max)
 
-        if obtained_max > -np.inf:
-            avg_cleaned += obtained_max
-            number_non_inf += 1
+    results_cleaned = [x for x in results if x != float('inf') and x != float('-inf')]
 
     if print_res:
-        print("Average error: %s" %(round(100*(avg - real_max)/real_max,2)) + "%\n")
+        print("Average error: %s" %(round(100*(mean(results) - real_max)/real_max,2)) + "%\n")
 
     print_final_results(output_path, real_max, n0)
 
-    return 100*(avg - real_max)/real_max, 100*(avg_cleaned/number_non_inf - real_max)/(real_max), 100*number_non_inf/repetitions
+    return 100*(mean(results) - real_max)/real_max, 100*sqrt(variance(results))/abs(real_max), 100*(mean(results_cleaned) - real_max)/(real_max), 100*sqrt(variance(results_cleaned))/abs(real_max), 100*len(results_cleaned)/repetitions
 
 
 if __name__ == "__main__":

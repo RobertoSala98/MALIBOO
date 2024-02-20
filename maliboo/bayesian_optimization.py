@@ -372,6 +372,7 @@ class BayesianOptimization(Observable):
         self.beta_h = -1.0
         self.l = 1.0
         self.l_h = -1.0
+        self.sigma_2 = 1.0
 
         if acq == "DiscreteBO":
             self.beta = acq_info['initial_beta']

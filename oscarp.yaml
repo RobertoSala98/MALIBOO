@@ -2,8 +2,8 @@ general_setting:
   num_initial_points: 9
   initial_points: []
   num_iterations: 10
-  repetitions: 10
-  random_seed: False
+  repetitions: 30
+  random_seed: True
   seeds: [0,1,2,3,4,5,6,7,8,9]
   output_path: "./outputs/outputs_oscarp_"
   delete_previous_output: True
@@ -21,7 +21,7 @@ stopping_criteria:
   hard_stop: False
   conjunction: "or"
 acquisition_info:
-  acquisition_function: "DiscreteBO"
+  acquisition_function: "ei"
   ml_on_bounds: True
   ml_on_target: True
   consider_max_only_on_feasible: False

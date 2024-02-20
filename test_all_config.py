@@ -3,10 +3,10 @@ import csv
 from multiprocessing import Pool
 import functools
 
-cores_number = 5
-test_file = 'query26.yaml'
+cores_number = 20
+test_file = 'oscarp.yaml'
 
-header = ['ml_bounds', 'ml_target', 'consider_only_true_max', 'error (%)', 'error_cleaned (%)', 'feasible_values_found (%)']
+header = ['ml_bounds', 'ml_target', 'consider_only_true_max', 'error (%)', 'std_dev (%)', 'error_cleaned (%)', 'std_dev_cleaned (%)', 'feasible_values_found (%)']
 data = []
 
 setting = []
@@ -25,7 +25,7 @@ for ml_bounds in ['indicator', 'probability']:
 
                 line = lines[idx]
 
-                output_path = "./outputs/query26/config_%s" %idx_setting
+                output_path = "./outputs/oscarp/config_%s" %idx_setting
                 if "  output_path: " in line:
                     lines[idx] = "  output_path: " + output_path + "\n"
 
@@ -45,7 +45,7 @@ for ml_bounds in ['indicator', 'probability']:
                 if "    ml_target_type: " in line:
                     lines[idx] = "    ml_target_type: " + ml_target + "\n"
 
-            output_name = "input_files/query26/" + test_file.split(".yaml")[0] + "_" + str(idx_setting) + ".yaml"
+            output_name = "input_files/oscarp/" + test_file.split(".yaml")[0] + "_" + str(idx_setting) + ".yaml"
 
             with open(output_name, 'w') as file:
                 file.writelines(lines)
@@ -81,9 +81,8 @@ def process_batch(settings):
 
         result = setting[:-1]
         res_sim = test_config(setting[-1])
-        result.append(res_sim[0])
-        result.append(res_sim[1])
-        result.append(res_sim[2])
+        for elem in res_sim:
+            result.append(round(elem,3))
 
         results.append(result)
 
@@ -100,7 +99,7 @@ for cc in range(cores_number):
     data = data + batch_results_parallel[cc] 
 
 
-with open("query26.csv", 'w', encoding='UTF8', newline='') as f:
+with open("oscarp.csv", 'w', encoding='UTF8', newline='') as f:
     writer = csv.writer(f, delimiter=',')
     writer.writerow(header)
     writer.writerows(data)  
