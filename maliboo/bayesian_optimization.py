@@ -247,6 +247,7 @@ class BayesianOptimization(Observable):
             beta=self.beta,
             l=self.l,
             old_x=self._space.params,
+            old_y=self._space.target,
             sigma_2=self.sigma_2,
             beta_h=self.beta_h,
             l_h=self.l_h

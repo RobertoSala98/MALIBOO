@@ -48,7 +48,7 @@ def min_max_normalize(vector):
 
 def acq_max(ac, gp, y_max, bounds, random_state, n_warmup=10000, n_iter=10, dataset=None,
             debug=False, iter_num=0, at_least_one_feasible_found=True, kind='ucb', 
-            beta=1.0, l=1.0, old_x=[], sigma_2=1.0, beta_h=1.0, l_h=1.0):
+            beta=1.0, l=1.0, old_x=[], old_y=[], sigma_2=1.0, beta_h=1.0, l_h=1.0):
     """
     A function to find the maximum of the acquisition function
 
@@ -124,6 +124,8 @@ def acq_max(ac, gp, y_max, bounds, random_state, n_warmup=10000, n_iter=10, data
                     random_state=random_state,
                 )
 
+                cand_gp.fit(old_x, old_y)
+
                 x[0] = max(1e-30, x[0])
                 ys = ac(x_tries, gp=cand_gp, y_max=y_max, iter_num=iter_num, at_least_one_feasible_found=at_least_one_feasible_found, beta=x[0])
                 for idx_ in range(len(ys)):
@@ -155,6 +157,8 @@ def acq_max(ac, gp, y_max, bounds, random_state, n_warmup=10000, n_iter=10, data
                 n_restarts_optimizer=5,
                 random_state=random_state,
             )
+
+            gp.fit(old_x, old_y)
 
             ys = ac(x_tries, gp=gp, y_max=y_max, iter_num=iter_num, at_least_one_feasible_found=at_least_one_feasible_found, beta=beta)
             for idx_ in range(len(ys)):
