@@ -1,5 +1,6 @@
 FROM python:3.8
-
-WORKDIR /usr/src/app
-
+ENV MY_DIR=/maliboo
+WORKDIR ${MY_DIR}
 COPY . .
+
+CMD bash

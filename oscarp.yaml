@@ -9,7 +9,7 @@ general_setting:
   delete_previous_output: True
   debug: False
   verbose: 0
-  max: -0.173553833333333
+  max: -0.174361111
 optimizer:
   f: None
   pbounds: ['parallelism_ffmpeg-0', 'parallelism_librosa', 'parallelism_ffmpeg-1', 'parallelism_ffmpeg-2', 'parallelism_deepspeech']
