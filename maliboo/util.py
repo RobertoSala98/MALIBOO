@@ -113,63 +113,66 @@ def acq_max(ac, gp, y_max, bounds, random_state, n_warmup=10000, n_iter=10, data
     
     if kind == 'DiscreteBO':
 
-        if x_max.tolist() in np.array(old_x).tolist():
-            
-            def f(x):       
-                cand_gp = GaussianProcessRegressor(
-                    kernel=CustomRBFKernel(length_scale=x[1], sigma_2=sigma_2),
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+
+            if x_max.tolist() in np.array(old_x).tolist():
+                
+                def f(x):       
+                    cand_gp = GaussianProcessRegressor(
+                        kernel=CustomRBFKernel(length_scale=x[1], sigma_2=sigma_2),
+                        alpha=1e-6,
+                        normalize_y=True,
+                        n_restarts_optimizer=5,
+                        random_state=random_state,
+                    )
+
+                    cand_gp.fit(old_x, old_y)
+
+                    x[0] = max(1e-30, x[0])
+                    ys = ac(x_tries, gp=cand_gp, y_max=y_max, iter_num=iter_num, at_least_one_feasible_found=at_least_one_feasible_found, beta=x[0])
+                    for idx_ in range(len(ys)):
+                        if x_tries[idx_].tolist() in np.array(old_x).tolist():
+                            ys[idx_] = -np.inf
+
+                    idx = ys.argmax()  # this index is relative to the local x_tries values matrix
+                    candidate_x_ = x_tries[idx]
+
+                    return abs(x[0]-beta) + np.linalg.norm(candidate_x_ - x_max) + 1e30*(candidate_x_.tolist() in np.array(old_x).tolist())
+
+                x0 = [random.uniform(max(beta-beta_h,1e-30), beta+beta_h), random.uniform(1e-30, l_h)]
+                
+                constraints = [{'type': 'ineq', 'fun': lambda x: abs(x[0] - beta)},
+                            {'type': 'ineq', 'fun': lambda x: beta_h - abs(x[0] - beta)},
+                            {'type': 'ineq', 'fun': lambda x: x[1] - 1e-30},
+                            {'type': 'ineq', 'fun': lambda x: l_h - x[1]}]
+
+                result = result = minimize(f, x0, constraints=constraints)       
+                optimal_values = result.x
+                beta = optimal_values[0]
+                l = optimal_values[1]
+                print("Updated beta = %s, l = %s" %(beta, l))
+
+                gp = GaussianProcessRegressor(
+                    kernel=RBF(length_scale=l),
                     alpha=1e-6,
                     normalize_y=True,
                     n_restarts_optimizer=5,
                     random_state=random_state,
                 )
 
-                cand_gp.fit(old_x, old_y)
+                gp.fit(old_x, old_y)
 
-                x[0] = max(1e-30, x[0])
-                ys = ac(x_tries, gp=cand_gp, y_max=y_max, iter_num=iter_num, at_least_one_feasible_found=at_least_one_feasible_found, beta=x[0])
+                ys = ac(x_tries, gp=gp, y_max=y_max, iter_num=iter_num, at_least_one_feasible_found=at_least_one_feasible_found, beta=beta)
                 for idx_ in range(len(ys)):
-                    if x_tries[idx_].tolist() in np.array(old_x).tolist():
-                        ys[idx_] = -np.inf
+                        if x_tries[idx_].tolist() in np.array(old_x).tolist():
+                            ys[idx_] = -np.inf
 
-                idx = ys.argmax()  # this index is relative to the local x_tries values matrix
-                candidate_x_ = x_tries[idx]
+                idx = ys.argmax()
+                x_max = x_tries[idx]
 
-                return abs(x[0]-beta) + np.linalg.norm(candidate_x_ - x_max) + 1e30*(candidate_x_.tolist() in np.array(old_x).tolist())
-
-            x0 = [random.uniform(max(beta-beta_h,1e-30), beta+beta_h), random.uniform(1e-30, l_h)]
-            
-            constraints = [{'type': 'ineq', 'fun': lambda x: abs(x[0] - beta)},
-                           {'type': 'ineq', 'fun': lambda x: beta_h - abs(x[0] - beta)},
-                           {'type': 'ineq', 'fun': lambda x: x[1] - 1e-30},
-                           {'type': 'ineq', 'fun': lambda x: l_h - x[1]}]
-
-            result = result = minimize(f, x0, constraints=constraints)       
-            optimal_values = result.x
-            beta = optimal_values[0]
-            l = optimal_values[1]
-            print("Updated beta = %s, l = %s" %(beta, l))
-
-            gp = GaussianProcessRegressor(
-                kernel=RBF(length_scale=l),
-                alpha=1e-6,
-                normalize_y=True,
-                n_restarts_optimizer=5,
-                random_state=random_state,
-            )
-
-            gp.fit(old_x, old_y)
-
-            ys = ac(x_tries, gp=gp, y_max=y_max, iter_num=iter_num, at_least_one_feasible_found=at_least_one_feasible_found, beta=beta)
-            for idx_ in range(len(ys)):
-                    if x_tries[idx_].tolist() in np.array(old_x).tolist():
-                        ys[idx_] = -np.inf
-
-            idx = ys.argmax()
-            x_max = x_tries[idx]
-
-            if x_max.tolist() in np.array(old_x).tolist():
-                import pdb; pdb.set_trace()
+                if x_max.tolist() in np.array(old_x).tolist():
+                    import pdb; pdb.set_trace()
 
     if dataset is not None:
         max_acq = ys[idx]

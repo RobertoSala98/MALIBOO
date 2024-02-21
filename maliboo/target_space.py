@@ -3,6 +3,7 @@ import numpy as np
 import pandas as pd
 from .util import ensure_rng
 from sys import float_info
+import warnings
 
 
 class TargetSpace(object):
@@ -207,7 +208,9 @@ class TargetSpace(object):
 
     def register_optimization_info(self, info_new):
         """Register relevant information into self._optimization_info"""
-        self._optimization_info = pd.concat((self._optimization_info, info_new))
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            self._optimization_info = pd.concat((self._optimization_info, info_new))
         if self._debug: print("Registered optimization information:", info_new, sep="\n")
 
 

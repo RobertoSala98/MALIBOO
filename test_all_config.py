@@ -3,7 +3,7 @@ import csv
 from multiprocessing import Pool
 import functools
 
-cores_number = 10
+cores_number = 5
 
 for dataset in ["oscarp", "query26", "stereomatch", "ligen"]:
 
@@ -17,14 +17,14 @@ for dataset in ["oscarp", "query26", "stereomatch", "ligen"]:
     idx_setting = 0
 
     if dataset in ["oscarp", "ligen"]:
-        acq_functions = ['ei']
+        acq_functions = ['ei', 'DiscreteBO']
     else:
-        acq_functions = ['eic']
+        acq_functions = ['eic', 'DiscreteBO']
 
     for acq_function in acq_functions:
-        for ml_bounds in ['indicator', 'probability']:
+        for ml_bounds in ['None']:
             for ml_target in ['None', 'indicator', 'probability', 'sum', 'product']:
-                for consider_only_true_max in [True, False]:
+                for consider_only_true_max in [False]:
 
                     # Modify yaml file
                     with open(test_file, 'r') as file:
