@@ -524,6 +524,8 @@ class BayesianOptimization(Observable):
                 if self._debug: print("True vs predicted '{}' value: {} vs {}".format(util.ml_target, y_true_ml, y_bar[0]))
                 other_info['ml_mape'] = mape([y_true_ml], y_bar)
                 other_info.loc[idx, 'feasible'] = self.dataset.loc[idx, util.ml_target] >= util.ml_bounds[0] and self.dataset.loc[idx, util.ml_target] <= util.ml_bounds[1]
+            else:
+                other_info.loc[idx, 'feasible'] = True
             self.register_optimization_info(other_info)
 
             if self._debug: print("End of current iteration", 24*"+", sep="\n")
