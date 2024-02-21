@@ -5,7 +5,7 @@ general_setting:
   repetitions: 30
   random_seed: True
   seeds: [0,1,2,3,4,5,6,7,8,9]
-  output_path: "./outputs/outputs_oscarp_"
+  output_path: "./outputs/outputs_oscarp_DiscreteBO"
   delete_previous_output: True
   debug: False
   verbose: 0
@@ -21,18 +21,18 @@ stopping_criteria:
   hard_stop: False
   conjunction: "or"
 acquisition_info:
-  acquisition_function: "ei"
-  ml_on_bounds: True
+  acquisition_function: "DiscreteBO"
+  ml_on_bounds: False
   ml_on_target: True
   consider_max_only_on_feasible: False
   memory_queue_len: 19
   relaxation: False
   DiscreteBO:
-    initial_beta: 100.0
-    beta_h: 10
-    initial_l: 2.0
-    l_h: 1
-    sigma_2: 10.0
+    initial_beta: 40.0
+    beta_h: 10.0
+    initial_l: 1.0
+    l_h: 10.0
+    sigma_2: 0.025
   eic:
     eic_ml_var: "C"
     eic_bounds: [0, 17000]
@@ -55,6 +55,6 @@ acquisition_info:
     indicator_parameters:
       coeff: [1.333, None]
     sum_parameters:
-      ml_target_gamma_iter0: 10
-      ml_target_gamma_iterN: 30
+      ml_target_gamma_iter0: 0
+      ml_target_gamma_iterN: 5
       ml_target_gamma_max: 0.5    
