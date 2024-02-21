@@ -129,7 +129,7 @@ def acq_max(ac, gp, y_max, bounds, random_state, n_warmup=10000, n_iter=10, data
 
                     cand_gp.fit(old_x, old_y)
 
-                    x[0] = max(1e-30, x[0])
+                    x[0] = max(x[0],1e-5)
                     ys = ac(x_tries, gp=cand_gp, y_max=y_max, iter_num=iter_num, at_least_one_feasible_found=at_least_one_feasible_found, beta=x[0])
                     for idx_ in range(len(ys)):
                         if x_tries[idx_].tolist() in np.array(old_x).tolist():
@@ -140,16 +140,17 @@ def acq_max(ac, gp, y_max, bounds, random_state, n_warmup=10000, n_iter=10, data
 
                     return abs(x[0]-beta) + np.linalg.norm(candidate_x_ - x_max) + 1e30*(candidate_x_.tolist() in np.array(old_x).tolist())
 
-                x0 = [random.uniform(max(beta-beta_h,1e-30), beta+beta_h), random.uniform(1e-30, l_h)]
+                x0 = [random.uniform(max(beta-beta_h,1e-5), beta+beta_h), random.uniform(1e-5, l_h)]
                 
                 constraints = [{'type': 'ineq', 'fun': lambda x: abs(x[0] - beta)},
                             {'type': 'ineq', 'fun': lambda x: beta_h - abs(x[0] - beta)},
-                            {'type': 'ineq', 'fun': lambda x: x[1] - 1e-30},
+                            {'type': 'ineq', 'fun': lambda x: x[0] - 1e-5},
+                            {'type': 'ineq', 'fun': lambda x: x[1] - 1e-5},
                             {'type': 'ineq', 'fun': lambda x: l_h - x[1]}]
 
                 result = result = minimize(f, x0, constraints=constraints)       
                 optimal_values = result.x
-                beta = optimal_values[0]
+                beta = max(optimal_values[0],1e-5)
                 l = optimal_values[1]
                 print("Updated beta = %s, l = %s" %(beta, l))
 
