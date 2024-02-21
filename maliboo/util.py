@@ -733,7 +733,7 @@ def print_final_results(output_path, real_max, init_points):
     plt.scatter([ii for ii in range(init_points-1, len(feasible_))], values_, alpha=feasible_[init_points-1:len(feasible_)], color='blue', s=50)
 
     if found_first_not_inf:
-        plt.plot([init_points, init_points], [0, first_not_inf], '--', color='red')
+        plt.plot([init_points-0.5, init_points-0.5], [0, first_not_inf], '--', color='red')
 
     plt.xlabel('step number')
     plt.ylabel('Error [%]')
