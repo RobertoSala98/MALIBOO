@@ -9,7 +9,7 @@ for dataset in ["oscarp", "query26", "stereomatch", "ligen"]:
 
     test_file = '%s.yaml' %dataset
 
-    header = ['ml_bounds', 'ml_target', 'consider_only_true_max', 'error (%)', 'std_dev (%)', 'error_cleaned (%)', 'std_dev_cleaned (%)', 'feasible_values_found (%)', 'avg_time (sec)']
+    header = ['acquisition_function', 'ml_bounds', 'ml_target', 'consider_only_true_max', 'error (%)', 'std_dev (%)', 'error_cleaned (%)', 'std_dev_cleaned (%)', 'feasible_values_found (%)', 'avg_time (sec)']
     data = []
 
     setting = []
@@ -17,14 +17,14 @@ for dataset in ["oscarp", "query26", "stereomatch", "ligen"]:
     idx_setting = 0
 
     if dataset in ["oscarp", "ligen"]:
-        algorithms = ['ei', 'DiscreteBO']
+        acq_functions = ['ei']
     else:
-        algorithms = ['eic', 'DiscreteBO']
+        acq_functions = ['eic']
 
-    for algorithm in algorithms:
-        for ml_bounds in ['None']:
+    for acq_function in acq_functions:
+        for ml_bounds in ['indicator', 'probability']:
             for ml_target in ['None', 'indicator', 'probability', 'sum', 'product']:
-                for consider_only_true_max in [False]:
+                for consider_only_true_max in [True, False]:
 
                     # Modify yaml file
                     with open(test_file, 'r') as file:
@@ -39,7 +39,7 @@ for dataset in ["oscarp", "query26", "stereomatch", "ligen"]:
                             lines[idx] = "  output_path: " + output_path + "\n"
 
                         if "  acquisition_function: " in line:
-                            lines[idx] = "  acquisition_function: " + algorithm + "\n"
+                            lines[idx] = "  acquisition_function: " + acq_function + "\n"
 
                         if "  ml_on_target: " in line: 
 
@@ -64,7 +64,7 @@ for dataset in ["oscarp", "query26", "stereomatch", "ligen"]:
 
                     idx_setting += 1
 
-                    setting.append([algorithm, ml_bounds, ml_target, consider_only_true_max, output_name])
+                    setting.append([acq_function, ml_bounds, ml_target, consider_only_true_max, output_name])
 
 
     def split_list(input_list, num_chunks):
