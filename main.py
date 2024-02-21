@@ -6,6 +6,8 @@ from numpy.random import randint
 from maliboo.util import evaluate_max, print_final_results
 import numpy as np
 from math import sqrt
+import time
+import csv
 
 
 def parse_yaml_file(file_path):
@@ -198,12 +200,15 @@ def main(yaml_file_path, print_res=True):
         system("rm -rf %s" %output_path)
 
     results = []
+    durations = []
 
     for idx in range(len(seeds)):
 
         seed = seeds[idx]
 
         print("\nSimulation %s out of %s, Seed: %s\n" %(idx+1,len(seeds),seed))
+
+        start_time = time.time()
 
         optimizer = BO(f=f, 
                     pbounds=pbounds,
@@ -228,12 +233,17 @@ def main(yaml_file_path, print_res=True):
                            relaxation=relaxation,
                            consider_max_only_on_feasible=consider_max_only_on_feasible)
         
-        obtained_max = evaluate_max(dataset, output_path+"/%s" %idx + "/results.csv", target_column, {acquisition_info['ml_target']: acquisition_info['ml_bounds']}, print_res)
+        durations.append(time.time() - start_time)
+        
+        if ml_on_bounds:
+            obtained_max = evaluate_max(dataset, output_path+"/%s" %idx + "/results.csv", target_column, {acquisition_info['ml_target']: acquisition_info['ml_bounds']}, print_res)
+        else:
+            obtained_max = optimizer.max['target']
 
         if print_res:
-            print("\nObtained min: " + str(round(-obtained_max,2)))
-            print("Real min: " + str(round(-real_max,2)))
-            print("Error: " + str(round(100*(obtained_max - real_max)/real_max,2)) + " %\n")
+            #print("\nObtained min: " + str(round(-obtained_max,2)))
+            #print("Real min: " + str(round(-real_max,2)))
+            print("Error: " + str(round(100*(obtained_max - real_max)/real_max,2)) + " %%, Time: %s sec\n" %durations[-1])
 
         results.append(obtained_max)
 
@@ -244,7 +254,7 @@ def main(yaml_file_path, print_res=True):
 
     print_final_results(output_path, real_max, n0)
 
-    return 100*(mean(results) - real_max)/real_max, 100*sqrt(variance(results))/abs(real_max), 100*(mean(results_cleaned) - real_max)/(real_max), 100*sqrt(variance(results_cleaned))/abs(real_max), 100*len(results_cleaned)/repetitions
+    return 100*(mean(results) - real_max)/real_max, 100*sqrt(variance(results))/abs(real_max), 100*(mean(results_cleaned) - real_max)/(real_max), 100*sqrt(variance(results_cleaned))/abs(real_max), 100*len(results_cleaned)/repetitions, mean(durations)
 
 
 if __name__ == "__main__":
@@ -252,4 +262,13 @@ if __name__ == "__main__":
     parser.add_argument('-f', '--file', type=str, help='Path to the YAML file', required=True)
     args = parser.parse_args()
 
-    main(args.file)
+    avg_res, stddev_res, avg_clean_res, stddev_clean_res, feas, dur = main(args.file)
+    dataset = args.file.split(".yaml")[0]
+
+    header = ['error (%)', 'std_dev (%)', 'time (s)']
+    data = [[round(avg_res,3), round(stddev_res,3), round(dur,3)]]
+
+    with open("%s_single.csv" %dataset, 'w', encoding='UTF8', newline='') as f:
+        writer = csv.writer(f, delimiter=',')
+        writer.writerow(header)
+        writer.writerows(data)  

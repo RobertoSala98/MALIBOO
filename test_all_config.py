@@ -4,9 +4,11 @@ from multiprocessing import Pool
 import functools
 
 cores_number = 20
-test_file = 'oscarp.yaml'
+dataset = "oscarp"
 
-header = ['ml_bounds', 'ml_target', 'consider_only_true_max', 'error (%)', 'std_dev (%)', 'error_cleaned (%)', 'std_dev_cleaned (%)', 'feasible_values_found (%)']
+test_file = '%s.yaml' %dataset
+
+header = ['ml_bounds', 'ml_target', 'consider_only_true_max', 'error (%)', 'std_dev (%)', 'error_cleaned (%)', 'std_dev_cleaned (%)', 'feasible_values_found (%)', 'avg_time (sec)']
 data = []
 
 setting = []
@@ -25,7 +27,7 @@ for ml_bounds in ['indicator', 'probability']:
 
                 line = lines[idx]
 
-                output_path = "./outputs/oscarp/config_%s" %idx_setting
+                output_path = "./outputs/%s/config_%s" %(dataset,idx_setting)
                 if "  output_path: " in line:
                     lines[idx] = "  output_path: " + output_path + "\n"
 
@@ -45,7 +47,7 @@ for ml_bounds in ['indicator', 'probability']:
                 if "    ml_target_type: " in line:
                     lines[idx] = "    ml_target_type: " + ml_target + "\n"
 
-            output_name = "input_files/oscarp/" + test_file.split(".yaml")[0] + "_" + str(idx_setting) + ".yaml"
+            output_name = "input_files/%s/" %dataset + test_file.split(".yaml")[0] + "_" + str(idx_setting) + ".yaml"
 
             with open(output_name, 'w') as file:
                 file.writelines(lines)
@@ -99,7 +101,7 @@ for cc in range(cores_number):
     data = data + batch_results_parallel[cc] 
 
 
-with open("oscarp.csv", 'w', encoding='UTF8', newline='') as f:
+with open("%s.csv" %dataset, 'w', encoding='UTF8', newline='') as f:
     writer = csv.writer(f, delimiter=',')
     writer.writerow(header)
     writer.writerows(data)  

@@ -11,6 +11,24 @@ import matplotlib.pyplot as plt
 from sklearn.gaussian_process.kernels import RBF
 from sklearn.gaussian_process import GaussianProcessRegressor
 from math import sqrt
+import random
+
+
+class CustomRBFKernel(RBF):
+    def __init__(self, length_scale=1.0, sigma_2=1.0, **kwargs):
+        super().__init__(length_scale=length_scale, **kwargs)
+        self.sigma_2 = sigma_2
+
+    def __call__(self, X, Y=None, eval_gradient=False):
+        K = super().__call__(X, Y, eval_gradient=eval_gradient)
+        if not eval_gradient:
+            return self.sigma_2 * K
+        else:
+            try:
+                K, K_gradient = K
+                return self.sigma_2 * K, self.sigma_2 * K_gradient
+            except TypeError:  # K is not a tuple, indicating no gradient
+                return self.sigma_2 * K, None
 
 
 def min_max_normalize(vector):
@@ -94,28 +112,10 @@ def acq_max(ac, gp, y_max, bounds, random_state, n_warmup=10000, n_iter=10, data
     x_max = x_tries[idx]
     
     if kind == 'DiscreteBO':
-        candidate_x = x_max.copy()
 
-        if candidate_x.tolist() in np.array(old_x).tolist():
+        if x_max.tolist() in np.array(old_x).tolist():
             
-            def f(x):
-
-                class CustomRBFKernel(RBF):
-                    def __init__(self, length_scale=1.0, sigma_2=1.0, **kwargs):
-                        super().__init__(length_scale=length_scale, **kwargs)
-                        self.sigma_2 = sigma_2
-
-                    def __call__(self, X, Y=None, eval_gradient=False):
-                        K = super().__call__(X, Y, eval_gradient=eval_gradient)
-                        if not eval_gradient:
-                            return self.sigma_2 * K
-                        else:
-                            try:
-                                K, K_gradient = K
-                                return self.sigma_2 * K, self.sigma_2 * K_gradient
-                            except TypeError:  # K is not a tuple, indicating no gradient
-                                return self.sigma_2 * K, None
-                            
+            def f(x):       
                 cand_gp = GaussianProcessRegressor(
                     kernel=CustomRBFKernel(length_scale=x[1], sigma_2=sigma_2),
                     alpha=1e-6,
@@ -124,26 +124,29 @@ def acq_max(ac, gp, y_max, bounds, random_state, n_warmup=10000, n_iter=10, data
                     random_state=random_state,
                 )
 
+                x[0] = max(1e-30, x[0])
                 ys = ac(x_tries, gp=cand_gp, y_max=y_max, iter_num=iter_num, at_least_one_feasible_found=at_least_one_feasible_found, beta=x[0])
+                for idx_ in range(len(ys)):
+                    if x_tries[idx_].tolist() in np.array(old_x).tolist():
+                        ys[idx_] = -np.inf
+
                 idx = ys.argmax()  # this index is relative to the local x_tries values matrix
                 candidate_x_ = x_tries[idx]
 
-                #print(x, abs(x[0]-beta) + np.linalg.norm(candidate_x_ - x_max) + 1e30*(candidate_x_.tolist() in np.array(old_x).tolist()))
-
                 return abs(x[0]-beta) + np.linalg.norm(candidate_x_ - x_max) + 1e30*(candidate_x_.tolist() in np.array(old_x).tolist())
-            
-            x0 = [1.0, 1.0]
+
+            x0 = [random.uniform(max(beta-beta_h,1e-30), beta+beta_h), random.uniform(1e-30, l_h)]
             
             constraints = [{'type': 'ineq', 'fun': lambda x: abs(x[0] - beta)},
                            {'type': 'ineq', 'fun': lambda x: beta_h - abs(x[0] - beta)},
                            {'type': 'ineq', 'fun': lambda x: x[1] - 1e-30},
                            {'type': 'ineq', 'fun': lambda x: l_h - x[1]}]
 
-            result = result = minimize(f, x0, constraints=constraints, tol=1e-20)       
+            result = result = minimize(f, x0, constraints=constraints)       
             optimal_values = result.x
             beta = optimal_values[0]
             l = optimal_values[1]
-            #print("Updated beta = %s, l = %s" %(beta, l))
+            print("Updated beta = %s, l = %s" %(beta, l))
 
             gp = GaussianProcessRegressor(
                 kernel=RBF(length_scale=l),
@@ -154,11 +157,15 @@ def acq_max(ac, gp, y_max, bounds, random_state, n_warmup=10000, n_iter=10, data
             )
 
             ys = ac(x_tries, gp=gp, y_max=y_max, iter_num=iter_num, at_least_one_feasible_found=at_least_one_feasible_found, beta=beta)
-            idx = ys.argmax()
-            candidate_x = x_tries[idx]
+            for idx_ in range(len(ys)):
+                    if x_tries[idx_].tolist() in np.array(old_x).tolist():
+                        ys[idx_] = -np.inf
 
-            if candidate_x.tolist() in np.array(old_x).tolist():
-                raise ValueError("DiscreteBO algorithm not able to find another point. Try with a different sigma^2")
+            idx = ys.argmax()
+            x_max = x_tries[idx]
+
+            if x_max.tolist() in np.array(old_x).tolist():
+                import pdb; pdb.set_trace()
 
     if dataset is not None:
         max_acq = ys[idx]
