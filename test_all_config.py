@@ -3,7 +3,7 @@ import csv
 from multiprocessing import Pool
 import functools
 
-cores_number = 5
+cores_number = 10
 
 for dataset in ["oscarp", "query26", "stereomatch", "ligen"]:
 
@@ -22,9 +22,9 @@ for dataset in ["oscarp", "query26", "stereomatch", "ligen"]:
         acq_functions = ['eic', 'DiscreteBO']
 
     for acq_function in acq_functions:
-        for ml_bounds in ['None']:
+        for ml_bounds in ['indicator', 'probability']:
             for ml_target in ['None', 'indicator', 'probability', 'sum', 'product']:
-                for consider_only_true_max in [False]:
+                for consider_only_true_max in [True, False]:
 
                     # Modify yaml file
                     with open(test_file, 'r') as file:
@@ -34,12 +34,19 @@ for dataset in ["oscarp", "query26", "stereomatch", "ligen"]:
 
                         line = lines[idx]
 
-                        output_path = "./outputs/%s/config_%s" %(dataset,idx_setting)
+                        output_path = "./outputs/%s/config_%s_bounded" %(dataset,idx_setting)
                         if "  output_path: " in line:
                             lines[idx] = "  output_path: " + output_path + "\n"
 
                         if "  acquisition_function: " in line:
                             lines[idx] = "  acquisition_function: " + acq_function + "\n"
+
+                        if "  ml_on_bounds: " in line: 
+
+                            if ml_bounds == 'None':
+                                lines[idx] = "  ml_on_bounds: " + "False\n"
+                            else:
+                                lines[idx] = "  ml_on_bounds: " + "True\n"
 
                         if "  ml_on_target: " in line: 
 
@@ -111,7 +118,7 @@ for dataset in ["oscarp", "query26", "stereomatch", "ligen"]:
         data = data + batch_results_parallel[cc] 
 
 
-    with open("%s_noBounds_all.csv" %dataset, 'w', encoding='UTF8', newline='') as f:
+    with open("%s_constrained_all.csv" %dataset, 'w', encoding='UTF8', newline='') as f:
         writer = csv.writer(f, delimiter=',')
         writer.writerow(header)
         writer.writerows(data)  

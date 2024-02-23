@@ -22,7 +22,7 @@ stopping_criteria:
   conjunction: "or"
 acquisition_info:
   acquisition_function: "DiscreteBO"
-  ml_on_bounds: False
+  ml_on_bounds: True
   ml_on_target: False
   consider_max_only_on_feasible: False
   memory_queue_len: 19

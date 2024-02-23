@@ -34,9 +34,13 @@ def mean(lst):
 
 def variance(lst):
     if len(lst) == 0:
-        return 0 
+        return 0.0 
 
     mean_val = sum(lst) / len(lst)
+    
+    if abs(mean_val) == np.inf:
+        return np.inf
+
     squared_diff = [(x - mean_val) ** 2 for x in lst]
     variance_val = sum(squared_diff) / len(lst)
 
