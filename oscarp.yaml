@@ -21,21 +21,28 @@ stopping_criteria:
   hard_stop: False
   conjunction: "or"
 acquisition_info:
-  acquisition_function: "DiscreteBO"
+  acquisition_function: "ei"
   ml_on_bounds: True
   ml_on_target: False
   consider_max_only_on_feasible: False
   epsilon_greedy: True
+  adaptive_method: True
   memory_queue_len: 19
   relaxation: False
   epsilon_greedy_parameters:
     prob_random_pick: 0.1
-  DiscreteBO:
-    initial_beta: 40.0
-    beta_h: 10.0
-    initial_l: 1.0
-    l_h: 10.0
-    sigma_2: 0.025
+  adaptive_method_parameters:
+    ucb_af:
+      initial_beta: 40.0
+      beta_h: 10.0
+    kernel: RBF
+    RBF_parameters:
+      sigma_2: 0.025
+      initial_l: 1.0
+      l_h: 10.0
+    Matern_parameters:
+      initial_nu: 2.5
+      nu_h: 10.0
   eic:
     eic_ml_var: "C"
     eic_bounds: [0, 17000]

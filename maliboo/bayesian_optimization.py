@@ -19,6 +19,23 @@ from .logger import _get_default_logger
 from .util import UtilityFunction, StoppingCriterion, acq_max, ensure_rng
 
 
+class CustomRBFKernel(RBF):
+    def __init__(self, length_scale=1.0, sigma_2=1.0, **kwargs):
+        super().__init__(length_scale=length_scale, **kwargs)
+        self.sigma_2 = sigma_2
+
+    def __call__(self, X, Y=None, eval_gradient=False):
+        K = super().__call__(X, Y, eval_gradient=eval_gradient)
+        if not eval_gradient:
+            return self.sigma_2 * K
+        else:
+            try:
+                K, K_gradient = K
+                return self.sigma_2 * K, self.sigma_2 * K_gradient
+            except TypeError:  # K is not a tuple, indicating no gradient
+                return self.sigma_2 * K, None
+
+
 class Observable(object):
     """
     Inspired/Taken from
@@ -183,7 +200,7 @@ class BayesianOptimization(Observable):
             return target_val
 
 
-    def suggest(self, utility_function, iter_num=0, ml_on_bounds=False, consider_max_only_on_feasible=False, epsilon_greedy=False):
+    def suggest(self, utility_function, iter_num=0, ml_on_bounds=False, consider_max_only_on_feasible=False, epsilon_greedy=False, adaptive_method=False):
         """
         Get most promising point to probe next
 
@@ -242,16 +259,13 @@ class BayesianOptimization(Observable):
             dataset=dataset_acq,
             debug=self._debug,
             iter_num=iter_num,
-            at_least_one_feasible_found=at_least_one_feasible_found,
             kind=utility_function.kind,
-            beta=self.beta,
-            l=self.l,
+            at_least_one_feasible_found=at_least_one_feasible_found,
+            epsilon_greedy=epsilon_greedy,
+            adaptive_method=adaptive_method,
             old_x=self._space.params,
             old_y=self._space.target,
-            sigma_2=self.sigma_2,
-            beta_h=self.beta_h,
-            l_h=self.l_h,
-            epsilon_greedy=epsilon_greedy,
+            adaptive_method_parameters=self.adaptive_method_parameters,
             prob_eps_greedy=self._prob_random_pick
         )
 
@@ -296,6 +310,7 @@ class BayesianOptimization(Observable):
                  ml_on_bounds=False,
                  ml_on_target=False,
                  epsilon_greedy=False,
+                 adaptive_method=False,
                  kappa=2.576,
                  kappa_decay=1,
                  kappa_decay_delay=0,
@@ -372,44 +387,44 @@ class BayesianOptimization(Observable):
         """
 
         # Internal GP regressor
-        self.beta = 1.0
-        self.beta_h = -1.0
-        self.l = 1.0
-        self.l_h = -1.0
-        self.sigma_2 = 1.0
+        if adaptive_method:
 
-        if acq == "DiscreteBO":
-            self.beta = acq_info['initial_beta']
-            self.beta_h = acq_info['beta_h']
-            self.l = acq_info['initial_l']
-            self.l_h = acq_info['l_h']
-            self.sigma_2 = acq_info['sigma_2']
+            self.adaptive_method_parameters = {"kernel": acq_info['DBO_kernel']}
+
+            if acq == "ucb":
+                self.adaptive_method_parameters["beta"] = acq_info['initial_beta']
+                self.adaptive_method_parameters["beta_h"] = acq_info['beta_h']
+
+            if self.adaptive_method_parameters["kernel"] == "RBF":
+                self.adaptive_method_parameters["l"] = acq_info['initial_l']
+                self.adaptive_method_parameters["l_h"] = acq_info['l_h']
+                self.adaptive_method_parameters["sigma_2"] = acq_info['sigma_2']
+            
+                self._gp = self._gp = GaussianProcessRegressor(
+                    kernel=CustomRBFKernel(length_scale=self.adaptive_method_parameters["l"], sigma_2=self.adaptive_method_parameters["sigma_2"]),
+                    alpha=1e-6,
+                    normalize_y=True,
+                    n_restarts_optimizer=5,
+                    random_state=self._random_state,
+                )
+
+            elif self.adaptive_method_parameters["kernel"] == "Matern":
+                self.adaptive_method_parameters["nu"] = acq_info['initial_nu']
+                self.adaptive_method_parameters["nu_h"] = acq_info['nu_h']
+
+                self._gp = GaussianProcessRegressor(
+                    kernel=Matern(nu=self.adaptive_method_parameters["nu"]),
+                    alpha=1e-6,
+                    normalize_y=True,
+                    n_restarts_optimizer=5,
+                    random_state=self._random_state,
+                )
+
+            else:
+                raise NotImplementedError("No other kernels implemented for adaptive methods")
+
             memory_queue_len = 0
 
-            class CustomRBFKernel(RBF):
-                def __init__(self, length_scale=1.0, sigma_2=1.0, **kwargs):
-                    super().__init__(length_scale=length_scale, **kwargs)
-                    self.sigma_2 = sigma_2
-
-                def __call__(self, X, Y=None, eval_gradient=False):
-                    K = super().__call__(X, Y, eval_gradient=eval_gradient)
-                    if not eval_gradient:
-                        return self.sigma_2 * K
-                    else:
-                        try:
-                            K, K_gradient = K
-                            return self.sigma_2 * K, self.sigma_2 * K_gradient
-                        except TypeError:  # K is not a tuple, indicating no gradient
-                            return self.sigma_2 * K, None
-        
-            self._gp = self._gp = GaussianProcessRegressor(
-                kernel=CustomRBFKernel(length_scale=self.l, sigma_2=self.sigma_2),
-                alpha=1e-6,
-                normalize_y=True,
-                n_restarts_optimizer=5,
-                random_state=self._random_state,
-            )
-            
         else:
             self._gp = GaussianProcessRegressor(
                 kernel=Matern(nu=2.5),
@@ -491,7 +506,8 @@ class BayesianOptimization(Observable):
                     objective_ml_model = self.train_objective_ml_model(acq_info=acq_info)
                     util.set_objective_ml_model(objective_ml_model)
                 x_probe, idx, acq_val = self.suggest(util, iter_num=iteration, ml_on_bounds=ml_on_bounds, 
-                                                     consider_max_only_on_feasible=consider_max_only_on_feasible, epsilon_greedy=epsilon_greedy)
+                                                     consider_max_only_on_feasible=consider_max_only_on_feasible, 
+                                                     epsilon_greedy=epsilon_greedy, adaptive_method=adaptive_method)
                 if self._debug: print("Suggested point: index {}, value {}, acquisition {}".format(idx, x_probe, acq_val))
             
             if x_probe is None:

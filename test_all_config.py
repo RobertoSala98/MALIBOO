@@ -20,6 +20,8 @@ thresholds = {
     "ligen": [2.1]
 }
 
+# ATTENTION: WHEN IMPLEMENTING AUTOMATIC TEST ON DiscreteBO, CONSIDER THAT OSCARP HAS DIFFENT Beta if using RBF or Matern
+
 for dataset in ["oscarp", "query26", "stereomatch", "ligen"]:
 
     test_file = '%s.yaml' %dataset

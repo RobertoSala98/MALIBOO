@@ -113,18 +113,28 @@ def main(yaml_file_path, print_res=True):
     ml_on_bounds = parsed_data['acquisition_info']['ml_on_bounds']
     ml_on_target = parsed_data['acquisition_info']['ml_on_target']
     epsilon_greedy = parsed_data['acquisition_info']['epsilon_greedy']
+    adaptive_method = parsed_data['acquisition_info']['adaptive_method']
     memory_queue_len = parsed_data['acquisition_info']['memory_queue_len']
     relaxation = parsed_data['acquisition_info']['relaxation']
 
     acquisition_info = {}
 
-    if acq == 'DiscreteBO':
+    if adaptive_method:
 
-        acquisition_info['initial_beta'] = parsed_data['acquisition_info']['DiscreteBO']['initial_beta']
-        acquisition_info['beta_h'] = parsed_data['acquisition_info']['DiscreteBO']['beta_h']
-        acquisition_info['initial_l'] = parsed_data['acquisition_info']['DiscreteBO']['initial_l']
-        acquisition_info['l_h'] = parsed_data['acquisition_info']['DiscreteBO']['l_h']
-        acquisition_info['sigma_2'] = parsed_data['acquisition_info']['DiscreteBO']['sigma_2']
+        if acq == 'ucb':
+            acquisition_info['initial_beta'] = parsed_data['acquisition_info']['adaptive_method_parameters']['ucb_af']['initial_beta']
+            acquisition_info['beta_h'] = parsed_data['acquisition_info']['adaptive_method_parameters']['ucb_af']['beta_h']
+
+        acquisition_info['DBO_kernel'] = parsed_data['acquisition_info']['adaptive_method_parameters']['kernel']
+
+        if acquisition_info['DBO_kernel'] == 'RBF':
+            acquisition_info['initial_l'] = parsed_data['acquisition_info']['adaptive_method_parameters']['RBF_parameters']['initial_l']
+            acquisition_info['l_h'] = parsed_data['acquisition_info']['adaptive_method_parameters']['RBF_parameters']['l_h']
+            acquisition_info['sigma_2'] = parsed_data['acquisition_info']['adaptive_method_parameters']['RBF_parameters']['sigma_2']
+
+        elif acquisition_info['DBO_kernel'] == 'Matern':
+            acquisition_info['initial_nu'] = parsed_data['acquisition_info']['adaptive_method_parameters']['Matern_parameters']['initial_nu']
+            acquisition_info['nu_h'] = parsed_data['acquisition_info']['adaptive_method_parameters']['Matern_parameters']['nu_h']
 
     if acq == 'eic':
 
@@ -236,6 +246,7 @@ def main(yaml_file_path, print_res=True):
                            ml_on_bounds=ml_on_bounds, 
                            ml_on_target=ml_on_target,
                            epsilon_greedy=epsilon_greedy,
+                           adaptive_method=adaptive_method,
                            memory_queue_len=memory_queue_len, 
                            acq_info=acquisition_info,
                            stop_crit_info=stopping_criteria, 
