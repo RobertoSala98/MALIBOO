@@ -48,7 +48,8 @@ def min_max_normalize(vector):
 
 def acq_max(ac, gp, y_max, bounds, random_state, n_warmup=10000, n_iter=10, dataset=None,
             debug=False, iter_num=0, at_least_one_feasible_found=True, kind='ucb', 
-            beta=1.0, l=1.0, old_x=[], old_y=[], sigma_2=1.0, beta_h=1.0, l_h=1.0):
+            beta=1.0, l=1.0, old_x=[], old_y=[], sigma_2=1.0, beta_h=1.0, l_h=1.0, 
+            epsilon_greedy=False, prob_eps_greedy=0.1):
     """
     A function to find the maximum of the acquisition function
 
@@ -103,15 +104,21 @@ def acq_max(ac, gp, y_max, bounds, random_state, n_warmup=10000, n_iter=10, data
         x_tries = dataset.values
     else:
         if debug: print("No dataset, initial grid will be random with shape {}".format((n_warmup, bounds.shape[0])))
-        x_tries = random_state.uniform(bounds[:, 0], bounds[:, 1],
-                                       size=(n_warmup, bounds.shape[0]))
+        x_tries = random_state.uniform(bounds[:, 0], bounds[:, 1], size=(n_warmup, bounds.shape[0]))
+
+    # epsilon-greedy implementation
+    pick_random = False
+    if epsilon_greedy:
+        choices = [True, False]
+        probabilities = [prob_eps_greedy, 1-prob_eps_greedy]
+        pick_random = random_state.choice(choices, p=probabilities)
         
-    ys = ac(x_tries, gp=gp, y_max=y_max, iter_num=iter_num, at_least_one_feasible_found=at_least_one_feasible_found)
+    ys = ac(x_tries, gp=gp, y_max=y_max, iter_num=iter_num, at_least_one_feasible_found=at_least_one_feasible_found, pick_random=pick_random)
     if debug: print("Acquisition evaluated successfully on grid")
     idx = ys.argmax()  # this index is relative to the local x_tries values matrix
     x_max = x_tries[idx]
     
-    if kind == 'DiscreteBO':
+    if kind == 'DiscreteBO' and not pick_random:
 
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
@@ -331,9 +338,9 @@ class UtilityFunction(object):
         self.objective_ml_model = model
 
 
-    def utility(self, x, gp, y_max, iter_num, at_least_one_feasible_found, beta=1.0):
+    def utility(self, x, gp, y_max, iter_num, at_least_one_feasible_found, beta=1.0, pick_random=False):
 
-        if self.kind == 'no_BO' or not at_least_one_feasible_found:
+        if self.kind == 'no_BO' or not at_least_one_feasible_found or pick_random:
             res = self._no_BO(x)
         elif self.kind == 'ucb':
             res = self._ucb(x, gp, self.kappa)
@@ -366,7 +373,7 @@ class UtilityFunction(object):
         if self._ml_on_bounds and self.kind != 'eic':
             res *= self._consider_ml_on_bounds(x, self.ml_model, self.ml_bounds, self.ml_bounds_type)
         
-        if self._ml_on_target:
+        if self._ml_on_target and not pick_random:
 
             parameters = {}
 
@@ -698,6 +705,7 @@ def print_final_results(output_path, real_max, init_points):
                         act_err = (float(row[target_index]) - real_max)/real_max
 
                         if act_err < 0:
+                            print("The error computed is negative: " + str(100*act_err) + " %")
                             import pdb; pdb.set_trace()
                     
                 errors.append(act_err)

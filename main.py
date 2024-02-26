@@ -112,6 +112,7 @@ def main(yaml_file_path, print_res=True):
     acq = parsed_data['acquisition_info']['acquisition_function']
     ml_on_bounds = parsed_data['acquisition_info']['ml_on_bounds']
     ml_on_target = parsed_data['acquisition_info']['ml_on_target']
+    epsilon_greedy = parsed_data['acquisition_info']['epsilon_greedy']
     memory_queue_len = parsed_data['acquisition_info']['memory_queue_len']
     relaxation = parsed_data['acquisition_info']['relaxation']
 
@@ -199,6 +200,9 @@ def main(yaml_file_path, print_res=True):
             acquisition_info['ml_target_gamma_iterN'] = parsed_data['acquisition_info']['ml_on_target_parameters']['sum_parameters']['ml_target_gamma_iterN']
             acquisition_info['ml_target_gamma_max'] = parsed_data['acquisition_info']['ml_on_target_parameters']['sum_parameters']['ml_target_gamma_max']
 
+    if epsilon_greedy:
+        acquisition_info['eps_greedy_random_prob'] = parsed_data['acquisition_info']['epsilon_greedy_parameters']['prob_random_pick']
+
     if delete_previous_output:
         from os import system 
         system("rm -rf %s" %output_path)
@@ -231,6 +235,7 @@ def main(yaml_file_path, print_res=True):
                            acq=acq,
                            ml_on_bounds=ml_on_bounds, 
                            ml_on_target=ml_on_target,
+                           epsilon_greedy=epsilon_greedy,
                            memory_queue_len=memory_queue_len, 
                            acq_info=acquisition_info,
                            stop_crit_info=stopping_criteria, 

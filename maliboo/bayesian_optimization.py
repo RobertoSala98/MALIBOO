@@ -183,7 +183,7 @@ class BayesianOptimization(Observable):
             return target_val
 
 
-    def suggest(self, utility_function, iter_num=0, ml_on_bounds=False, consider_max_only_on_feasible=False):
+    def suggest(self, utility_function, iter_num=0, ml_on_bounds=False, consider_max_only_on_feasible=False, epsilon_greedy=False):
         """
         Get most promising point to probe next
 
@@ -250,7 +250,9 @@ class BayesianOptimization(Observable):
             old_y=self._space.target,
             sigma_2=self.sigma_2,
             beta_h=self.beta_h,
-            l_h=self.l_h
+            l_h=self.l_h,
+            epsilon_greedy=epsilon_greedy,
+            prob_eps_greedy=self._prob_random_pick
         )
 
         if self.relaxation:
@@ -293,6 +295,7 @@ class BayesianOptimization(Observable):
                  acq='ucb',
                  ml_on_bounds=False,
                  ml_on_target=False,
+                 epsilon_greedy=False,
                  kappa=2.576,
                  kappa_decay=1,
                  kappa_decay_delay=0,
@@ -427,6 +430,10 @@ class BayesianOptimization(Observable):
         self.dispatch(Events.OPTIMIZATION_START)
         self._prime_queue(init_points)
         self.set_gp_params(**gp_params)
+
+        self._prob_random_pick = 0.0
+        if epsilon_greedy:
+            self._prob_random_pick = acq_info["eps_greedy_random_prob"]
         
         util = UtilityFunction(kind=acq,
                                kappa=kappa,
@@ -483,7 +490,8 @@ class BayesianOptimization(Observable):
                 if ml_on_target:
                     objective_ml_model = self.train_objective_ml_model(acq_info=acq_info)
                     util.set_objective_ml_model(objective_ml_model)
-                x_probe, idx, acq_val = self.suggest(util, iter_num=iteration, ml_on_bounds=ml_on_bounds, consider_max_only_on_feasible=consider_max_only_on_feasible)
+                x_probe, idx, acq_val = self.suggest(util, iter_num=iteration, ml_on_bounds=ml_on_bounds, 
+                                                     consider_max_only_on_feasible=consider_max_only_on_feasible, epsilon_greedy=epsilon_greedy)
                 if self._debug: print("Suggested point: index {}, value {}, acquisition {}".format(idx, x_probe, acq_val))
             
             if x_probe is None:
@@ -515,7 +523,6 @@ class BayesianOptimization(Observable):
                 if self._debug: print("Point was not selected by suggest(): skipping termination check")
             else:
                 terminated = terminated or stopcrit.terminate(x_probe, target_value, iteration, util, y_true_ml)
-            
             # Register other information about the new point
             other_info = pd.DataFrame(index=[idx])
             other_info.loc[idx, 'acquisition'] = acq_val
@@ -524,6 +531,7 @@ class BayesianOptimization(Observable):
                 y_bar = util.ml_model[0].predict(pd.DataFrame(x_probe, index=[idx]))
                 if self._debug: print("True vs predicted '{}' value: {} vs {}".format(util.ml_target, y_true_ml, y_bar[0]))
                 other_info['ml_mape'] = mape([y_true_ml], y_bar)
+            if ml_on_bounds:
                 other_info.loc[idx, 'feasible'] = self.dataset.loc[idx, util.ml_target] >= util.ml_bounds[0] and self.dataset.loc[idx, util.ml_target] <= util.ml_bounds[1]
             else:
                 other_info.loc[idx, 'feasible'] = True
