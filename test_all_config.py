@@ -172,7 +172,7 @@ for dataset in datasets:
 
     print("You are testing %s different settings" %idx_setting)
 
-"""
+
     def split_list(input_list, num_chunks):
         
         avg_chunk_size = len(input_list) // num_chunks
@@ -221,4 +221,3 @@ for dataset in datasets:
         writer = csv.writer(f, delimiter=',')
         writer.writerow(header)
         writer.writerows(data)  
-"""
