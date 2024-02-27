@@ -387,9 +387,11 @@ class BayesianOptimization(Observable):
         """
 
         # Internal GP regressor
+        self.adaptive_method_parameters = {}
+
         if adaptive_method:
 
-            self.adaptive_method_parameters = {"kernel": acq_info['DBO_kernel']}
+            self.adaptive_method_parameters["kernel"] = acq_info['DBO_kernel']
 
             if acq == "ucb":
                 self.adaptive_method_parameters["beta"] = acq_info['initial_beta']
