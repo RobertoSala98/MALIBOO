@@ -4,7 +4,7 @@ from multiprocessing import Pool
 import functools
 import os
 
-cores_number = 10
+cores_number = 6
 datasets = ["oscarp", "query26", "stereomatch", "ligen"]
 
 configurations_1 = [
@@ -99,7 +99,7 @@ for dataset in datasets:
             with open(test_file, 'r') as file:
                 lines = file.readlines()
 
-            output_path = "./outputs/%s/bounds_%s/target_%s/only_true_max_%s/eps_greedy_%s/adaptive_%s/threshold_%s" %(dataset, ml_bounds, ml_target, consider_only_true_max, epsilon_greedy, adaptive_method_kernel, threshold)
+            output_path = "./outputs/%s/bounds_%s/target_%s/only_true_max_%s/eps_greedy_%s/adaptive_%s/af_%s/threshold_%s" %(dataset, ml_bounds, ml_target, consider_only_true_max, epsilon_greedy, adaptive_method_kernel, af, threshold)
             generate_folder_structure(output_path)
             
             for idx in range(len(lines)):
@@ -161,6 +161,7 @@ for dataset in datasets:
                     lines[idx] = "    ml_target_type: " + ml_target + "\n"
 
             output_name = "input_files/%s/" %dataset + test_file.split(".yaml")[0] + "_" + str(idx_setting) + ".yaml"
+            generate_folder_structure("./input_files/%s/" %dataset)
 
             with open(output_name, 'w') as file:
                 file.writelines(lines)
@@ -206,7 +207,7 @@ for dataset in datasets:
 
         return results
 
-
+    
     with Pool(processes = cores_number) as pool:
 
         partial_gp = functools.partial(process_batch)
@@ -215,6 +216,8 @@ for dataset in datasets:
 
     for cc in range(cores_number):
         data = data + batch_results_parallel[cc] 
+
+    #process_batch(setting)
 
 
     with open("%s.csv" %dataset, 'w', encoding='UTF8', newline='') as f:
