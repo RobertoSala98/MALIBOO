@@ -83,10 +83,7 @@ class ScreenLogger(_Tracker):
     def _is_new_max(self, instance):
         if self._previous_max is None:
             self._previous_max = instance.max["target"]
-        try:
-            return instance.max["target"] > self._previous_max
-        except:
-            import pdb; pdb.set_trace()
+        return instance.max["target"] > self._previous_max
 
     def update(self, event, instance):
         if event == Events.OPTIMIZATION_START:
