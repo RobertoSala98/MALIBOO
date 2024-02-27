@@ -1,0 +1,11 @@
+acquisition_function,ml_bounds,ml_target,consider_only_true_max,error (%),std_dev (%),error_cleaned (%),std_dev_cleaned (%),feasible_values_found (%),avg_time (sec)
+eic,None,None,False,5.262,22.86,5.262,22.86,100.0,62.63
+eic,None,indicator,False,20.913,82.061,20.913,82.061,100.0,66.233
+eic,None,probability,False,0.184,0.598,0.184,0.598,100.0,74.094
+eic,None,sum,False,1.086,1.961,1.086,1.961,100.0,62.381
+eic,None,product,False,1.151,1.246,1.151,1.246,100.0,72.244
+DiscreteBO,None,None,False,36.792,75.559,36.792,75.559,100.0,144.91
+DiscreteBO,None,indicator,False,23.146,75.121,23.146,75.121,100.0,741.03
+DiscreteBO,None,probability,False,31.989,41.005,31.989,41.005,100.0,171.815
+DiscreteBO,None,sum,False,0.049,0.11,0.049,0.11,100.0,1121.857
+DiscreteBO,None,product,False,2.87,8.9,2.87,8.9,100.0,564.667
