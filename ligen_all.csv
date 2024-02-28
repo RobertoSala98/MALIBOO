@@ -1,0 +1,13 @@
+ml_bounds,ml_target,consider_only_true_max,epsilon_greedy,adaptive_method_kernel,af,threshold,error (%),std_dev (%),error_cleaned (%),std_dev_cleaned (%),feasible_values_found (%),avg_time (sec)
+indicator,None,False,False,None,ei,2.1,149.328,59.008,149.328,59.008,100.0,641.529
+probability,None,False,False,None,ei,2.1,146.083,63.102,146.083,63.102,100.0,474.321
+indicator,indicator,False,False,None,ei,2.1,136.02,56.729,136.02,56.729,100.0,704.193
+indicator,probability,False,False,None,ei,2.1,140.511,32.24,140.511,32.24,100.0,528.346
+indicator,sum,False,False,None,ei,2.1,143.132,51.496,143.132,51.496,100.0,722.895
+indicator,product,False,False,None,ei,2.1,138.156,36.664,138.156,36.664,100.0,515.248
+indicator,None,True,False,None,ei,2.1,133.617,42.849,133.617,42.849,100.0,641.597
+indicator,None,False,True,None,ei,2.1,132.2,43.045,132.2,43.045,100.0,479.912
+indicator,None,False,False,RBF,ucb,2.1,170.278,65.479,170.278,65.479,100.0,217.925
+indicator,None,False,False,Matern,ucb,2.1,143.272,38.308,143.272,38.308,100.0,325.479
+indicator,None,False,False,RBF,ei,2.1,164.0,69.792,164.0,69.792,100.0,224.402
+indicator,None,False,False,Matern,ei,2.1,138.89,53.928,138.89,53.928,100.0,237.547

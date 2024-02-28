@@ -8,7 +8,7 @@ general_setting:
   output_path: "./outputs/outputs_ligen"
   delete_previous_output: True
   debug: False
-  verbose: 2
+  verbose: 0
   max: -567.312555400384
 optimizer:
   f: None
