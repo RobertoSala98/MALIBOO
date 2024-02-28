@@ -4,7 +4,7 @@ from multiprocessing import Pool
 import functools
 import os
 
-cores_number = 6
+cores_number = 20
 datasets = ["oscarp", "query26", "stereomatch", "ligen"]
 
 """
@@ -157,75 +157,73 @@ for dataset in datasets:
             output_path = "./outputs/%s/bounds_%s/target_%s/only_true_max_%s/eps_greedy_%s/adaptive_%s/af_%s/threshold_%s" %(dataset, ml_bounds, ml_target, consider_only_true_max, epsilon_greedy, adaptive_method_kernel, af, threshold)
             generate_folder_structure(output_path)
 
-            if not os.path.exists(output_path + "/results.png"):
-            
-                for idx in range(len(lines)):
+            for idx in range(len(lines)):
 
-                    line = lines[idx]
+                line = lines[idx]
 
-                    if "  output_path: " in line:
-                        lines[idx] = "  output_path: " + output_path + "\n"
+                if "  output_path: " in line:
+                    lines[idx] = "  output_path: " + output_path + "\n"
 
-                    if "  acquisition_function: " in line:
-                        lines[idx] = "  acquisition_function: " + af + "\n"
+                if "  acquisition_function: " in line:
+                    lines[idx] = "  acquisition_function: " + af + "\n"
 
-                    if "  ml_on_bounds: " in line: 
+                if "  ml_on_bounds: " in line: 
 
-                        if ml_bounds == 'None':
-                            lines[idx] = "  ml_on_bounds: " + "False\n"
-                        else:
-                            lines[idx] = "  ml_on_bounds: " + "True\n"
+                    if ml_bounds == 'None':
+                        lines[idx] = "  ml_on_bounds: " + "False\n"
+                    else:
+                        lines[idx] = "  ml_on_bounds: " + "True\n"
 
-                    if "  ml_on_target: " in line: 
+                if "  ml_on_target: " in line: 
 
-                        if ml_target == 'None':
-                            lines[idx] = "  ml_on_target: " + "False\n"
-                        else:
-                            lines[idx] = "  ml_on_target: " + "True\n"
-                            
-                    if "  consider_max_only_on_feasible: " in line:
-                        lines[idx] = "  consider_max_only_on_feasible: " + str(consider_only_true_max) + "\n"
+                    if ml_target == 'None':
+                        lines[idx] = "  ml_on_target: " + "False\n"
+                    else:
+                        lines[idx] = "  ml_on_target: " + "True\n"
+                        
+                if "  consider_max_only_on_feasible: " in line:
+                    lines[idx] = "  consider_max_only_on_feasible: " + str(consider_only_true_max) + "\n"
 
-                    if "  epsilon_greedy: " in line:
-                        lines[idx] = "  epsilon_greedy: " + str(epsilon_greedy) + "\n"
+                if "  epsilon_greedy: " in line:
+                    lines[idx] = "  epsilon_greedy: " + str(epsilon_greedy) + "\n"
 
-                    if "  adaptive_method: " in line:
+                if "  adaptive_method: " in line:
 
-                        if adaptive_method_kernel == 'None':
-                            lines[idx] = "  adaptive_method: " + "False\n"
-                        else:
-                            lines[idx] = "  adaptive_method: " + "True\n"
+                    if adaptive_method_kernel == 'None':
+                        lines[idx] = "  adaptive_method: " + "False\n"
+                    else:
+                        lines[idx] = "  adaptive_method: " + "True\n"
 
-                    if "      initial_beta: " in line and af == "ucb" and dataset == "oscarp":
-                        if adaptive_method_kernel == "RBF":
-                            lines[idx] = "      initial_beta: " + str(40.0) + "\n"
-                        elif adaptive_method_kernel == "Matern":
-                            lines[idx] = "      initial_beta: " + str(1.0) + "\n"
+                if "      initial_beta: " in line and af == "ucb" and dataset == "oscarp":
+                    if adaptive_method_kernel == "RBF":
+                        lines[idx] = "      initial_beta: " + str(40.0) + "\n"
+                    elif adaptive_method_kernel == "Matern":
+                        lines[idx] = "      initial_beta: " + str(1.0) + "\n"
 
-                    if "    kernel: " in line and adaptive_method_kernel != 'None':
-                        lines[idx] = "    kernel: " + adaptive_method_kernel + "\n"
+                if "    kernel: " in line and adaptive_method_kernel != 'None':
+                    lines[idx] = "    kernel: " + adaptive_method_kernel + "\n"
 
-                    if "    ml_bounds: " in line:
-                        lines[idx] = "    ml_bounds: " + "[0, %s]" %threshold + "\n"
+                if "    ml_bounds: " in line:
+                    lines[idx] = "    ml_bounds: " + "[0, %s]" %threshold + "\n"
 
-                    if "    eic_bounds: " in line:
-                        lines[idx] = "    eic_bounds: " + "[0, %s]" %threshold + "\n"
+                if "    eic_bounds: " in line:
+                    lines[idx] = "    eic_bounds: " + "[0, %s]" %threshold + "\n"
 
-                    if "    ml_bounds_type: " in line:
-                        lines[idx] = "    ml_bounds_type: " + ml_bounds + "\n"
+                if "    ml_bounds_type: " in line:
+                    lines[idx] = "    ml_bounds_type: " + ml_bounds + "\n"
 
-                    if "    ml_target_type: " in line:
-                        lines[idx] = "    ml_target_type: " + ml_target + "\n"
+                if "    ml_target_type: " in line:
+                    lines[idx] = "    ml_target_type: " + ml_target + "\n"
 
-                output_name = "input_files/%s/" %dataset + test_file.split(".yaml")[0] + "_" + str(idx_setting) + ".yaml"
-                generate_folder_structure("./input_files/%s/" %dataset)
+            output_name = "input_files/%s/" %dataset + test_file.split(".yaml")[0] + "_" + str(idx_setting) + ".yaml"
+            generate_folder_structure("./input_files/%s/" %dataset)
 
-                with open(output_name, 'w') as file:
-                    file.writelines(lines)
+            with open(output_name, 'w') as file:
+                file.writelines(lines)
 
-                idx_setting += 1
+            idx_setting += 1
 
-                setting.append([ml_bounds, ml_target, consider_only_true_max, epsilon_greedy, adaptive_method_kernel, af, threshold, output_name])
+            setting.append([ml_bounds, ml_target, consider_only_true_max, epsilon_greedy, adaptive_method_kernel, af, threshold, output_name])
 
 
     print("You are testing %s different settings" %idx_setting)

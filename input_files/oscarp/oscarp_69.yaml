@@ -5,7 +5,7 @@ general_setting:
   repetitions: 30
   random_seed: True
   seeds: [0,1,2,3,4,5,6,7,8,9]
-  output_path: ./outputs/oscarp/bounds_indicator/target_sum/only_true_max_False/eps_greedy_False/adaptive_Matern/af_ucb/threshold_300
+  output_path: ./outputs/oscarp/bounds_indicator/target_sum/only_true_max_True/eps_greedy_False/adaptive_Matern/af_ucb/threshold_300
   delete_previous_output: True
   debug: False
   verbose: 0
@@ -24,7 +24,7 @@ acquisition_info:
   acquisition_function: ucb
   ml_on_bounds: True
   ml_on_target: True
-  consider_max_only_on_feasible: False
+  consider_max_only_on_feasible: True
   epsilon_greedy: False
   adaptive_method: True
   memory_queue_len: 19

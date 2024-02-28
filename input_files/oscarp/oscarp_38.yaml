@@ -5,7 +5,7 @@ general_setting:
   repetitions: 30
   random_seed: True
   seeds: [0,1,2,3,4,5,6,7,8,9]
-  output_path: ./outputs/oscarp/bounds_indicator/target_probability/only_true_max_True/eps_greedy_False/adaptive_RBF/af_ei/threshold_300
+  output_path: ./outputs/oscarp/bounds_indicator/target_indicator/only_true_max_False/eps_greedy_False/adaptive_Matern/af_ei/threshold_300
   delete_previous_output: True
   debug: False
   verbose: 0
@@ -24,7 +24,7 @@ acquisition_info:
   acquisition_function: ei
   ml_on_bounds: True
   ml_on_target: True
-  consider_max_only_on_feasible: True
+  consider_max_only_on_feasible: False
   epsilon_greedy: False
   adaptive_method: True
   memory_queue_len: 19
@@ -35,7 +35,7 @@ acquisition_info:
     ucb_af:
       initial_beta: 40.0
       beta_h: 10.0
-    kernel: RBF
+    kernel: Matern
     RBF_parameters:
       sigma_2: 0.025
       initial_l: 1.0
@@ -60,7 +60,7 @@ acquisition_info:
     ml_bounds_type: indicator
     ml_bounds_alpha: 0.579
   ml_on_target_parameters:
-    ml_target_type: probability
+    ml_target_type: indicator
     ml_target_alpha: 0.011
     indicator_parameters:
       coeff: [1.333, None]
