@@ -41,7 +41,7 @@ configurations_2 = [
 
 configurations_1 = []
 configurations_2 = []
-
+"""
 for ml_bounds in ['indicator', 'probability']:
     for ml_target in ['None', 'indicator', 'probability', 'sum', 'product']:
         for consider_only_true_max in [True, False]:
@@ -90,7 +90,27 @@ for ml_bounds in ['indicator', 'probability']:
                                          "af": 'eic'}
 
                         configurations_2.append(configuration_2)
-    
+"""
+# DiscreteBO test
+configurations_1.append(
+    {"ml_bounds": 'None', 
+     "ml_target": 'None', 
+     "consider_only_true_max": False, 
+     "epsilon_greedy": False, 
+     "adaptive_method_kernel": 'RBF', 
+     "af": 'ucb',
+     "is_DiscreteBO": True}
+)
+
+configurations_2.append(
+    {"ml_bounds": 'None', 
+     "ml_target": 'None', 
+     "consider_only_true_max": False, 
+     "epsilon_greedy": False, 
+     "adaptive_method_kernel": 'RBF', 
+     "af": 'ucb',
+     "is_DiscreteBO": True}
+)
 
 """
 thresholds = {
@@ -223,7 +243,12 @@ for dataset in datasets:
 
             idx_setting += 1
 
-            setting.append([ml_bounds, ml_target, consider_only_true_max, epsilon_greedy, adaptive_method_kernel, af, threshold, output_name])
+            if "is_DiscreteBO" in config:
+                is_DBO = config["is_DiscreteBO"]
+            else:
+                is_DBO = False
+
+            setting.append([ml_bounds, ml_target, consider_only_true_max, epsilon_greedy, adaptive_method_kernel, af, threshold, is_DBO, output_name])
 
 
     print("You are testing %s different settings" %idx_setting)
@@ -253,8 +278,8 @@ for dataset in datasets:
 
         for setting in settings:
 
-            result = setting[:-1]
-            res_sim = test_config(setting[-1])
+            result = setting[:-2]
+            res_sim = test_config(setting[-1], setting[-2])
             for elem in res_sim:
                 result.append(round(elem,3))
 
@@ -271,8 +296,8 @@ for dataset in datasets:
 
     for cc in range(cores_number):
         data = data + batch_results_parallel[cc] 
-
-    #process_batch(setting)
+    
+    #data = process_batch(setting)
 
 
     with open("%s.csv" %dataset, 'w', encoding='UTF8', newline='') as f:

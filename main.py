@@ -47,7 +47,7 @@ def variance(lst):
     return variance_val
 
 
-def main(yaml_file_path, print_res=True):
+def main(yaml_file_path, is_DBO=False, print_res=True):
     parsed_data = parse_yaml_file(yaml_file_path)
 
     n0 = parsed_data['general_setting']['num_initial_points']
@@ -163,10 +163,8 @@ def main(yaml_file_path, print_res=True):
 
     consider_max_only_on_feasible = False
 
-    if ml_on_bounds:
-        consider_max_only_on_feasible = parsed_data['acquisition_info']['consider_max_only_on_feasible']
+    if ml_on_bounds or is_DBO:
         acquisition_info['ml_target'] = parsed_data['acquisition_info']['ml_on_bounds_parameters']['ml_target']
-        acquisition_info['ml_bounds_alpha'] = parsed_data['acquisition_info']['ml_on_bounds_parameters']['ml_bounds_alpha']
 
         lb, ub = parsed_data['acquisition_info']['ml_on_bounds_parameters']['ml_bounds']
 
@@ -176,6 +174,10 @@ def main(yaml_file_path, print_res=True):
             ub = None
             
         acquisition_info['ml_bounds'] = (lb, ub)
+
+    if ml_on_bounds:
+        consider_max_only_on_feasible = parsed_data['acquisition_info']['consider_max_only_on_feasible']
+        acquisition_info['ml_bounds_alpha'] = parsed_data['acquisition_info']['ml_on_bounds_parameters']['ml_bounds_alpha']
 
         acquisition_info['ml_bounds_type'] = parsed_data['acquisition_info']['ml_on_bounds_parameters']['ml_bounds_type']
 
@@ -255,7 +257,7 @@ def main(yaml_file_path, print_res=True):
         
         durations.append(time.time() - start_time)
         
-        if ml_on_bounds:
+        if ml_on_bounds or is_DBO:
             obtained_max = evaluate_max(dataset, output_path+"/%s" %idx + "/results.csv", target_column, {acquisition_info['ml_target']: acquisition_info['ml_bounds']}, print_res)
         else:
             obtained_max = optimizer.max['target']
@@ -272,7 +274,10 @@ def main(yaml_file_path, print_res=True):
     if print_res:
         print("Average error: %s" %(round(100*(mean(results) - real_max)/real_max,2)) + "%\n")
 
-    print_final_results(output_path, real_max, n0)
+    if is_DBO:
+        print_final_results(output_path, real_max, n0, True, {acquisition_info['ml_target']: acquisition_info['ml_bounds']})
+    else:
+        print_final_results(output_path, real_max, n0)
 
     return 100*(mean(results) - real_max)/real_max, 100*sqrt(variance(results))/abs(real_max), 100*(mean(results_cleaned) - real_max)/(real_max), 100*sqrt(variance(results_cleaned))/abs(real_max), 100*len(results_cleaned)/repetitions, mean(durations)
 

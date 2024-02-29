@@ -804,7 +804,7 @@ def evaluate_max(original_dataset, results_dataset, target_name='', bounds={}, p
     return -np.inf
 
 
-def print_final_results(output_path, real_max, init_points):
+def print_final_results(output_path, real_max, init_points, is_DBO=False, bounds={}):
 
     repetitions_dir = os.listdir(output_path)
     repetitions = len(repetitions_dir)
@@ -829,7 +829,21 @@ def print_final_results(output_path, real_max, init_points):
 
             for row in reader:
 
-                if row[feasibility_index] == "True":
+                constraints_respected = True
+
+                if is_DBO:
+
+                    for key, value in bounds.items():
+
+                        lb, ub = value
+
+                        if float(row[target_index]) < lb or float(row[target_index]) > ub:
+                            constraints_respected = False
+
+                else:
+                    constraints_respected = row[feasibility_index]
+
+                if constraints_respected == "True":
                     if (float(row[target_index]) - real_max)/real_max < act_err:
                         act_err = (float(row[target_index]) - real_max)/real_max
 
