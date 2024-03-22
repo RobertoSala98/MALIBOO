@@ -804,13 +804,19 @@ def evaluate_max(original_dataset, results_dataset, target_name='', bounds={}, p
     return -np.inf
 
 
-def print_final_results(output_path, real_max, init_points, is_DBO=False, bounds={}):
+def print_final_results(output_path, real_max, init_points, is_DBO=False, bounds={}, dataset=''):
+
+    if os.path.exists(output_path + "/results.png"):
+        os.remove(output_path + "/results.png")
 
     repetitions_dir = os.listdir(output_path)
     repetitions = len(repetitions_dir)
 
     errors_ = []
     feasible_ = []
+
+    if is_DBO:
+        df = pd.read_csv(dataset)
    
     for dir in repetitions_dir:
 
@@ -829,7 +835,7 @@ def print_final_results(output_path, real_max, init_points, is_DBO=False, bounds
 
             for row in reader:
 
-                constraints_respected = True
+                constraints_respected = "True"
 
                 if is_DBO:
 
@@ -837,8 +843,8 @@ def print_final_results(output_path, real_max, init_points, is_DBO=False, bounds
 
                         lb, ub = value
 
-                        if float(row[target_index]) < lb or float(row[target_index]) > ub:
-                            constraints_respected = False
+                        if df[key].values[int(row[0])] < lb or df[key].values[int(row[0])] > ub:
+                            constraints_respected = "False"
 
                 else:
                     constraints_respected = row[feasibility_index]
@@ -864,7 +870,6 @@ def print_final_results(output_path, real_max, init_points, is_DBO=False, bounds
                 idx += 1
 
         errors_.append(errors)
-
 
     values_ = []
     found_first_not_inf = False
@@ -893,12 +898,130 @@ def print_final_results(output_path, real_max, init_points, is_DBO=False, bounds
 
     if found_first_not_inf:
         plt.plot([init_points-0.5, init_points-0.5], [0, first_not_inf], '--', color='red')
-
+    
     plt.xlabel('step number')
     plt.ylabel('Error [%]')
     plt.savefig(output_path + "/results.png")
     plt.close()
     
+    return
+
+
+def print_results_multiple_thresholds(output_path_, real_max_, init_points, is_DBO=False, bounds={}, dataset='', thresholds=[]):
+
+    if os.path.exists(output_path_ + "/results_multiple_thresholds.png"):
+        os.remove(output_path_ + "/results_multiple_thresholds.png")
+
+    colors = ['black', 'sienna', 'orange', 'green', 'deepskyblue', 'blue', 'darkviolet', 'magenta', 'darkgray', 'gold', 'darkred', 'cadetblue']
+
+    for threshold in thresholds:
+
+        real_max = real_max_[thresholds.index(threshold)]
+
+        output_path = output_path_ + "/threshold_%s" %threshold
+
+        repetitions_dir = os.listdir(output_path)
+        if "results.png" in repetitions_dir:
+            repetitions_dir.remove("results.png")
+        repetitions = len(repetitions_dir)
+
+        errors_ = []
+        feasible_ = []
+
+        if is_DBO:
+            df = pd.read_csv(dataset)
+    
+        for dir in repetitions_dir:
+
+            print("\n")
+
+            errors = []
+            
+            with open(output_path + "/" + dir + "/results.csv") as csvfile:
+                reader = csv.reader(csvfile)
+                header = next(reader)
+
+                target_index = header.index('target')
+                feasibility_index = header.index('feasible')
+                
+                act_err = np.inf
+
+                idx = 0
+
+                for row in reader:
+
+                    constraints_respected = "True"
+
+                    if is_DBO:
+
+                        for key, value in bounds.items():
+
+                            lb, ub = value
+                            ub = threshold
+
+                            if df[key].values[int(row[0])] < lb or df[key].values[int(row[0])] > ub:
+                                constraints_respected = "False"
+
+                    else:
+                        constraints_respected = row[feasibility_index]
+
+                    if constraints_respected == "True":
+
+                        if (float(row[target_index]) - real_max)/real_max < act_err:
+                            act_err = (float(row[target_index]) - real_max)/real_max
+
+                            if act_err < 0:
+                                print("The error computed is negative: " + str(100*act_err) + " %")
+                                import pdb; pdb.set_trace()
+                        
+                    errors.append(act_err)
+
+                    if len(feasible_) < idx:
+                        import pdb; pdb.set_trace()
+                    elif len(feasible_) == idx:
+                        feasible_.append(0)
+
+                    if act_err < np.inf:
+                        feasible_[idx] += 1/repetitions
+
+                    idx += 1
+
+            errors_.append(errors)
+
+        values_ = []
+        found_first_not_inf = False
+
+        for idx in range(init_points-1, len(feasible_)):
+
+            value = 0
+            non_inf = 0
+
+            for rep in range(repetitions):
+                
+                if errors_[rep][idx] != np.inf:
+                    value += errors_[rep][idx]
+                    non_inf += 1
+
+            if non_inf == 0:
+                values_.append(np.inf)
+            else:
+                values_.append(value/non_inf*100)
+                if not found_first_not_inf:
+                    found_first_not_inf = True
+                    first_not_inf = value/non_inf*100
+
+        plt.plot([ii for ii in range(init_points-1, len(feasible_))], values_, color=colors[thresholds.index(threshold)], linewidth=2, label="threshold: %s" %threshold) 
+        plt.scatter([ii for ii in range(init_points-1, len(feasible_))], values_, alpha=feasible_[init_points-1:len(feasible_)], color=colors[thresholds.index(threshold)], s=20)
+
+        if found_first_not_inf:
+            plt.plot([init_points-0.5, init_points-0.5], [0, first_not_inf], '--', color='red')
+        
+    plt.xlabel('step number')
+    plt.ylabel('Error [%]')
+    plt.legend(loc="best")
+    plt.savefig(output_path_ + "/results_multiple_thresholds.png")
+    plt.close()
+
     return
 
 

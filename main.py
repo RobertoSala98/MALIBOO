@@ -275,7 +275,7 @@ def main(yaml_file_path, is_DBO=False, print_res=True):
         print("Average error: %s" %(round(100*(mean(results) - real_max)/real_max,2)) + "%\n")
 
     if is_DBO:
-        print_final_results(output_path, real_max, n0, True, {acquisition_info['ml_target']: acquisition_info['ml_bounds']})
+        print_final_results(output_path, real_max, n0, True, {acquisition_info['ml_target']: acquisition_info['ml_bounds']}, dataset)
     else:
         print_final_results(output_path, real_max, n0)
 
@@ -283,6 +283,9 @@ def main(yaml_file_path, is_DBO=False, print_res=True):
 
 
 if __name__ == "__main__":
+
+    import pdb; pdb.set_trace()
+
     parser = argparse.ArgumentParser(description='Parse YAML file.')
     parser.add_argument('-f', '--file', type=str, help='Path to the YAML file', required=True)
     args = parser.parse_args()
@@ -296,4 +299,4 @@ if __name__ == "__main__":
     with open("%s_single.csv" %dataset, 'w', encoding='UTF8', newline='') as f:
         writer = csv.writer(f, delimiter=',')
         writer.writerow(header)
-        writer.writerows(data)  
+        writer.writerows(data)

@@ -5,44 +5,50 @@ import functools
 import os
 
 cores_number = 20
-datasets = ["oscarp", "query26", "stereomatch", "ligen"]
+datasets = ["stereomatch", "query26", "ligen"]
 
-"""
+
 configurations_1 = [
-    {"ml_bounds": "indicator", "ml_target": "None", "consider_only_true_max": False, "epsilon_greedy": False, "adaptive_method_kernel": "None", "af": "ei"},          # maliboo
-    {"ml_bounds": "probability", "ml_target": "None", "consider_only_true_max": False, "epsilon_greedy": False, "adaptive_method_kernel": "None", "af": "ei"},
-    {"ml_bounds": "indicator", "ml_target": "indicator", "consider_only_true_max": False, "epsilon_greedy": False, "adaptive_method_kernel": "None", "af": "ei"},
-    {"ml_bounds": "indicator", "ml_target": "probability", "consider_only_true_max": False, "epsilon_greedy": False, "adaptive_method_kernel": "None", "af": "ei"},
-    {"ml_bounds": "indicator", "ml_target": "sum", "consider_only_true_max": False, "epsilon_greedy": False, "adaptive_method_kernel": "None", "af": "ei"},
-    {"ml_bounds": "indicator", "ml_target": "product", "consider_only_true_max": False, "epsilon_greedy": False, "adaptive_method_kernel": "None", "af": "ei"},
-    {"ml_bounds": "indicator", "ml_target": "None", "consider_only_true_max": True, "epsilon_greedy": False, "adaptive_method_kernel": "None", "af": "ei"},
-    {"ml_bounds": "indicator", "ml_target": "None", "consider_only_true_max": False, "epsilon_greedy": True, "adaptive_method_kernel": "None", "af": "ei"},
-    {"ml_bounds": "indicator", "ml_target": "None", "consider_only_true_max": False, "epsilon_greedy": False, "adaptive_method_kernel": "RBF", "af": "ucb"},       # DiscreteBO            
-    {"ml_bounds": "indicator", "ml_target": "None", "consider_only_true_max": False, "epsilon_greedy": False, "adaptive_method_kernel": "Matern", "af": "ucb"},
-    {"ml_bounds": "indicator", "ml_target": "None", "consider_only_true_max": False, "epsilon_greedy": False, "adaptive_method_kernel": "RBF", "af": "ei"},          
-    {"ml_bounds": "indicator", "ml_target": "None", "consider_only_true_max": False, "epsilon_greedy": False, "adaptive_method_kernel": "Matern", "af": "ei"}
+    {"ml_bounds": "probability", "ml_target": "product", "consider_only_true_max": False, "epsilon_greedy": False, "adaptive_method_kernel": "Matern", "af": "ei"},
+    {"ml_bounds": "probability", "ml_target": "product", "consider_only_true_max": True, "epsilon_greedy": False, "adaptive_method_kernel": "Matern", "af": "ei"},
+    {"ml_bounds": "probability", "ml_target": "sum", "consider_only_true_max": True, "epsilon_greedy": False, "adaptive_method_kernel": "Matern", "af": "ei"},
+    {"ml_bounds": "indicator", "ml_target": "product", "consider_only_true_max": True, "epsilon_greedy": True, "adaptive_method_kernel": "Matern", "af": "ei"},
+    {"ml_bounds": "indicator", "ml_target": "sum", "consider_only_true_max": False, "epsilon_greedy": True, "adaptive_method_kernel": "None", "af": "ei"},
+    {"ml_bounds": "probability", "ml_target": "sum", "consider_only_true_max": False, "epsilon_greedy": False, "adaptive_method_kernel": "Matern", "af": "ei"},
+    {"ml_bounds": "probability", "ml_target": "probability", "consider_only_true_max": False, "epsilon_greedy": False, "adaptive_method_kernel": "Matern", "af": "ei"},
+    {"ml_bounds": "indicator", "ml_target": "sum", "consider_only_true_max": False, "epsilon_greedy": True, "adaptive_method_kernel": "Matern", "af": "ei"},
+    {"ml_bounds": "probability", "ml_target": "probability", "consider_only_true_max": True, "epsilon_greedy": True, "adaptive_method_kernel": "None", "af": "ei"},
+    {"ml_bounds": "probability", "ml_target": "product", "consider_only_true_max": True, "epsilon_greedy": False, "adaptive_method_kernel": "None", "af": "ei"},
+    {"ml_bounds": "indicator", "ml_target": "sum", "consider_only_true_max": False, "epsilon_greedy": False, "adaptive_method_kernel": "None", "af": "ei"},      
+    {"ml_bounds": "indicator", "ml_target": "indicator", "consider_only_true_max": False, "epsilon_greedy": True, "adaptive_method_kernel": "None", "af": "ei"},      
+    {"ml_bounds": "indicator", "ml_target": "sum", "consider_only_true_max": False, "epsilon_greedy": False, "adaptive_method_kernel": "RBF", "af": "ucb"},         
+    {"ml_bounds": "indicator", "ml_target": "None", "consider_only_true_max": False, "epsilon_greedy": False, "adaptive_method_kernel": "None", "af": "ei"},                        # maliboo
+    {"ml_bounds": "None", "ml_target": "None", "consider_only_true_max": False, "epsilon_greedy": False, "adaptive_method_kernel": "RBF", "af": "ucb", "is_DiscreteBO": True}       # discreteBO
 ]
 
 configurations_2 = [
-    {"ml_bounds": "indicator", "ml_target": "None", "consider_only_true_max": False, "epsilon_greedy": False, "adaptive_method_kernel": "None", "af": "eic"},          # maliboo
-    {"ml_bounds": "probability", "ml_target": "None", "consider_only_true_max": False, "epsilon_greedy": False, "adaptive_method_kernel": "None", "af": "eic"},
-    {"ml_bounds": "indicator", "ml_target": "indicator", "consider_only_true_max": False, "epsilon_greedy": False, "adaptive_method_kernel": "None", "af": "eic"},
-    {"ml_bounds": "indicator", "ml_target": "probability", "consider_only_true_max": False, "epsilon_greedy": False, "adaptive_method_kernel": "None", "af": "eic"},
-    {"ml_bounds": "indicator", "ml_target": "sum", "consider_only_true_max": False, "epsilon_greedy": False, "adaptive_method_kernel": "None", "af": "eic"},
-    {"ml_bounds": "indicator", "ml_target": "product", "consider_only_true_max": False, "epsilon_greedy": False, "adaptive_method_kernel": "None", "af": "eic"},
-    {"ml_bounds": "indicator", "ml_target": "None", "consider_only_true_max": True, "epsilon_greedy": False, "adaptive_method_kernel": "None", "af": "eic"},
-    {"ml_bounds": "indicator", "ml_target": "None", "consider_only_true_max": False, "epsilon_greedy": True, "adaptive_method_kernel": "None", "af": "eic"},
-    {"ml_bounds": "indicator", "ml_target": "None", "consider_only_true_max": False, "epsilon_greedy": False, "adaptive_method_kernel": "RBF", "af": "ucb"},       # DiscreteBO            
-    {"ml_bounds": "indicator", "ml_target": "None", "consider_only_true_max": False, "epsilon_greedy": False, "adaptive_method_kernel": "Matern", "af": "ucb"},
-    {"ml_bounds": "indicator", "ml_target": "None", "consider_only_true_max": False, "epsilon_greedy": False, "adaptive_method_kernel": "RBF", "af": "eic"},          
-    {"ml_bounds": "indicator", "ml_target": "None", "consider_only_true_max": False, "epsilon_greedy": False, "adaptive_method_kernel": "Matern", "af": "eic"}
+    {"ml_bounds": "probability", "ml_target": "product", "consider_only_true_max": False, "epsilon_greedy": False, "adaptive_method_kernel": "Matern", "af": "eic"},
+    {"ml_bounds": "probability", "ml_target": "product", "consider_only_true_max": True, "epsilon_greedy": False, "adaptive_method_kernel": "Matern", "af": "eic"},
+    {"ml_bounds": "probability", "ml_target": "sum", "consider_only_true_max": True, "epsilon_greedy": False, "adaptive_method_kernel": "Matern", "af": "eic"},
+    {"ml_bounds": "indicator", "ml_target": "product", "consider_only_true_max": True, "epsilon_greedy": True, "adaptive_method_kernel": "Matern", "af": "eic"},
+    {"ml_bounds": "indicator", "ml_target": "sum", "consider_only_true_max": False, "epsilon_greedy": True, "adaptive_method_kernel": "None", "af": "eic"},
+    {"ml_bounds": "probability", "ml_target": "sum", "consider_only_true_max": False, "epsilon_greedy": False, "adaptive_method_kernel": "Matern", "af": "eic"},
+    {"ml_bounds": "probability", "ml_target": "probability", "consider_only_true_max": False, "epsilon_greedy": False, "adaptive_method_kernel": "Matern", "af": "eic"},
+    {"ml_bounds": "indicator", "ml_target": "sum", "consider_only_true_max": False, "epsilon_greedy": True, "adaptive_method_kernel": "Matern", "af": "eic"},
+    {"ml_bounds": "probability", "ml_target": "probability", "consider_only_true_max": True, "epsilon_greedy": True, "adaptive_method_kernel": "None", "af": "eic"},
+    {"ml_bounds": "probability", "ml_target": "product", "consider_only_true_max": True, "epsilon_greedy": False, "adaptive_method_kernel": "None", "af": "eic"},
+    {"ml_bounds": "indicator", "ml_target": "sum", "consider_only_true_max": False, "epsilon_greedy": False, "adaptive_method_kernel": "None", "af": "eic"},      
+    {"ml_bounds": "indicator", "ml_target": "indicator", "consider_only_true_max": False, "epsilon_greedy": True, "adaptive_method_kernel": "None", "af": "eic"},      
+    {"ml_bounds": "indicator", "ml_target": "sum", "consider_only_true_max": False, "epsilon_greedy": False, "adaptive_method_kernel": "RBF", "af": "ucb"},         
+    {"ml_bounds": "indicator", "ml_target": "None", "consider_only_true_max": False, "epsilon_greedy": False, "adaptive_method_kernel": "None", "af": "eic"},                        # maliboo
+    {"ml_bounds": "None", "ml_target": "None", "consider_only_true_max": False, "epsilon_greedy": False, "adaptive_method_kernel": "RBF", "af": "ucb", "is_DiscreteBO": True}       # discreteBO
 ]
-"""
 
+"""
 configurations_1 = []
 configurations_2 = []
-"""
-for ml_bounds in ['indicator', 'probability']:
+
+for ml_bounds in ['None']:
     for ml_target in ['None', 'indicator', 'probability', 'sum', 'product']:
         for consider_only_true_max in [True, False]:
             for epsilon_greedy in [True, False]:
@@ -91,6 +97,7 @@ for ml_bounds in ['indicator', 'probability']:
 
                         configurations_2.append(configuration_2)
 """
+"""
 # DiscreteBO test
 configurations_1.append(
     {"ml_bounds": 'None', 
@@ -111,22 +118,21 @@ configurations_2.append(
      "af": 'ucb',
      "is_DiscreteBO": True}
 )
+"""
 
-"""
 thresholds = {
-    "oscarp": [60, 150, 300, 450, 600],
-    "query26": [185000, 195000, 205000, 215000, 225000],
-    "stereomatch": [9500, 11000, 12500, 14000, 15500, 17000, 18500, 20000, 25000, 30000, 35000, 40000, 45000, 50000, 55000, 60000, 65000, 70000, 75000],
-    "ligen": [1.999, 2.05, 2.10, 2.15, 2.2, 2.3, 2.4, 2.5, 2.6, 2.7]
-}
-"""
-thresholds = {
-    "oscarp": [300],            # 300
-    "query26": [205000],        # 205000
-    "stereomatch": [17000],     # 17000
-    "ligen": [2.1]              # 2.1
+    "oscarp": [65, 150, 300, 450, 600],
+    "query26": [185000, 205000, 225000, 245000],
+    "stereomatch": [6000, 8000, 10000, 12000, 17000, 20000, 40000],
+    "ligen": [1.9, 2.0, 2.1, 2.2, 2.45, 2.75]
 }
 
+maximum = {
+    "oscarp": [-0.174361111, -0.174361111, -0.174361111, -0.174361111, -0.174361111],
+    "query26": [-4356300.0, -4079658.0, -4022118.0, -683682.0],
+    "stereomatch": [-62810.0, -50776.0, -45525.0, -40196.0, -40196.0, -37412.0, -36791.0],
+    "ligen": [-881.258448995863, -567.312555400384, -567.312555400384, -464.349441178703, -424.355184049556, -340.099251789615]
+}
 
 def generate_folder_structure(path):
 
@@ -183,6 +189,9 @@ for dataset in datasets:
 
                 if "  output_path: " in line:
                     lines[idx] = "  output_path: " + output_path + "\n"
+
+                if "  max: " in line:
+                    lines[idx] = "  max: " + str(maximum[dataset][thresholds[dataset].index(threshold)]) + "\n"
 
                 if "  acquisition_function: " in line:
                     lines[idx] = "  acquisition_function: " + af + "\n"
@@ -253,7 +262,6 @@ for dataset in datasets:
 
     print("You are testing %s different settings" %idx_setting)
 
-
     def split_list(input_list, num_chunks):
         
         avg_chunk_size = len(input_list) // num_chunks
@@ -300,7 +308,7 @@ for dataset in datasets:
     #data = process_batch(setting)
 
 
-    with open("%s.csv" %dataset, 'w', encoding='UTF8', newline='') as f:
+    with open("%s_multi_threshold.csv" %dataset, 'w', encoding='UTF8', newline='') as f:
         writer = csv.writer(f, delimiter=',')
         writer.writerow(header)
-        writer.writerows(data)  
+        writer.writerows(data)
