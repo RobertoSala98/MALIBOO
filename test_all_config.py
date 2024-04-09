@@ -5,7 +5,7 @@ import functools
 import os
 
 cores_number = 20
-datasets = ["stereomatch", "query26", "ligen"]
+datasets = ["oscarp"]
 
 
 configurations_1 = [

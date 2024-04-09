@@ -1,6 +1,6 @@
 from maliboo.util import print_results_multiple_thresholds
 
-datasets_name = ["stereomatch", "query26", "ligen"]
+datasets_name = ["oscarp", "stereomatch", "query26", "ligen"]
 
 configurations_1 = [
     {"ml_bounds": "probability", "ml_target": "product", "consider_only_true_max": False, "epsilon_greedy": False, "adaptive_method_kernel": "Matern", "af": "ei"},

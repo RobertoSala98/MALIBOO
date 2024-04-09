@@ -600,29 +600,15 @@ class BayesianOptimization(Observable):
         if dataset is None:
             raise ValueError("dataset is empty in get_approximation()")
 
-        min_distance = None
-        approximations = []
-        approximations_idxs = []
-
-        dataset_np = dataset.values  # recover numpy array for faster looping over rows
         idx_cols = [dataset.columns.get_loc(c) for c in dataset.columns if c in dataset and c != self._space.target_column]  # works even if target col is None
-        for idx in range(dataset_np.shape[0]):
-            row = dataset_np[idx, idx_cols]
-            dist = np.linalg.norm(x_probe - row, 2)
-            if min_distance is None or dist <= min_distance:
-                if dist == min_distance:
-                    # One of the tied best approximations
-                    approximations.append(row)
-                    approximations_idxs.append(dataset.index[idx])
-                else:
-                    # The one new best approximation
-                    min_distance = dist
-                    approximations = [row]
-                    approximations_idxs = [dataset.index[idx]]
+        
+        domain = dataset.iloc[:, idx_cols].to_numpy()
+        distances = np.linalg.norm(domain - x_probe, axis=1)
+        min_value = np.min(distances)
+        min_indices = np.where(distances == min_value)[0]
+        x_idx = np.random.choice(min_indices)
 
-        # If multiple, choose randomly
-        ret_idx = self._random_state.randint(0, len(approximations_idxs))
-        return approximations_idxs[ret_idx], approximations[ret_idx]
+        return x_idx, min_value
 
 
     def save_res_to_csv(self, file_path):
