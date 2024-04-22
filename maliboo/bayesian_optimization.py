@@ -608,7 +608,7 @@ class BayesianOptimization(Observable):
         min_indices = np.where(distances == min_value)[0]
         x_idx = np.random.choice(min_indices)
 
-        return x_idx, min_value
+        return x_idx, domain[x_idx]
 
 
     def save_res_to_csv(self, file_path):
