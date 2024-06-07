@@ -5,11 +5,11 @@ general_setting:
   repetitions: 30
   random_seed: True
   seeds: [0,1,2,3,4,5,6,7,8,9]
-  output_path: ./outputs/stereomatch/bounds_indicator/target_product/only_true_max_False/eps_greedy_True/adaptive_None/af_eic/threshold_17000
+  output_path: ./outputs/stereomatch/bounds_probability/target_indicator/only_true_max_True/eps_greedy_True/adaptive_None/af_eic/threshold_40000
   delete_previous_output: True
   debug: False
   verbose: 0
-  max: -40196
+  max: -36791.0
 optimizer:
   f: None
   pbounds: ["confidence", "hypo_step", "max_arm_length", "num_threads"]
@@ -24,7 +24,7 @@ acquisition_info:
   acquisition_function: eic
   ml_on_bounds: True
   ml_on_target: True
-  consider_max_only_on_feasible: False
+  consider_max_only_on_feasible: True
   epsilon_greedy: True
   adaptive_method: False
   memory_queue_len: 63
@@ -45,7 +45,7 @@ acquisition_info:
       nu_h: 10.0
   eic:
     eic_ml_var: "C"
-    eic_bounds: [0, 17000]
+    eic_bounds: [0, 40000]
     eic_P_function: 
       parameters:
         - x
@@ -55,12 +55,12 @@ acquisition_info:
     eic_ml_exp_B: None
   ml_on_bounds_parameters:
     ml_target: "time"
-    ml_bounds: [0, 17000]
+    ml_bounds: [0, 40000]
     ml_bounds_coeff: [0.9, None]
-    ml_bounds_type: indicator
+    ml_bounds_type: probability
     ml_bounds_alpha: 0.026
   ml_on_target_parameters:
-    ml_target_type: product
+    ml_target_type: indicator
     ml_target_alpha: 0.025
     indicator_parameters:
       coeff: [1.333, None]

@@ -5,11 +5,11 @@ general_setting:
   repetitions: 30
   random_seed: True
   seeds: [0,1,2,3,4,5,6,7,8,9]
-  output_path: ./outputs/stereomatch/bounds_indicator/target_sum/only_true_max_False/eps_greedy_True/adaptive_Matern/af_eic/threshold_17000
+  output_path: ./outputs/stereomatch/bounds_indicator/target_None/only_true_max_True/eps_greedy_False/adaptive_Matern/af_ucb/threshold_12000
   delete_previous_output: True
   debug: False
   verbose: 0
-  max: -40196
+  max: -40196.0
 optimizer:
   f: None
   pbounds: ["confidence", "hypo_step", "max_arm_length", "num_threads"]
@@ -21,11 +21,11 @@ stopping_criteria:
   hard_stop: False
   conjunction: "or"
 acquisition_info:
-  acquisition_function: eic
+  acquisition_function: ucb
   ml_on_bounds: True
-  ml_on_target: True
-  consider_max_only_on_feasible: False
-  epsilon_greedy: True
+  ml_on_target: False
+  consider_max_only_on_feasible: True
+  epsilon_greedy: False
   adaptive_method: True
   memory_queue_len: 63
   relaxation: False
@@ -45,7 +45,7 @@ acquisition_info:
       nu_h: 10.0
   eic:
     eic_ml_var: "C"
-    eic_bounds: [0, 17000]
+    eic_bounds: [0, 12000]
     eic_P_function: 
       parameters:
         - x
@@ -55,12 +55,12 @@ acquisition_info:
     eic_ml_exp_B: None
   ml_on_bounds_parameters:
     ml_target: "time"
-    ml_bounds: [0, 17000]
+    ml_bounds: [0, 12000]
     ml_bounds_coeff: [0.9, None]
     ml_bounds_type: indicator
     ml_bounds_alpha: 0.026
   ml_on_target_parameters:
-    ml_target_type: sum
+    ml_target_type: None
     ml_target_alpha: 0.025
     indicator_parameters:
       coeff: [1.333, None]

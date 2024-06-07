@@ -11,6 +11,8 @@ scratch/
 *.svg
 gif/
 output*
+input_files/
+*.csv
 
 # Unit test / coverage reports
 htmlcov/

@@ -1,5 +1,5 @@
 general_setting:
-  num_initial_points: 9
+  num_initial_points: 3
   initial_points: []
   num_iterations: 10
   repetitions: 30

@@ -284,8 +284,6 @@ def main(yaml_file_path, is_DBO=False, print_res=True):
 
 if __name__ == "__main__":
 
-    import pdb; pdb.set_trace()
-
     parser = argparse.ArgumentParser(description='Parse YAML file.')
     parser.add_argument('-f', '--file', type=str, help='Path to the YAML file', required=True)
     args = parser.parse_args()
