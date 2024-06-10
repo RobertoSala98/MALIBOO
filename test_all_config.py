@@ -164,7 +164,7 @@ for dataset in datasets:
         for ml_target in ['None', 'indicator', 'probability', 'sum', 'product']:
             for consider_only_true_max in [True]:
                 for epsilon_greedy in [True, False]:
-                    for adaptive_method_kernel in ['None']:
+                    for adaptive_method_kernel in ['None', 'Matern', 'RBF']:
 
                         if adaptive_method_kernel != 'None':
                             for af in ['ei', 'ucb']:
