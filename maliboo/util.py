@@ -180,7 +180,7 @@ def acq_max(ac, gp, y_max, bounds, random_state, n_warmup=10000, n_iter=10, data
                         constraints.append({'type': 'ineq', 'fun': lambda x: x[1] - 0.5})
                         constraints.append({'type': 'ineq', 'fun': lambda x: adaptive_method_parameters["nu_h"] - x[1]})
                     
-                    result = result = minimize(f, x0, constraints=constraints)       
+                    result = minimize(f, x0, constraints=constraints)       
                     optimal_values = result.x
                     #adaptive_method_parameters["beta"] = optimal_values[0]
                     adaptive_method_parameters["beta"] = max(optimal_values[0], adaptive_method_parameters["beta"] + 1e-10)
@@ -329,7 +329,7 @@ def acq_max(ac, gp, y_max, bounds, random_state, n_warmup=10000, n_iter=10, data
 
     for x_try in x_seeds:
         # Find the minimum of minus the acquisition function
-        res = minimize(lambda x: -ac(x.reshape(1, -1), gp=gp, y_max=y_max),
+        res = minimize(lambda x: -ac(x.reshape(1, -1), gp=gp, y_max=y_max, iter_num=iter_num, at_least_one_feasible_found=at_least_one_feasible_found),
                        x_try.reshape(1, -1),
                        bounds=bounds,
                        method="L-BFGS-B")
