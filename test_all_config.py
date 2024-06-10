@@ -49,7 +49,7 @@ for dataset in datasets:
         "ligen": [-881.258448995863, -567.312555400384, -567.312555400384, -464.349441178703, -424.355184049556, -340.099251789615]
     }
 
-    configurations = [
+    configurations_ablation = [
         {"ml_bounds": "indicator", "ml_target": "None", "consider_only_true_max": True, "epsilon_greedy": False, "adaptive_method_kernel": "None", "af": "ei"},                        # maliboo
         {"ml_bounds": "probability", "ml_target": "None", "consider_only_true_max": True, "epsilon_greedy": False, "adaptive_method_kernel": "None", "af": "ei"},
         {"ml_bounds": "indicator", "ml_target": "indicator", "consider_only_true_max": True, "epsilon_greedy": False, "adaptive_method_kernel": "None", "af": "ei"},
@@ -64,7 +64,7 @@ for dataset in datasets:
         {"ml_bounds": "indicator", "ml_target": "None", "consider_only_true_max": True, "epsilon_greedy": False, "adaptive_method_kernel": "Matern", "af": "ei"}
     ]
 
-    for config in configurations:
+    for config in configurations_ablation:
         for threshold in thresholds[dataset]:
 
             ml_bounds = config["ml_bounds"]
@@ -160,6 +160,8 @@ for dataset in datasets:
     # Study of the best configuration on a single threshold
     configurations = []
 
+    count = 0
+
     for ml_bounds in ['indicator', 'probability']:
         for ml_target in ['None', 'indicator', 'probability', 'sum', 'product']:
             for consider_only_true_max in [True]:
@@ -175,8 +177,11 @@ for dataset in datasets:
                                                 "epsilon_greedy": epsilon_greedy, 
                                                 "adaptive_method_kernel": adaptive_method_kernel, 
                                                 "af": af}
-
-                                configurations.append(configuration_1)
+                                
+                                if configuration_1 not in configurations_ablation:
+                                    configurations.append(configuration_1)
+                                else:
+                                    count += 1
                             
                         else:
                             configuration_1 = {"ml_bounds": ml_bounds, 
@@ -185,19 +190,11 @@ for dataset in datasets:
                                             "epsilon_greedy": epsilon_greedy, 
                                             "adaptive_method_kernel": adaptive_method_kernel, 
                                             "af": 'ei'}
-
-                            configurations.append(configuration_1)
-
-    # DiscreteBO test
-    configurations.append(
-        {"ml_bounds": 'None', 
-        "ml_target": 'None', 
-        "consider_only_true_max": True, 
-        "epsilon_greedy": False, 
-        "adaptive_method_kernel": 'RBF', 
-        "af": 'ucb',
-        "is_DiscreteBO": True}
-    )
+                        
+                            if configuration_1 not in configurations_ablation:
+                                configurations.append(configuration_1)
+                            else:
+                                count += 1
 
     thresholds = {
         "oscarp": [300],
@@ -305,9 +302,6 @@ for dataset in datasets:
                 is_DBO = False
 
             setting.append([ml_bounds, ml_target, consider_only_true_max, epsilon_greedy, adaptive_method_kernel, af, threshold, is_DBO, output_name])
-
-
-
 
     print("You are testing %s different settings" %idx_setting)
 
