@@ -5,7 +5,7 @@ import functools
 import os
 
 cores_number = 20
-datasets = ["oscarp", "query26"]
+datasets = ["ligen"]
 
 def generate_folder_structure(path):
 
@@ -338,7 +338,7 @@ for dataset in datasets:
 
         return results
 
-    
+    """
     with Pool(processes = cores_number) as pool:
 
         partial_gp = functools.partial(process_batch)
@@ -347,8 +347,8 @@ for dataset in datasets:
 
     for cc in range(cores_number):
         data = data + batch_results_parallel[cc] 
-    
-    #data = process_batch(setting)
+    """
+    data = process_batch(setting)
 
 
     with open("%s_multi_threshold.csv" %dataset, 'w', encoding='UTF8', newline='') as f:

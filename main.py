@@ -8,6 +8,12 @@ import numpy as np
 from math import sqrt
 import time
 import csv
+from multiprocessing import Pool
+import functools
+import os
+
+
+cores_number = 20
 
 
 def parse_yaml_file(file_path):
@@ -47,7 +53,64 @@ def variance(lst):
     return variance_val
 
 
-def main(yaml_file_path, is_DBO=False, print_res=True):
+def single_simulation(f, pbounds, dataset, target_column, output_path, debug, verbose, init_points, n0, n_iter, acq, ml_on_bounds, ml_on_target, epsilon_greedy, adaptive_method, 
+                      memory_queue_len, acquisition_info, stopping_criteria, relaxation, consider_max_only_on_feasible, is_DBO, print_res, real_max, seeds, seed):
+    
+    idx = seeds.index(seed)
+
+    if os.path.isfile(output_path+"/%s" %idx + "/results.csv"):
+
+        result = evaluate_max(dataset, output_path+"/%s" %idx + "/results.csv", target_column, {acquisition_info['ml_target']: acquisition_info['ml_bounds']})
+        duration = -1.0
+
+    else:
+    
+        start_time = time.time()
+
+        optimizer = BO(f=f, 
+                    pbounds=pbounds,
+                    dataset=dataset, 
+                    target_column=target_column,
+                    random_state=seed, 
+                    output_path=output_path+"/%s" %idx, 
+                    debug=debug,
+                    verbose=verbose)
+        
+        if init_points != None:
+            optimizer.add_initial_points(init_points)
+        
+        optimizer.maximize(init_points=n0, 
+                            n_iter=n_iter, 
+                            acq=acq,
+                            ml_on_bounds=ml_on_bounds, 
+                            ml_on_target=ml_on_target,
+                            epsilon_greedy=epsilon_greedy,
+                            adaptive_method=adaptive_method,
+                            memory_queue_len=memory_queue_len, 
+                            acq_info=acquisition_info,
+                            stop_crit_info=stopping_criteria, 
+                            relaxation=relaxation,
+                            consider_max_only_on_feasible=consider_max_only_on_feasible)
+        
+        duration = time.time() - start_time
+        
+        if ml_on_bounds or is_DBO:
+            obtained_max = evaluate_max(dataset, output_path+"/%s" %idx + "/results.csv", target_column, {acquisition_info['ml_target']: acquisition_info['ml_bounds']}, print_res)
+        else:
+            obtained_max = optimizer.max['target']
+
+        if print_res:
+            #print("\nObtained min: " + str(round(-obtained_max,2)))
+            #print("Real min: " + str(round(-real_max,2)))
+            print("Error: " + str(round(100*(obtained_max - real_max)/real_max,2)) + " %%, Time: %s sec\n" %duration)
+
+        result = obtained_max
+
+    return result, duration
+
+
+def main(yaml_file_path, is_DBO=False, print_res=True, is_single_sim=False):
+
     parsed_data = parse_yaml_file(yaml_file_path)
 
     n0 = parsed_data['general_setting']['num_initial_points']
@@ -163,6 +226,9 @@ def main(yaml_file_path, is_DBO=False, print_res=True):
 
     consider_max_only_on_feasible = False
 
+    if adaptive_method and ml_on_bounds == False:
+        is_DBO = True
+
     if ml_on_bounds or is_DBO:
         acquisition_info['ml_target'] = parsed_data['acquisition_info']['ml_on_bounds_parameters']['ml_target']
 
@@ -222,55 +288,39 @@ def main(yaml_file_path, is_DBO=False, print_res=True):
     results = []
     durations = []
 
-    for idx in range(len(seeds)):
+    if is_single_sim:
 
-        seed = seeds[idx]
+        with Pool(processes = cores_number) as pool:
 
-        print("\nSimulation %s out of %s, Seed: %s\n" %(idx+1,len(seeds),seed))
+            partial_gp = functools.partial(single_simulation,
+                                           f, pbounds, dataset, target_column, output_path, debug, verbose, init_points, n0, n_iter, acq, ml_on_bounds, ml_on_target, 
+                                           epsilon_greedy, adaptive_method, memory_queue_len, acquisition_info, stopping_criteria, relaxation, consider_max_only_on_feasible, is_DBO, 
+                                           print_res, real_max, seeds)
+                
+            batch_results_parallel = pool.map(partial_gp, seeds)
 
-        start_time = time.time()
+        for cc in range(cores_number):
+            results.append(batch_results_parallel[cc][0])
+            durations.append(batch_results_parallel[cc][1])
 
-        optimizer = BO(f=f, 
-                    pbounds=pbounds,
-                    dataset=dataset, 
-                    target_column=target_column,
-                    random_state=seed, 
-                    output_path=output_path+"/%s" %idx, 
-                    debug=debug,
-                    verbose=verbose)
-        
-        if init_points != None:
-            optimizer.add_initial_points(init_points)
-        
-        optimizer.maximize(init_points=n0, 
-                           n_iter=n_iter, 
-                           acq=acq,
-                           ml_on_bounds=ml_on_bounds, 
-                           ml_on_target=ml_on_target,
-                           epsilon_greedy=epsilon_greedy,
-                           adaptive_method=adaptive_method,
-                           memory_queue_len=memory_queue_len, 
-                           acq_info=acquisition_info,
-                           stop_crit_info=stopping_criteria, 
-                           relaxation=relaxation,
-                           consider_max_only_on_feasible=consider_max_only_on_feasible)
-        
-        durations.append(time.time() - start_time)
-        
-        if ml_on_bounds or is_DBO:
-            obtained_max = evaluate_max(dataset, output_path+"/%s" %idx + "/results.csv", target_column, {acquisition_info['ml_target']: acquisition_info['ml_bounds']}, print_res)
-        else:
-            obtained_max = optimizer.max['target']
+    else:
 
-        if print_res:
-            #print("\nObtained min: " + str(round(-obtained_max,2)))
-            #print("Real min: " + str(round(-real_max,2)))
-            print("Error: " + str(round(100*(obtained_max - real_max)/real_max,2)) + " %%, Time: %s sec\n" %durations[-1])
+        for idx in range(len(seeds)):
 
-        results.append(obtained_max)
+            seed = seeds[idx]
+            print("\nSimulation %s out of %s, Seed: %s\n" %(idx+1,len(seeds),seed))
+
+            result, duration = single_simulation(f, pbounds, dataset, target_column, output_path, debug, verbose, init_points, n0, n_iter, acq, ml_on_bounds, ml_on_target, 
+                                                epsilon_greedy, adaptive_method, memory_queue_len, acquisition_info, stopping_criteria, relaxation, consider_max_only_on_feasible, is_DBO, 
+                                                print_res, real_max, seeds, seed)
+
+            results.append(result)
+            durations.append(duration)
+
+        os.system("mv %s %s" %(yaml_file_path, yaml_file_path[:-5]+"_done.yaml"))
 
     results_cleaned = [x for x in results if x != float('inf') and x != float('-inf')]
-
+    
     if print_res:
         print("Average error: %s" %(round(100*(mean(results) - real_max)/real_max,2)) + "%\n")
 
@@ -278,7 +328,7 @@ def main(yaml_file_path, is_DBO=False, print_res=True):
         print_final_results(output_path, real_max, n0, True, {acquisition_info['ml_target']: acquisition_info['ml_bounds']}, dataset)
     else:
         print_final_results(output_path, real_max, n0)
-
+    
     return 100*(mean(results) - real_max)/real_max, 100*sqrt(variance(results))/abs(real_max), 100*(mean(results_cleaned) - real_max)/(real_max), 100*sqrt(variance(results_cleaned))/abs(real_max), 100*len(results_cleaned)/repetitions, mean(durations)
 
 
@@ -288,7 +338,7 @@ if __name__ == "__main__":
     parser.add_argument('-f', '--file', type=str, help='Path to the YAML file', required=True)
     args = parser.parse_args()
 
-    avg_res, stddev_res, avg_clean_res, stddev_clean_res, feas, dur = main(args.file)
+    avg_res, stddev_res, avg_clean_res, stddev_clean_res, feas, dur = main(args.file, is_single_sim=True)
     dataset = args.file.split(".yaml")[0]
 
     header = ['error (%)', 'std_dev (%)', 'time (s)']
