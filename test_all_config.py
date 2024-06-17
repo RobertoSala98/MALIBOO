@@ -4,8 +4,8 @@ from multiprocessing import Pool
 import functools
 import os
 
-cores_number = 40
-datasets = ["oscarp", "query26", "stereomatch", "ligen"]
+cores_number = 20
+datasets = ["stereomatch"]
 
 def generate_folder_structure(path):
 
@@ -484,7 +484,7 @@ for dataset in datasets:
     
     #data = process_batch(setting)
 
-    with open("%s_single_threshold.csv" %dataset, 'w', encoding='UTF8', newline='') as f:
+    with open("%s_best_config.csv" %dataset, 'w', encoding='UTF8', newline='') as f:
         writer = csv.writer(f, delimiter=',')
         writer.writerow(header)
         writer.writerows(data)
