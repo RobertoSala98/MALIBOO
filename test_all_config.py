@@ -33,7 +33,141 @@ for dataset in datasets:
 
     setting = []
     idx_setting = 0
-    
+
+    # Ablation study: all bounds but only one feature at a time
+    thresholds = {
+        "oscarp": [65, 150, 300, 450, 600],
+        "query26": [185000, 205000, 225000, 245000],
+        "stereomatch": [6000, 8000, 10000, 12000, 17000, 20000, 40000],
+        "ligen": [1.9, 2.0, 2.1, 2.2, 2.45, 2.75]
+    }
+
+    maximum = {
+        "oscarp": [-0.174361111, -0.174361111, -0.174361111, -0.174361111, -0.174361111],
+        "query26": [-4356300.0, -4079658.0, -4022118.0, -683682.0],
+        "stereomatch": [-62810.0, -50776.0, -45525.0, -40196.0, -40196.0, -37412.0, -36791.0],
+        "ligen": [-881.258448995863, -567.312555400384, -567.312555400384, -464.349441178703, -424.355184049556, -340.099251789615]
+    }
+
+    configurations_best = [
+        {"ml_bounds": "probability", "ml_target": "product", "consider_only_true_max": True, "epsilon_greedy": False, "adaptive_method_kernel": "None", "af": "ei"},
+        {"ml_bounds": "indicator", "ml_target": "indicator", "consider_only_true_max": True, "epsilon_greedy": True, "adaptive_method_kernel": "RBF", "af": "ei"},
+        {"ml_bounds": "probability", "ml_target": "product", "consider_only_true_max": True, "epsilon_greedy": True, "adaptive_method_kernel": "Matern", "af": "ei"},
+        {"ml_bounds": "probability", "ml_target": "sum", "consider_only_true_max": True, "epsilon_greedy": True, "adaptive_method_kernel": "Matern", "af": "ei"},
+        {"ml_bounds": "indicator", "ml_target": "probability", "consider_only_true_max": True, "epsilon_greedy": True, "adaptive_method_kernel": "Matern", "af": "ei"},
+        {"ml_bounds": "probability", "ml_target": "product", "consider_only_true_max": True, "epsilon_greedy": False, "adaptive_method_kernel": "Matern", "af": "ei"},
+        {"ml_bounds": "indicator", "ml_target": "indicator", "consider_only_true_max": True, "epsilon_greedy": False, "adaptive_method_kernel": "Matern", "af": "ucb"},
+        {"ml_bounds": "probability", "ml_target": "product", "consider_only_true_max": True, "epsilon_greedy": True, "adaptive_method_kernel": "None", "af": "ei"},
+        {"ml_bounds": "indicator", "ml_target": "sum", "consider_only_true_max": True, "epsilon_greedy": False, "adaptive_method_kernel": "Matern", "af": "ucb"},
+        {"ml_bounds": "indicator", "ml_target": "None", "consider_only_true_max": True, "epsilon_greedy": True, "adaptive_method_kernel": "Matern", "af": "ei"},
+        {"ml_bounds": "indicator", "ml_target": "indicator", "consider_only_true_max": True, "epsilon_greedy": True, "adaptive_method_kernel": "Matern", "af": "ucb"},
+        {"ml_bounds": "indicator", "ml_target": "probability", "consider_only_true_max": True, "epsilon_greedy": False, "adaptive_method_kernel": "Matern", "af": "ei"},
+        {"ml_bounds": "indicator", "ml_target": "indicator", "consider_only_true_max": True, "epsilon_greedy": True, "adaptive_method_kernel": "None", "af": "ei"},
+        {"ml_bounds": "indicator", "ml_target": "product", "consider_only_true_max": True, "epsilon_greedy": False, "adaptive_method_kernel": "RBF", "af": "ucb"},
+        {"ml_bounds": "probability", "ml_target": "probability", "consider_only_true_max": True, "epsilon_greedy": True, "adaptive_method_kernel": "Matern", "af": "ei"},
+        {"ml_bounds": "probability", "ml_target": "probability", "consider_only_true_max": True, "epsilon_greedy": True, "adaptive_method_kernel": "None", "af": "ei"},
+        {"ml_bounds": "indicator", "ml_target": "sum", "consider_only_true_max": True, "epsilon_greedy": True, "adaptive_method_kernel": "Matern", "af": "ucb"},
+        {"ml_bounds": "indicator", "ml_target": "sum", "consider_only_true_max": True, "epsilon_greedy": True, "adaptive_method_kernel": "None", "af": "ei"},
+        {"ml_bounds": "indicator", "ml_target": "sum", "consider_only_true_max": True, "epsilon_greedy": False, "adaptive_method_kernel": "RBF", "af": "ucb"},
+        {"ml_bounds": "probability", "ml_target": "sum", "consider_only_true_max": True, "epsilon_greedy": False, "adaptive_method_kernel": "None", "af": "ei"},
+        {"ml_bounds": "indicator", "ml_target": "sum", "consider_only_true_max": True, "epsilon_greedy": True, "adaptive_method_kernel": "RBF", "af": "ei"},
+        {"ml_bounds": "probability", "ml_target": "probability", "consider_only_true_max": True, "epsilon_greedy": False, "adaptive_method_kernel": "None", "af": "ei"},
+    ]
+
+    for config in configurations_best:
+        for threshold in thresholds[dataset]:
+
+            ml_bounds = config["ml_bounds"]
+            ml_target = config["ml_target"]
+            consider_only_true_max = config["consider_only_true_max"]
+            epsilon_greedy = config["epsilon_greedy"]
+            adaptive_method_kernel = config["adaptive_method_kernel"]
+            af = config["af"]
+
+            # Modify yaml file
+            with open(test_file, 'r') as file:
+                lines = file.readlines()
+
+            output_path = "./outputs/%s/bounds_%s/target_%s/only_true_max_%s/eps_greedy_%s/adaptive_%s/af_%s/threshold_%s" %(dataset, ml_bounds, ml_target, consider_only_true_max, epsilon_greedy, adaptive_method_kernel, af, threshold)
+            generate_folder_structure(output_path)
+
+            for idx in range(len(lines)):
+
+                line = lines[idx]
+
+                if "  output_path: " in line:
+                    lines[idx] = "  output_path: " + output_path + "\n"
+
+                if "  max: " in line:
+                    lines[idx] = "  max: " + str(maximum[dataset][thresholds[dataset].index(threshold)]) + "\n"
+
+                if "  acquisition_function: " in line:
+                    lines[idx] = "  acquisition_function: " + af + "\n"
+
+                if "  ml_on_bounds: " in line: 
+
+                    if ml_bounds == 'None':
+                        lines[idx] = "  ml_on_bounds: " + "False\n"
+                    else:
+                        lines[idx] = "  ml_on_bounds: " + "True\n"
+
+                if "  ml_on_target: " in line: 
+
+                    if ml_target == 'None':
+                        lines[idx] = "  ml_on_target: " + "False\n"
+                    else:
+                        lines[idx] = "  ml_on_target: " + "True\n"
+                        
+                if "  consider_max_only_on_feasible: " in line:
+                    lines[idx] = "  consider_max_only_on_feasible: " + str(consider_only_true_max) + "\n"
+
+                if "  epsilon_greedy: " in line:
+                    lines[idx] = "  epsilon_greedy: " + str(epsilon_greedy) + "\n"
+
+                if "  adaptive_method: " in line:
+
+                    if adaptive_method_kernel == 'None':
+                        lines[idx] = "  adaptive_method: " + "False\n"
+                    else:
+                        lines[idx] = "  adaptive_method: " + "True\n"
+
+                if "      initial_beta: " in line and af == "ucb" and dataset == "oscarp":
+                    if adaptive_method_kernel == "RBF":
+                        lines[idx] = "      initial_beta: " + str(40.0) + "\n"
+                    elif adaptive_method_kernel == "Matern":
+                        lines[idx] = "      initial_beta: " + str(1.0) + "\n"
+
+                if "    kernel: " in line and adaptive_method_kernel != 'None':
+                    lines[idx] = "    kernel: " + adaptive_method_kernel + "\n"
+
+                if "    ml_bounds: " in line:
+                    lines[idx] = "    ml_bounds: " + "[0, %s]" %threshold + "\n"
+
+                if "    eic_bounds: " in line:
+                    lines[idx] = "    eic_bounds: " + "[0, %s]" %threshold + "\n"
+
+                if "    ml_bounds_type: " in line:
+                    lines[idx] = "    ml_bounds_type: " + ml_bounds + "\n"
+
+                if "    ml_target_type: " in line:
+                    lines[idx] = "    ml_target_type: " + ml_target + "\n"
+
+            output_name = "input_files/%s/" %dataset + test_file.split(".yaml")[0] + "_" + str(idx_setting) + ".yaml"
+            generate_folder_structure("./input_files/%s/" %dataset)
+
+            with open(output_name, 'w') as file:
+                file.writelines(lines)
+
+            idx_setting += 1
+
+            if "is_DiscreteBO" in config:
+                is_DBO = config["is_DiscreteBO"]
+            else:
+                is_DBO = False
+
+            setting.append([ml_bounds, ml_target, consider_only_true_max, epsilon_greedy, adaptive_method_kernel, af, threshold, is_DBO, output_name])
+
+    """
     # Ablation study: all bounds but only one feature at a time
     thresholds = {
         "oscarp": [65, 150, 300, 450, 600],
@@ -156,7 +290,7 @@ for dataset in datasets:
                 is_DBO = False
 
             setting.append([ml_bounds, ml_target, consider_only_true_max, epsilon_greedy, adaptive_method_kernel, af, threshold, is_DBO, output_name])
-    """
+    
     # Study of the best configuration on a single threshold
     configurations = []
 
