@@ -809,7 +809,12 @@ def print_final_results(output_path, real_max, init_points, is_DBO=False, bounds
     if os.path.exists(output_path + "/results.png"):
         os.remove(output_path + "/results.png")
 
-    repetitions_dir = os.listdir(output_path)
+    repetitions_dir = []
+    repetitions_dir_ = os.listdir(output_path)
+    for dir_ in repetitions_dir_:
+        if dir_.isnumeric():
+            repetitions_dir.append(dir_)
+
     repetitions = len(repetitions_dir)
 
     errors_ = []

@@ -6,7 +6,7 @@ general_setting:
   random_seed: True
   seeds: [0,1,2,3,4,5,6,7,8,9]
   output_path: "./outputs/outputs_stereomatch_DiscreteBO"
-  delete_previous_output: True
+  delete_previous_output: False
   debug: False
   verbose: 0
   max: -40196

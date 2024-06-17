@@ -4,8 +4,8 @@ from multiprocessing import Pool
 import functools
 import os
 
-cores_number = 20
-datasets = ["ligen"]
+cores_number = 40
+datasets = ["oscarp", "query26", "stereomatch", "ligen"]
 
 def generate_folder_structure(path):
 
@@ -33,7 +33,7 @@ for dataset in datasets:
 
     setting = []
     idx_setting = 0
-
+    
     # Ablation study: all bounds but only one feature at a time
     thresholds = {
         "oscarp": [65, 150, 300, 450, 600],
@@ -156,7 +156,7 @@ for dataset in datasets:
                 is_DBO = False
 
             setting.append([ml_bounds, ml_target, consider_only_true_max, epsilon_greedy, adaptive_method_kernel, af, threshold, is_DBO, output_name])
-
+    """
     # Study of the best configuration on a single threshold
     configurations = []
 
@@ -302,7 +302,7 @@ for dataset in datasets:
                 is_DBO = False
 
             setting.append([ml_bounds, ml_target, consider_only_true_max, epsilon_greedy, adaptive_method_kernel, af, threshold, is_DBO, output_name])
-
+    """
     print("You are testing %s different settings" %idx_setting)
 
     def split_list(input_list, num_chunks):
@@ -338,7 +338,7 @@ for dataset in datasets:
 
         return results
 
-    """
+
     with Pool(processes = cores_number) as pool:
 
         partial_gp = functools.partial(process_batch)
@@ -347,11 +347,10 @@ for dataset in datasets:
 
     for cc in range(cores_number):
         data = data + batch_results_parallel[cc] 
-    """
-    data = process_batch(setting)
+    
+    #data = process_batch(setting)
 
-
-    with open("%s_multi_threshold.csv" %dataset, 'w', encoding='UTF8', newline='') as f:
+    with open("%s_single_threshold.csv" %dataset, 'w', encoding='UTF8', newline='') as f:
         writer = csv.writer(f, delimiter=',')
         writer.writerow(header)
         writer.writerows(data)
