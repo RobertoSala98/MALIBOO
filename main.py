@@ -13,7 +13,7 @@ import functools
 import os
 
 
-cores_number = 20
+cores_number = 10
 
 
 def parse_yaml_file(file_path):
@@ -243,8 +243,6 @@ def main(yaml_file_path, is_DBO=False, print_res=True, is_single_sim=False):
 
     if ml_on_bounds:
         consider_max_only_on_feasible = parsed_data['acquisition_info']['consider_max_only_on_feasible']
-        acquisition_info['ml_bounds_alpha'] = parsed_data['acquisition_info']['ml_on_bounds_parameters']['ml_bounds_alpha']
-
         acquisition_info['ml_bounds_type'] = parsed_data['acquisition_info']['ml_on_bounds_parameters']['ml_bounds_type']
 
         if parsed_data['stopping_criteria']['stopping_criteria']:
@@ -258,9 +256,20 @@ def main(yaml_file_path, is_DBO=False, print_res=True, is_single_sim=False):
 
             stopping_criteria['ml_bounds_coeff'] = (lb, ub)
 
+        acquisition_info['ml_bounds_model'] = parsed_data['acquisition_info']['ml_on_bounds_parameters']['ml_bounds_model']
+
+        if acquisition_info['ml_bounds_model'] == "Ridge":
+            acquisition_info['ml_bounds_alpha'] = parsed_data['acquisition_info']['ml_on_bounds_parameters']['Ridge']['alpha']
+
+        elif acquisition_info['ml_bounds_model'] == "XGBoost":
+            acquisition_info['ml_bounds_gamma'] = parsed_data['acquisition_info']['ml_on_bounds_parameters']['XGBoost']['gamma']
+            acquisition_info['ml_bounds_learning_rate'] = parsed_data['acquisition_info']['ml_on_bounds_parameters']['XGBoost']['learning_rate']
+            acquisition_info['ml_bounds_max_depth'] = parsed_data['acquisition_info']['ml_on_bounds_parameters']['XGBoost']['max_depth']
+            acquisition_info['ml_bounds_n_estimators'] = parsed_data['acquisition_info']['ml_on_bounds_parameters']['XGBoost']['n_estimators']
+
     if ml_on_target:
         acquisition_info['ml_target_type'] = parsed_data['acquisition_info']['ml_on_target_parameters']['ml_target_type']
-        acquisition_info['ml_target_alpha'] = parsed_data['acquisition_info']['ml_on_target_parameters']['ml_target_alpha']
+        acquisition_info['ml_target_model'] = parsed_data['acquisition_info']['ml_on_target_parameters']['ml_target_model']
 
         if parsed_data['acquisition_info']['ml_on_target_parameters']['ml_target_type'] in ['probability', 'indicator']:
             
@@ -277,6 +286,15 @@ def main(yaml_file_path, is_DBO=False, print_res=True, is_single_sim=False):
             acquisition_info['ml_target_gamma_iter0'] = parsed_data['acquisition_info']['ml_on_target_parameters']['sum_parameters']['ml_target_gamma_iter0']
             acquisition_info['ml_target_gamma_iterN'] = parsed_data['acquisition_info']['ml_on_target_parameters']['sum_parameters']['ml_target_gamma_iterN']
             acquisition_info['ml_target_gamma_max'] = parsed_data['acquisition_info']['ml_on_target_parameters']['sum_parameters']['ml_target_gamma_max']
+
+        if acquisition_info['ml_target_model'] == "Ridge":
+            acquisition_info['ml_target_alpha'] = parsed_data['acquisition_info']['ml_on_target_parameters']['Ridge']['alpha']
+
+        elif acquisition_info['ml_target_model'] == "XGBoost":
+            acquisition_info['ml_target_gamma'] = parsed_data['acquisition_info']['ml_on_target_parameters']['XGBoost']['gamma']
+            acquisition_info['ml_target_learning_rate'] = parsed_data['acquisition_info']['ml_on_target_parameters']['XGBoost']['learning_rate']
+            acquisition_info['ml_target_max_depth'] = parsed_data['acquisition_info']['ml_on_target_parameters']['XGBoost']['max_depth']
+            acquisition_info['ml_target_n_estimators'] = parsed_data['acquisition_info']['ml_on_target_parameters']['XGBoost']['n_estimators']
 
     if epsilon_greedy:
         acquisition_info['eps_greedy_random_prob'] = parsed_data['acquisition_info']['epsilon_greedy_parameters']['prob_random_pick']
@@ -338,7 +356,7 @@ if __name__ == "__main__":
     parser.add_argument('-f', '--file', type=str, help='Path to the YAML file', required=True)
     args = parser.parse_args()
 
-    avg_res, stddev_res, avg_clean_res, stddev_clean_res, feas, dur = main(args.file, is_single_sim=True)
+    avg_res, stddev_res, avg_clean_res, stddev_clean_res, feas, dur = main(args.file, is_single_sim=False)
     dataset = args.file.split(".yaml")[0]
 
     header = ['error (%)', 'std_dev (%)', 'time (s)']

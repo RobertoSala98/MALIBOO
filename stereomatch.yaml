@@ -5,7 +5,7 @@ general_setting:
   repetitions: 30
   random_seed: True
   seeds: [0,1,2,3,4,5,6,7,8,9]
-  output_path: "./outputs/outputs_stereomatch_DiscreteBO"
+  output_path: "./outputs/stereomatch_XGBoost"
   delete_previous_output: False
   debug: False
   verbose: 0
@@ -21,12 +21,12 @@ stopping_criteria:
   hard_stop: False
   conjunction: "or"
 acquisition_info:
-  acquisition_function: "eic"
+  acquisition_function: "ei"
   ml_on_bounds: True
-  ml_on_target: False
-  consider_max_only_on_feasible: False
+  ml_on_target: True
+  consider_max_only_on_feasible: True
   epsilon_greedy: True
-  adaptive_method: True
+  adaptive_method: False
   memory_queue_len: 63
   relaxation: False
   epsilon_greedy_parameters:
@@ -57,11 +57,25 @@ acquisition_info:
     ml_target: "time"
     ml_bounds: [0, 17000]
     ml_bounds_coeff: [0.9, None]
-    ml_bounds_type: probability
-    ml_bounds_alpha: 0.026
+    ml_bounds_type: indicator
+    ml_bounds_model: Ridge
+    Ridge:
+      alpha: 0.026
+    XGBoost:
+      gamma: 1.151
+      learning_rate: 0.368
+      max_depth: 10
+      n_estimators: 10
   ml_on_target_parameters:
-    ml_target_type: product
-    ml_target_alpha: 0.025
+    ml_target_type: sum
+    ml_target_model: Ridge
+    Ridge:
+      alpha: 0.025
+    XGBoost:
+      gamma: 6.552
+      learning_rate: 0.381
+      max_depth: 10
+      n_estimators: 10
     indicator_parameters:
       coeff: [1.333, None]
     sum_parameters:

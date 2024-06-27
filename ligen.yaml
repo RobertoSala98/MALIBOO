@@ -58,10 +58,24 @@ acquisition_info:
     ml_bounds: [0.0, 2.1]
     ml_bounds_coeff: [None, None]
     ml_bounds_type: indicator
-    ml_bounds_alpha: 0.099
+    ml_bounds_model: Ridge
+    Ridge:
+      alpha: 0.099
+    XGBoost:
+      gamma: 0.312
+      learning_rate: 0.407
+      max_depth: 10
+      n_estimators: 10
   ml_on_target_parameters:
     ml_target_type: None
-    ml_target_alpha: 0.959
+    ml_target_model: Ridge
+    Ridge:
+      alpha: 0.959
+    XGBoost:
+      gamma: 7.789
+      learning_rate: 0.467
+      max_depth: 10
+      n_estimators: 10
     indicator_parameters:
       coeff: [1.333, None]
     sum_parameters:

@@ -406,7 +406,15 @@ class UtilityFunction(object):
             self.set_acq_info_field(acq_info, 'ml_target')
             self.set_acq_info_field(acq_info, 'ml_bounds')
             self.set_acq_info_field(acq_info, 'ml_bounds_type')
-            self.set_acq_info_field(acq_info, 'ml_bounds_alpha')
+            self.set_acq_info_field(acq_info, 'ml_bounds_model')
+
+            if self.ml_bounds_model == "Ridge":
+                self.set_acq_info_field(acq_info, 'ml_bounds_alpha')
+            elif self.ml_bounds_model == "XGBoost":
+                self.set_acq_info_field(acq_info, 'ml_bounds_gamma')
+                self.set_acq_info_field(acq_info, 'ml_bounds_learning_rate')
+                self.set_acq_info_field(acq_info, 'ml_bounds_max_depth')
+                self.set_acq_info_field(acq_info, 'ml_bounds_n_estimators')
 
         # For Expected Improvement with Constraints-based acquisitions
         if 'eic' in kind:
@@ -441,10 +449,17 @@ class UtilityFunction(object):
         if self._ml_on_target:
 
             self.set_acq_info_field(acq_info, 'ml_target_type')
-            self.set_acq_info_field(acq_info, 'ml_target_alpha')
+            self.set_acq_info_field(acq_info, 'ml_target_model')
+
+            if self.ml_target_model == "Ridge":
+                self.set_acq_info_field(acq_info, 'ml_target_alpha')
+            elif self.ml_target_model == "XGBoost":
+                self.set_acq_info_field(acq_info, 'ml_target_gamma')
+                self.set_acq_info_field(acq_info, 'ml_target_learning_rate')
+                self.set_acq_info_field(acq_info, 'ml_target_max_depth')
+                self.set_acq_info_field(acq_info, 'ml_target_n_estimators')
 
             if self.ml_target_type == 'sum':
-
                 self.set_acq_info_field(acq_info, 'ml_target_gamma_iter0')
                 self.set_acq_info_field(acq_info, 'ml_target_gamma_iterN')
                 self.set_acq_info_field(acq_info, 'ml_target_gamma_max')
@@ -493,14 +508,14 @@ class UtilityFunction(object):
                     norm_const = self.eic_ml_exp_B * (lb-ub) - 0.5 * self.eic_ml_exp_B ** 2 * (lb ** 2 - ub ** 2)
                     res *= coeff * norm_const
                 if self.eic_ml_var in ('C', 'D'):
-                    res *= self._consider_ml_on_bounds(x, self.ml_model, self.ml_bounds, self.ml_bounds_type)
+                    res *= self._consider_ml_on_bounds(x, self.ml_model, self.ml_bounds, self.ml_bounds_type, self.ml_bounds_model)
 
         else:
             raise NotImplementedError("The utility function {} has not been implemented.".format(self.kind))
         
 
         if self._ml_on_bounds and self.kind != 'eic':
-            res *= self._consider_ml_on_bounds(x, self.ml_model, self.ml_bounds, self.ml_bounds_type)
+            res *= self._consider_ml_on_bounds(x, self.ml_model, self.ml_bounds, self.ml_bounds_type, self.ml_bounds_model)
         
         if self._ml_on_target and not pick_random:
 
@@ -516,7 +531,7 @@ class UtilityFunction(object):
 
                 parameters = {'ml_target_coeff': self.ml_target_coeff}
 
-            res = self._consider_ml_on_target(x, self.objective_ml_model, self.ml_target_type, res, iter_num, y_max, parameters)
+            res = self._consider_ml_on_target(x, self.objective_ml_model, self.ml_target_type,  self.ml_target_model, res, iter_num, y_max, parameters)
 
         return res
     
@@ -561,7 +576,7 @@ class UtilityFunction(object):
 
 
     @staticmethod
-    def _consider_ml_on_bounds(x, ml_model, ml_bounds, ml_bounds_type):
+    def _consider_ml_on_bounds(x, ml_model, ml_bounds, ml_bounds_type, ml_bounds_model):
 
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
@@ -572,12 +587,15 @@ class UtilityFunction(object):
                 return np.array([lb <= y and y <= ub for y in y_hat])
             
             elif ml_bounds_type == 'probability':
-                indicator = ml_model[1].decision_function(x)
+                if ml_bounds_model == "Ridge":
+                    indicator = ml_model[1].decision_function(x)
+                elif ml_bounds_model == "XGBoost":
+                    indicator = ml_model[1].predict_proba(x)[:,1]
                 return 1 / (1 + np.exp(-indicator))
 
 
     @staticmethod
-    def _consider_ml_on_target(x, objective_ml_model, ml_target_type, res, iter_num, y_max, parameters):
+    def _consider_ml_on_target(x, objective_ml_model, ml_target_type, ml_target_model, res, iter_num, y_max, parameters):
 
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
@@ -595,7 +613,10 @@ class UtilityFunction(object):
                     res = (1 - gamma) * np.array(min_max_normalize(res)) + gamma * np.array(min_max_normalize(f_tilde))    
 
             elif ml_target_type == 'probability':
-                indicator = objective_ml_model[1].decision_function(x)
+                if ml_target_model == "Ridge":
+                    indicator = objective_ml_model[1].decision_function(x)
+                elif ml_target_model == "XGBoost":
+                    indicator = objective_ml_model[1].predict_proba(x)[:,1]
                 res *= 1 / (1 + np.exp(-indicator))
             
             elif ml_target_type == 'indicator':

@@ -4,6 +4,7 @@ import os
 import pandas as pd
 import warnings
 from queue import Queue
+import xgboost as xgb
 
 from sklearn.gaussian_process.kernels import Matern, RBF
 from sklearn.gaussian_process import GaussianProcessRegressor
@@ -676,23 +677,8 @@ class BayesianOptimization(Observable):
         log_transformer = FunctionTransformer(np.log1p, validate=False)
         inv_transformer = FunctionTransformer(lambda x: 1 / x, validate=False)
 
-        # Create a pipeline with the specified transformations
-        model = make_pipeline(
-            ColumnTransformer(
-                transformers=[
-                    ('log', log_transformer, []),
-                    ('inv', inv_transformer, [])
-                ],
-                remainder='passthrough'  # This allows the columns not specified to be passed through unchanged
-            ),
-            PolynomialFeatures(2),
-            Ridge(alpha=acq_info['ml_bounds_alpha'])
-        )
-
-        model.fit(X, y)
-
-        if acq_info['ml_bounds_type'] == 'probability':
-            classifier = make_pipeline(
+        if acq_info['ml_bounds_model'] == 'Ridge':
+            model = make_pipeline(
                 ColumnTransformer(
                     transformers=[
                         ('log', log_transformer, []),
@@ -701,11 +687,52 @@ class BayesianOptimization(Observable):
                     remainder='passthrough'  # This allows the columns not specified to be passed through unchanged
                 ),
                 PolynomialFeatures(2),
-                RidgeClassifier(alpha=acq_info['ml_bounds_alpha'])
+                Ridge(alpha=acq_info['ml_bounds_alpha'])
             )
+
+        elif acq_info['ml_bounds_model'] == 'XGBoost':
+            model = make_pipeline(
+                ColumnTransformer(
+                    transformers=[
+                        ('log', log_transformer, []),
+                        ('inv', inv_transformer, [])
+                    ],
+                    remainder='passthrough'  # This allows the columns not specified to be passed through unchanged
+                ),
+                PolynomialFeatures(2),
+                xgb.XGBRegressor(gamma=acq_info['ml_bounds_gamma'], learning_rate=acq_info['ml_bounds_learning_rate'], max_depth=acq_info['ml_bounds_max_depth'], min_child_weight=1, n_estimators=acq_info['ml_bounds_n_estimators'])
+            )
+
+        model.fit(X, y)
+
+        if acq_info['ml_bounds_type'] == 'probability':
+            if acq_info['ml_bounds_model'] == 'Ridge':
+                classifier = make_pipeline(
+                    ColumnTransformer(
+                        transformers=[
+                            ('log', log_transformer, []),
+                            ('inv', inv_transformer, [])
+                        ],
+                        remainder='passthrough'  # This allows the columns not specified to be passed through unchanged
+                    ),
+                    PolynomialFeatures(2),
+                    RidgeClassifier(alpha=acq_info['ml_bounds_alpha'])
+                )
+            elif acq_info['ml_bounds_model'] == 'XGBoost':
+                classifier = make_pipeline(
+                    ColumnTransformer(
+                        transformers=[
+                            ('log', log_transformer, []),
+                            ('inv', inv_transformer, [])
+                        ],
+                        remainder='passthrough'  # This allows the columns not specified to be passed through unchanged
+                    ),
+                    PolynomialFeatures(2),
+                    xgb.XGBClassifier(objective='multi:softprob', learning_rate=acq_info['ml_bounds_learning_rate'], max_depth=acq_info['ml_bounds_max_depth'], min_child_weight=1, n_estimators=acq_info['ml_bounds_n_estimators'], num_class=2)
+                )
             
             lb, ub = acq_info['ml_bounds']
-            classifier.fit(X, (y >= lb)*(y <= ub))
+            classifier.fit(X, (y >= lb)*(y <= ub).astype(int))
 
             return [model, classifier]
 
@@ -728,23 +755,8 @@ class BayesianOptimization(Observable):
         log_transformer = FunctionTransformer(np.log1p, validate=False)
         inv_transformer = FunctionTransformer(lambda x: 1 / x, validate=False)
 
-        # Create a pipeline with the specified transformations
-        model = make_pipeline(
-            ColumnTransformer(
-                transformers=[
-                    ('log', log_transformer, []),
-                    ('inv', inv_transformer, [])
-                ],
-                remainder='passthrough'  # This allows the columns not specified to be passed through unchanged
-            ),
-            PolynomialFeatures(2, include_bias=False),
-            Ridge(alpha=acq_info['ml_target_alpha'])
-        )
-
-        model.fit(X, y)
-
-        if acq_info['ml_target_type'] == 'probability':
-            classifier = make_pipeline(
+        if acq_info['ml_target_model'] == "Ridge":
+            model = make_pipeline(
                 ColumnTransformer(
                     transformers=[
                         ('log', log_transformer, []),
@@ -753,8 +765,49 @@ class BayesianOptimization(Observable):
                     remainder='passthrough'  # This allows the columns not specified to be passed through unchanged
                 ),
                 PolynomialFeatures(2, include_bias=False),
-                RidgeClassifier(alpha=acq_info['ml_target_alpha'])
+                Ridge(alpha=acq_info['ml_target_alpha'])
             )
+
+        elif acq_info['ml_target_model'] == "XGBoost":
+            model = make_pipeline(
+                ColumnTransformer(
+                    transformers=[
+                        ('log', log_transformer, []),
+                        ('inv', inv_transformer, [])
+                    ],
+                    remainder='passthrough'  # This allows the columns not specified to be passed through unchanged
+                ),
+                PolynomialFeatures(2, include_bias=False),
+                xgb.XGBRegressor(gamma=acq_info['ml_target_gamma'], learning_rate=acq_info['ml_target_learning_rate'], max_depth=acq_info['ml_target_max_depth'], min_child_weight=1, n_estimators=acq_info['ml_target_n_estimators'])
+            )
+
+        model.fit(X, y)
+
+        if acq_info['ml_target_type'] == 'probability':
+            if acq_info['ml_target_model'] == "Ridge":
+                classifier = make_pipeline(
+                    ColumnTransformer(
+                        transformers=[
+                            ('log', log_transformer, []),
+                            ('inv', inv_transformer, [])
+                        ],
+                        remainder='passthrough'  # This allows the columns not specified to be passed through unchanged
+                    ),
+                    PolynomialFeatures(2, include_bias=False),
+                    RidgeClassifier(alpha=acq_info['ml_target_alpha'])
+                )
+            elif acq_info['ml_target_model'] == "XGBoost":
+                classifier = make_pipeline(
+                    ColumnTransformer(
+                        transformers=[
+                            ('log', log_transformer, []),
+                            ('inv', inv_transformer, [])
+                        ],
+                        remainder='passthrough'  # This allows the columns not specified to be passed through unchanged
+                    ),
+                    PolynomialFeatures(2, include_bias=False),
+                    xgb.XGBClassifier(objective='multi:softprob', gamma=acq_info['ml_target_gamma'], learning_rate=acq_info['ml_target_learning_rate'], max_depth=acq_info['ml_target_max_depth'], min_child_weight=1, n_estimators=acq_info['ml_target_n_estimators'], num_class=2)
+                )
 
             lb, ub = acq_info['ml_target_coeff']
             y_max = self._space.max()['target']
