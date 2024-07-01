@@ -5,7 +5,7 @@ import functools
 import os
 
 cores_number = 20
-datasets = ["stereomatch"]
+datasets = ["query26"]
 
 def generate_folder_structure(path):
 
@@ -33,22 +33,22 @@ for dataset in datasets:
 
     setting = []
     idx_setting = 0
-
+    """
     # Ablation study: all bounds but only one feature at a time
     thresholds = {
-        "oscarp": [65, 150, 300, 450, 600],
-        "query26": [185000, 205000, 225000, 245000],
-        "stereomatch": [6000, 8000, 10000, 12000, 17000, 20000, 40000],
-        "ligen": [1.9, 2.0, 2.1, 2.2, 2.45, 2.75]
+        "oscarp": [150, 300, 450, 600],
+        "query26": [195000, 205000, 215000, 225000, 235000],
+        "stereomatch": [8000, 10000, 12000, 17000, 20000, 40000],
+        "ligen": [2.0, 2.1, 2.2, 2.45, 2.75]
     }
 
     maximum = {
-        "oscarp": [-0.174361111, -0.174361111, -0.174361111, -0.174361111, -0.174361111],
-        "query26": [-4356300.0, -4079658.0, -4022118.0, -683682.0],
-        "stereomatch": [-62810.0, -50776.0, -45525.0, -40196.0, -40196.0, -37412.0, -36791.0],
-        "ligen": [-881.258448995863, -567.312555400384, -567.312555400384, -464.349441178703, -424.355184049556, -340.099251789615]
+        "oscarp": [-0.174361111, -0.174361111, -0.174361111, -0.174361111],
+        "query26": [-4079658.0, -4079658.0, -4079658.0, -4022118.0, -683682],
+        "stereomatch": [-50776.0, -45525.0, -40196.0, -40196.0, -37412.0, -36791.0],
+        "ligen": [-567.312555400384, -567.312555400384, -464.349441178703, -424.355184049556, -340.099251789615]
     }
-
+    
     configurations_best = [
         {"ml_bounds": "probability", "ml_target": "product", "consider_only_true_max": True, "epsilon_greedy": False, "adaptive_method_kernel": "None", "af": "ei"},
         {"ml_bounds": "indicator", "ml_target": "indicator", "consider_only_true_max": True, "epsilon_greedy": True, "adaptive_method_kernel": "RBF", "af": "ei"},
@@ -166,21 +166,21 @@ for dataset in datasets:
                 is_DBO = False
 
             setting.append([ml_bounds, ml_target, consider_only_true_max, epsilon_greedy, adaptive_method_kernel, af, threshold, is_DBO, output_name])
-
-    """
+    
+    
     # Ablation study: all bounds but only one feature at a time
     thresholds = {
-        "oscarp": [65, 150, 300, 450, 600],
-        "query26": [185000, 205000, 225000, 245000],
-        "stereomatch": [6000, 8000, 10000, 12000, 17000, 20000, 40000],
-        "ligen": [1.9, 2.0, 2.1, 2.2, 2.45, 2.75]
+        "oscarp": [150, 300, 450, 600],
+        "query26": [195000, 205000, 215000, 225000, 235000, 245000],
+        "stereomatch": [8000, 10000, 12000, 17000, 20000, 40000],
+        "ligen": [2.0, 2.1, 2.2, 2.45, 2.75]
     }
 
     maximum = {
-        "oscarp": [-0.174361111, -0.174361111, -0.174361111, -0.174361111, -0.174361111],
-        "query26": [-4356300.0, -4079658.0, -4022118.0, -683682.0],
-        "stereomatch": [-62810.0, -50776.0, -45525.0, -40196.0, -40196.0, -37412.0, -36791.0],
-        "ligen": [-881.258448995863, -567.312555400384, -567.312555400384, -464.349441178703, -424.355184049556, -340.099251789615]
+        "oscarp": [-0.174361111, -0.174361111, -0.174361111, -0.174361111],
+        "query26": [-4079658.0, -4079658.0, -4079658.0, -4022118.0, -683682, -683682.0],
+        "stereomatch": [-50776.0, -45525.0, -40196.0, -40196.0, -37412.0, -36791.0],
+        "ligen": [-567.312555400384, -567.312555400384, -464.349441178703, -424.355184049556, -340.099251789615]
     }
 
     configurations_ablation = [
@@ -290,17 +290,19 @@ for dataset in datasets:
                 is_DBO = False
 
             setting.append([ml_bounds, ml_target, consider_only_true_max, epsilon_greedy, adaptive_method_kernel, af, threshold, is_DBO, output_name])
-    
+    """
+    configurations_ablation = []
+
     # Study of the best configuration on a single threshold
     configurations = []
 
     count = 0
 
     for ml_bounds in ['indicator', 'probability']:
-        for ml_target in ['None', 'indicator', 'probability', 'sum', 'product']:
+        for ml_target in ['indicator', 'probability']:
             for consider_only_true_max in [True]:
                 for epsilon_greedy in [True, False]:
-                    for adaptive_method_kernel in ['None', 'Matern', 'RBF']:
+                    for adaptive_method_kernel in ['Matern', 'RBF']:
 
                         if adaptive_method_kernel != 'None':
                             for af in ['ei', 'ucb']:
@@ -436,7 +438,7 @@ for dataset in datasets:
                 is_DBO = False
 
             setting.append([ml_bounds, ml_target, consider_only_true_max, epsilon_greedy, adaptive_method_kernel, af, threshold, is_DBO, output_name])
-    """
+    
     print("You are testing %s different settings" %idx_setting)
 
     def split_list(input_list, num_chunks):
