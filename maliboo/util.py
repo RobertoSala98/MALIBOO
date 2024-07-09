@@ -493,11 +493,7 @@ class UtilityFunction(object):
         elif self.kind == 'ei':
             res = self._ei(x, gp, y_max, self.xi)
 
-        elif self.kind == 'DiscreteBO':
-            res = self._ucb(x, gp, sqrt(beta))
-
         elif self.kind == 'eic':
-
             res = self._eic(x, gp, y_max, self.xi, self.eic_bounds, self.eic_P_func, self.eic_Q_func)
 
             if self._ml_on_bounds:
