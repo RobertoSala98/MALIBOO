@@ -106,6 +106,12 @@ def single_simulation(f, pbounds, dataset, target_column, output_path, debug, ve
 
         result = obtained_max
 
+        with open(output_path+"/%s/" %idx + "duration.txt", "w") as time_file:
+            time_file.write(str(duration))
+
+        with open(output_path+"/%s/" %idx + "seed.txt", "w") as time_file:
+            time_file.write(str(seed))
+
     return result, duration
 
 
