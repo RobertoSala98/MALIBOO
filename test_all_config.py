@@ -4,8 +4,8 @@ from multiprocessing import Pool
 import functools
 import os
 
-cores_number = 40
-datasets = ["query52", "query26_mono", "kmeans_mono", "sparkDL_mono", "query40_mono", "query55_mono"]
+cores_number = 20
+datasets = ["query52", "query26_monodimensional", "kmeans_monodimensional", "sparkDL_monodimensional", "query40_monodimensional", "query55_monodimensional"]
 
 def generate_folder_structure(path):
 
@@ -346,18 +346,18 @@ for dataset in datasets:
     }
     """
 
-    thresholds = {"query26_mono": [4.19e5, 4.74e5, 6.08e5, 8.63e5, 2e6], 
-                  "kmeans_mono": [2.41e5, 2.83e5, 3.78e5, 1.19e6, 7e6], 
-                  "sparkDL_mono": [1.5747e6, 1.6955e6, 1.85866e6, 2.02753e6, 2.7304e6], 
-                  "query40_mono": [6.5994e5, 7.3999e5, 9.345e5, 1.30749e6, 2.559e6], 
-                  "query55_mono": [3.2354e5, 3.6502e5, 4.63543e5, 6.5250e5, 1.28e6], 
+    thresholds = {"query26_monodimensional": [4.19e5, 4.74e5, 6.08e5, 8.63e5, 2e6], 
+                  "kmeans_monodimensional": [2.41e5, 2.83e5, 3.78e5, 1.19e6, 7e6], 
+                  "sparkDL_monodimensional": [1.5747e6, 1.6955e6, 1.85866e6, 2.02753e6, 2.7304e6], 
+                  "query40_monodimensional": [6.5994e5, 7.3999e5, 9.345e5, 1.30749e6, 2.559e6], 
+                  "query55_monodimensional": [3.2354e5, 3.6502e5, 4.63543e5, 6.5250e5, 1.28e6], 
                   "query52": [262887, 334000, 407000, 645000, 2.25e6]}
 
-    maximum = {"query26_mono": [-15672682, -12993988, -10858860, -10267476, -10114512], 
-                  "kmeans_mono": [-9558960, -9032384, -8611056, -8410212, -8410212], 
-                  "sparkDL_mono": [-46993350, -29403774, -7202776, -7202776, -4912216], 
-                  "query40_mono": [-23679864, -20388928, -17264240, -15485604, -14860080], 
-                  "query55_mono": [-11619540, -9954336, -8315334, -7715940, -7448152], 
+    maximum = {"query26_monodimensional": [-15672682, -12993988, -10858860, -10267476, -10114512], 
+                  "kmeans_monodimensional": [-9558960, -9032384, -8611056, -8410212, -8410212], 
+                  "sparkDL_monodimensional": [-46993350, -29403774, -7202776, -7202776, -4912216], 
+                  "query40_monodimensional": [-23679864, -20388928, -17264240, -15485604, -14860080], 
+                  "query55_monodimensional": [-11619540, -9954336, -8315334, -7715940, -7448152], 
                   "query52": [-682215, -682215, -682215, -682215, -682215]}
 
     for config in configurations:
