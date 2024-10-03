@@ -915,8 +915,8 @@ def print_final_results(output_path, real_max, init_points, is_DBO=False, bounds
                 found_first_not_inf = True
                 first_not_inf = value/non_inf*100
 
-    plt.plot([ii for ii in range(init_points-1, len(feasible_))], values_, alpha=0.5, color='green', linewidth=2) 
-    plt.scatter([ii for ii in range(init_points-1, len(feasible_))], values_, alpha=feasible_[init_points-1:len(feasible_)], color='blue', s=50)
+    plt.plot([ii for ii in range(init_points, len(feasible_)+1)], values_, alpha=0.5, color='green', linewidth=2) 
+    plt.scatter([ii for ii in range(init_points, len(feasible_)+1)], values_, alpha=feasible_[init_points-1:len(feasible_)], color='blue', s=50)
 
     if found_first_not_inf:
         plt.plot([init_points-0.5, init_points-0.5], [0, first_not_inf], '--', color='red')
@@ -1032,8 +1032,8 @@ def print_results_multiple_thresholds(output_path_, real_max_, init_points, is_D
                     found_first_not_inf = True
                     first_not_inf = value/non_inf*100
 
-        plt.plot([ii for ii in range(init_points-1, len(feasible_))], values_, color=colors[thresholds.index(threshold)], linewidth=2, label="threshold: %s" %threshold) 
-        plt.scatter([ii for ii in range(init_points-1, len(feasible_))], values_, alpha=feasible_[init_points-1:len(feasible_)], color=colors[thresholds.index(threshold)], s=20)
+        plt.plot([ii for ii in range(init_points, len(feasible_)+1)], values_, color=colors[thresholds.index(threshold)], linewidth=2, label="threshold: %s" %threshold) 
+        plt.scatter([ii for ii in range(init_points, len(feasible_)+1)], values_, alpha=feasible_[init_points-1:len(feasible_)], color=colors[thresholds.index(threshold)], s=20)
 
         if found_first_not_inf:
             plt.plot([init_points-0.5, init_points-0.5], [0, first_not_inf], '--', color='red')
