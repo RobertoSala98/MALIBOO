@@ -919,7 +919,7 @@ def print_final_results(output_path, real_max, init_points, is_DBO=False, bounds
     plt.scatter([ii for ii in range(init_points, len(feasible_)+1)], values_, alpha=feasible_[init_points-1:len(feasible_)], color='blue', s=50)
 
     if found_first_not_inf:
-        plt.plot([init_points-0.5, init_points-0.5], [0, first_not_inf], '--', color='red')
+        plt.plot([init_points+0.5, init_points+0.5], [0, first_not_inf], '--', color='red')
     
     plt.xlabel('step number')
     plt.ylabel('Error [%]')
@@ -1036,7 +1036,7 @@ def print_results_multiple_thresholds(output_path_, real_max_, init_points, is_D
         plt.scatter([ii for ii in range(init_points, len(feasible_)+1)], values_, alpha=feasible_[init_points-1:len(feasible_)], color=colors[thresholds.index(threshold)], s=20)
 
         if found_first_not_inf:
-            plt.plot([init_points-0.5, init_points-0.5], [0, first_not_inf], '--', color='red')
+            plt.plot([init_points+0.5, init_points+0.5], [0, first_not_inf], '--', color='red')
         
     plt.xlabel('step number')
     plt.ylabel('Error [%]')
