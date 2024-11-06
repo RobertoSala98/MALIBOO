@@ -26,7 +26,7 @@ def generate_folder_structure(path):
 
 for dataset in datasets:
 
-    test_file = '%s.yaml' %dataset
+    test_file = 'yaml_files/%s.yaml' %dataset
 
     header = ['ml_bounds', 'ml_target', 'consider_only_true_max', 'epsilon_greedy', 'adaptive_method_kernel', 'af', 'threshold', 'error (%)', 'std_dev (%)', 'error_cleaned (%)', 'std_dev_cleaned (%)', 'feasible_values_found (%)', 'avg_time (sec)']
     data = []
