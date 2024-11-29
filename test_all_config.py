@@ -3,9 +3,10 @@ import csv
 from multiprocessing import Pool
 import functools
 import os
+from numpy.random import randint
 
-cores_number = 20
-datasets = ["query52", "query26_monodimensional", "kmeans_monodimensional", "sparkDL_monodimensional", "query40_monodimensional", "query55_monodimensional"]
+cores_number = 1
+datasets = ["oscarp", "query26", "stereomatch", "ligen"]
 
 def generate_folder_structure(path):
 
@@ -33,46 +34,35 @@ for dataset in datasets:
 
     setting = []
     idx_setting = 0
-    """
+    
     # Ablation study: all bounds but only one feature at a time
     thresholds = {
-        "oscarp": [150, 300, 450, 600],
-        "query26": [195000, 205000, 215000, 225000, 235000],
-        "stereomatch": [8000, 10000, 12000, 17000, 20000, 40000],
-        "ligen": [2.0, 2.1, 2.2, 2.45, 2.75]
+        "oscarp": [65, 150, 300, 450, 600],
+        "query26": [195000, 205000, 215000, 225000],
+        "stereomatch": [6000, 8000, 10000, 12000, 17000, 20000, 40000],
+        "ligen": [1.9, 2.0, 2.1, 2.2, 2.45, 2.75]
     }
 
     maximum = {
-        "oscarp": [-0.174361111, -0.174361111, -0.174361111, -0.174361111],
-        "query26": [-4079658.0, -4079658.0, -4079658.0, -4022118.0, -683682],
-        "stereomatch": [-50776.0, -45525.0, -40196.0, -40196.0, -37412.0, -36791.0],
-        "ligen": [-567.312555400384, -567.312555400384, -464.349441178703, -424.355184049556, -340.099251789615]
+        "oscarp": [-0.174361111, -0.174361111, -0.174361111, -0.174361111, -0.174361111],
+        "query26": [-4079658.0, -4079658.0, -4079658.0, -4022118.0],
+        "stereomatch": [-62810.0, -50776.0, -45525.0, -40196.0, -40196.0, -37412.0, -36791.0],
+        "ligen": [-881.258448995863, -567.312555400384, -567.312555400384, -464.349441178703, -424.355184049556, -340.099251789615]
     }
     
     configurations_best = [
-        {"ml_bounds": "probability", "ml_target": "product", "consider_only_true_max": True, "epsilon_greedy": False, "adaptive_method_kernel": "None", "af": "ei"},
-        {"ml_bounds": "indicator", "ml_target": "indicator", "consider_only_true_max": True, "epsilon_greedy": True, "adaptive_method_kernel": "RBF", "af": "ei"},
-        {"ml_bounds": "probability", "ml_target": "product", "consider_only_true_max": True, "epsilon_greedy": True, "adaptive_method_kernel": "Matern", "af": "ei"},
-        {"ml_bounds": "probability", "ml_target": "sum", "consider_only_true_max": True, "epsilon_greedy": True, "adaptive_method_kernel": "Matern", "af": "ei"},
-        {"ml_bounds": "indicator", "ml_target": "probability", "consider_only_true_max": True, "epsilon_greedy": True, "adaptive_method_kernel": "Matern", "af": "ei"},
-        {"ml_bounds": "probability", "ml_target": "product", "consider_only_true_max": True, "epsilon_greedy": False, "adaptive_method_kernel": "Matern", "af": "ei"},
-        {"ml_bounds": "indicator", "ml_target": "indicator", "consider_only_true_max": True, "epsilon_greedy": False, "adaptive_method_kernel": "Matern", "af": "ucb"},
-        {"ml_bounds": "probability", "ml_target": "product", "consider_only_true_max": True, "epsilon_greedy": True, "adaptive_method_kernel": "None", "af": "ei"},
-        {"ml_bounds": "indicator", "ml_target": "sum", "consider_only_true_max": True, "epsilon_greedy": False, "adaptive_method_kernel": "Matern", "af": "ucb"},
-        {"ml_bounds": "indicator", "ml_target": "None", "consider_only_true_max": True, "epsilon_greedy": True, "adaptive_method_kernel": "Matern", "af": "ei"},
-        {"ml_bounds": "indicator", "ml_target": "indicator", "consider_only_true_max": True, "epsilon_greedy": True, "adaptive_method_kernel": "Matern", "af": "ucb"},
-        {"ml_bounds": "indicator", "ml_target": "probability", "consider_only_true_max": True, "epsilon_greedy": False, "adaptive_method_kernel": "Matern", "af": "ei"},
-        {"ml_bounds": "indicator", "ml_target": "indicator", "consider_only_true_max": True, "epsilon_greedy": True, "adaptive_method_kernel": "None", "af": "ei"},
-        {"ml_bounds": "indicator", "ml_target": "product", "consider_only_true_max": True, "epsilon_greedy": False, "adaptive_method_kernel": "RBF", "af": "ucb"},
-        {"ml_bounds": "probability", "ml_target": "probability", "consider_only_true_max": True, "epsilon_greedy": True, "adaptive_method_kernel": "Matern", "af": "ei"},
-        {"ml_bounds": "probability", "ml_target": "probability", "consider_only_true_max": True, "epsilon_greedy": True, "adaptive_method_kernel": "None", "af": "ei"},
-        {"ml_bounds": "indicator", "ml_target": "sum", "consider_only_true_max": True, "epsilon_greedy": True, "adaptive_method_kernel": "Matern", "af": "ucb"},
-        {"ml_bounds": "indicator", "ml_target": "sum", "consider_only_true_max": True, "epsilon_greedy": True, "adaptive_method_kernel": "None", "af": "ei"},
-        {"ml_bounds": "indicator", "ml_target": "sum", "consider_only_true_max": True, "epsilon_greedy": False, "adaptive_method_kernel": "RBF", "af": "ucb"},
-        {"ml_bounds": "probability", "ml_target": "sum", "consider_only_true_max": True, "epsilon_greedy": False, "adaptive_method_kernel": "None", "af": "ei"},
-        {"ml_bounds": "indicator", "ml_target": "sum", "consider_only_true_max": True, "epsilon_greedy": True, "adaptive_method_kernel": "RBF", "af": "ei"},
-        {"ml_bounds": "probability", "ml_target": "probability", "consider_only_true_max": True, "epsilon_greedy": False, "adaptive_method_kernel": "None", "af": "ei"},
+        {'ml_bounds': 'indicator', 'ml_target': 'probability', 'consider_only_true_max': True, 'epsilon_greedy': True, 'adaptive_method_kernel': 'Matern', 'af': 'ei'},
+        {'ml_bounds': 'indicator', 'ml_target': 'probability', 'consider_only_true_max': True, 'epsilon_greedy': True, 'adaptive_method_kernel': 'Matern', 'af': 'ucb'},
+        {'ml_bounds': 'indicator', 'ml_target': 'probability', 'consider_only_true_max': True, 'epsilon_greedy': True, 'adaptive_method_kernel': 'RBF', 'af': 'ei'},
+        {'ml_bounds': 'indicator', 'ml_target': 'probability', 'consider_only_true_max': True, 'epsilon_greedy': True, 'adaptive_method_kernel': 'RBF', 'af': 'ucb'},
+        {'ml_bounds': 'indicator', 'ml_target': 'probability', 'consider_only_true_max': True, 'epsilon_greedy': True, 'adaptive_method_kernel': 'None', 'af': 'ei'},
+        {'ml_bounds': 'None', 'ml_target': 'None', 'consider_only_true_max': True, 'epsilon_greedy': False, 'adaptive_method_kernel': 'RBF', 'af': 'ucb', "is_DiscreteBO": True}
     ]
+
+    seeds = []
+    for _ in range(len(thresholds[dataset])):
+        seeds_ = randint(0, 1e9, 30)
+        seeds.append(seeds_.tolist())
 
     for config in configurations_best:
         for threshold in thresholds[dataset]:
@@ -94,6 +84,17 @@ for dataset in datasets:
             for idx in range(len(lines)):
 
                 line = lines[idx]
+
+                if "  seeds: " in line:
+
+                    seeds_ = seeds[thresholds[dataset].index(threshold)]
+
+                    lines[idx] = "  seeds: ["
+                    for s_ in seeds_:
+                        lines[idx] += str(s_)
+                        if s_ != seeds_[-1]:
+                            lines[idx] += ", "
+                    lines[idx] += "]\n"
 
                 if "  output_path: " in line:
                     lines[idx] = "  output_path: " + output_path + "\n"
@@ -152,9 +153,9 @@ for dataset in datasets:
                 if "    ml_target_type: " in line:
                     lines[idx] = "    ml_target_type: " + ml_target + "\n"
 
-            output_name = "input_files/%s/" %dataset + test_file.split(".yaml")[0] + "_" + str(idx_setting) + ".yaml"
+            output_name = "input_files/%s/" %dataset + test_file.split("/")[1].split(".yaml")[0] + "_" + str(idx_setting) + ".yaml"
             generate_folder_structure("./input_files/%s/" %dataset)
-
+            
             with open(output_name, 'w') as file:
                 file.writelines(lines)
 
@@ -167,7 +168,7 @@ for dataset in datasets:
 
             setting.append([ml_bounds, ml_target, consider_only_true_max, epsilon_greedy, adaptive_method_kernel, af, threshold, is_DBO, output_name])
     
-    
+    """
     # Ablation study: all bounds but only one feature at a time
     thresholds = {
         "oscarp": [150, 300, 450, 600],
@@ -291,6 +292,7 @@ for dataset in datasets:
 
             setting.append([ml_bounds, ml_target, consider_only_true_max, epsilon_greedy, adaptive_method_kernel, af, threshold, is_DBO, output_name])
     """
+    """
     configurations_ablation = []
     count = 0
 
@@ -329,7 +331,7 @@ for dataset in datasets:
                                 configurations.append(configuration_1)
                             else:
                                 count += 1
-
+    """
     """
     thresholds = {
         "oscarp": [300],
@@ -345,7 +347,7 @@ for dataset in datasets:
         "ligen": [-567.312555400384]
     }
     """
-
+    """
     thresholds = {"query26_monodimensional": [4.19e5, 4.74e5, 6.08e5, 8.63e5, 2e6], 
                   "kmeans_monodimensional": [2.41e5, 2.83e5, 3.78e5, 1.19e6, 7e6], 
                   "sparkDL_monodimensional": [1.5747e6, 1.6955e6, 1.85866e6, 2.02753e6, 2.7304e6], 
@@ -452,9 +454,25 @@ for dataset in datasets:
                 is_DBO = False
 
             setting.append([ml_bounds, ml_target, consider_only_true_max, epsilon_greedy, adaptive_method_kernel, af, threshold, is_DBO, output_name])
-    
+    """
     print("You are testing %s different settings" %idx_setting)
+    
+    def process_batch(settings):
 
+        results = []
+
+        for setting in settings:
+
+            result = setting[:-2]
+            res_sim = test_config(setting[-1], setting[-2])
+            for elem in res_sim:
+                result.append(round(elem,3))
+
+            results.append(result)
+
+        return results
+
+    """
     def split_list(input_list, num_chunks):
         
         avg_chunk_size = len(input_list) // num_chunks
@@ -472,23 +490,6 @@ for dataset in datasets:
 
     setting_parallel = split_list(setting, cores_number)
 
-
-    def process_batch(settings):
-
-        results = []
-
-        for setting in settings:
-
-            result = setting[:-2]
-            res_sim = test_config(setting[-1], setting[-2])
-            for elem in res_sim:
-                result.append(round(elem,3))
-
-            results.append(result)
-
-        return results
-
-
     with Pool(processes = cores_number) as pool:
 
         partial_gp = functools.partial(process_batch)
@@ -497,8 +498,8 @@ for dataset in datasets:
 
     for cc in range(cores_number):
         data = data + batch_results_parallel[cc] 
-    
-    #data = process_batch(setting)
+    """
+    data = process_batch(setting)
 
     with open("%s_best_config.csv" %dataset, 'w', encoding='UTF8', newline='') as f:
         writer = csv.writer(f, delimiter=',')

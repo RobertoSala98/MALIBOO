@@ -3,8 +3,8 @@ general_setting:
   initial_points: []
   num_iterations: 10
   repetitions: 30
-  random_seed: True
-  seeds: [0,1,2,3,4,5,6,7,8,9]
+  random_seed: False
+  seeds: [916634440]
   output_path: "./outputs/test"
   delete_previous_output: True
   debug: False
@@ -68,7 +68,7 @@ acquisition_info:
       n_estimators: 10
   ml_on_target_parameters:
     ml_target_type: probability
-    ml_target_model: XGBoost
+    ml_target_model: Ridge
     Ridge:
       alpha: 0.011
     XGBoost:

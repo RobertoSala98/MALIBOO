@@ -116,13 +116,18 @@ def acq_max(ac, gp, y_max, bounds, random_state, n_warmup=10000, n_iter=10, data
     if debug: print("Acquisition evaluated successfully on grid")
     idx = ys.argmax()  # this index is relative to the local x_tries values matrix
     x_max = x_tries[idx]
+
+    reparametrized = False
     
     if adaptive_method and not pick_random:
 
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
 
-            if x_max.tolist() in np.array(old_x).tolist():
+            while x_max.tolist() in np.array(old_x).tolist():
+                
+                #print("Riparametrizzo")
+                reparametrized = True
 
                 if kind == 'ucb':
 
@@ -182,31 +187,32 @@ def acq_max(ac, gp, y_max, bounds, random_state, n_warmup=10000, n_iter=10, data
                     
                     result = minimize(f, x0, constraints=constraints)       
                     optimal_values = result.x
-                    #adaptive_method_parameters["beta"] = optimal_values[0]
-                    adaptive_method_parameters["beta"] = max(optimal_values[0], adaptive_method_parameters["beta"] + 1e-10)
-                    adaptive_method_parameters["beta"] = min(optimal_values[0], adaptive_method_parameters["beta"] + adaptive_method_parameters["beta_h"])
+
+                    #adaptive_method_parameters["beta"] = min(max(optimal_values[0], adaptive_method_parameters["beta"] + 1e-10), adaptive_method_parameters["beta"] + adaptive_method_parameters["beta_h"])
+                    temp_beta = min(max(optimal_values[0], adaptive_method_parameters["beta"] + 1e-10), adaptive_method_parameters["beta"] + adaptive_method_parameters["beta_h"])
 
                     if adaptive_method_parameters["kernel"] == "RBF":
-                        adaptive_method_parameters["l"] = max(optimal_values[1], 1e-5)
-                        adaptive_method_parameters["l"] = min(optimal_values[1], adaptive_method_parameters["l_h"])
-                        #print("beta_old = %s" %beta_old)
-                        if debug: print("Updated beta = %s, l = %s" %(adaptive_method_parameters["beta"], adaptive_method_parameters["l"]))
-                    else:
-                        adaptive_method_parameters["nu"] = max(optimal_values[1], 0.5)
-                        adaptive_method_parameters["nu"] = min(optimal_values[1], adaptive_method_parameters["nu_h"])
-                        if debug: print("Updated beta = %s, nu = %s" %(adaptive_method_parameters["beta"], adaptive_method_parameters["nu"]))
+                        
+                        #adaptive_method_parameters["l"] = min(max(optimal_values[1], 1e-5), adaptive_method_parameters["l_h"])
+                        temp_l = min(max(optimal_values[1], 1e-5), adaptive_method_parameters["l_h"])
+                        if debug: print("Trying beta = %s, l = %s" %(temp_beta, temp_l))
 
-                    if adaptive_method_parameters["kernel"] == "RBF":
                         gp = GaussianProcessRegressor(
-                            kernel=CustomRBFKernel(length_scale=adaptive_method_parameters["l"], sigma_2=adaptive_method_parameters["sigma_2"]),
+                            kernel=CustomRBFKernel(length_scale=temp_l, sigma_2=adaptive_method_parameters["sigma_2"]),
                             alpha=1e-6,
                             normalize_y=True,
                             n_restarts_optimizer=5,
                             random_state=random_state,
                         )
+
                     else:
+
+                        #adaptive_method_parameters["nu"] = min(max(optimal_values[1], 0.5), adaptive_method_parameters["nu_h"])
+                        temp_nu = min(max(optimal_values[1], 0.5), adaptive_method_parameters["nu_h"])
+                        if debug: print("Updated beta = %s, nu = %s" %(temp_beta, temp_nu))
+
                         gp = GaussianProcessRegressor(
-                            kernel=Matern(nu=adaptive_method_parameters["nu"]),
+                            kernel=Matern(nu=temp_nu),
                             alpha=1e-6,
                             normalize_y=True,
                             n_restarts_optimizer=5,
@@ -221,6 +227,17 @@ def acq_max(ac, gp, y_max, bounds, random_state, n_warmup=10000, n_iter=10, data
 
                     idx = ys.argmax()
                     x_max = x_tries[idx]
+
+                    if not x_max.tolist() in np.array(old_x).tolist():
+
+                        adaptive_method_parameters["beta"] = temp_beta
+
+                        if adaptive_method_parameters["kernel"] == "RBF":
+                            adaptive_method_parameters["l"] = temp_l
+                            if debug: print("Updated beta = %s, l = %s" %(temp_beta, temp_l))
+                        else:
+                            adaptive_method_parameters["nu"] = temp_nu
+                            if debug: print("Updated beta = %s, nu = %s" %(temp_beta, temp_nu))
 
                 else:
 
@@ -273,28 +290,30 @@ def acq_max(ac, gp, y_max, bounds, random_state, n_warmup=10000, n_iter=10, data
                         constraints.append({'type': 'ineq', 'fun': lambda x: x - 0.5})
                         constraints.append({'type': 'ineq', 'fun': lambda x: adaptive_method_parameters["nu_h"] - x})
                     
-                    result = minimize(f, x0, constraints=constraints)       
+                    result = minimize(f, x0, constraints=constraints)   
 
                     if adaptive_method_parameters["kernel"] == "RBF":
-                        adaptive_method_parameters["l"] = max(result.x[0], 1e-5)
-                        adaptive_method_parameters["l"] = min(result.x[0], adaptive_method_parameters["l_h"])
-                        if debug: print("Updated l = %s" %(adaptive_method_parameters["l"]))
-                    else:
-                        adaptive_method_parameters["nu"] = max(result.x[0], 0.5)
-                        adaptive_method_parameters["nu"] = min(result.x[0], adaptive_method_parameters["nu_h"])
-                        if debug: print("Updated nu = %s" %(adaptive_method_parameters["nu"]))
 
-                    if adaptive_method_parameters["kernel"] == "RBF":
+                        #adaptive_method_parameters["l"] = min(max(result.x[0], 1e-5), adaptive_method_parameters["l_h"])
+                        temp_l = min(max(result.x[0], 1e-5), adaptive_method_parameters["l_h"])
+                        if debug: print("Trying l = %s" %(temp_l))
+
                         gp = GaussianProcessRegressor(
-                            kernel=CustomRBFKernel(length_scale=adaptive_method_parameters["l"], sigma_2=adaptive_method_parameters["sigma_2"]),
+                            kernel=CustomRBFKernel(length_scale=temp_l, sigma_2=adaptive_method_parameters["sigma_2"]),
                             alpha=1e-6,
                             normalize_y=True,
                             n_restarts_optimizer=5,
                             random_state=random_state,
                         )
+
                     else:
+
+                        #adaptive_method_parameters["nu"] = min(max(result.x[0], 0.5), adaptive_method_parameters["nu_h"])
+                        temp_nu = min(max(result.x[0], 0.5), adaptive_method_parameters["nu_h"])
+                        if debug: print("Trying nu = %s" %(temp_nu))
+
                         gp = GaussianProcessRegressor(
-                            kernel=Matern(nu=adaptive_method_parameters["nu"]),
+                            kernel=Matern(nu=temp_nu),
                             alpha=1e-6,
                             normalize_y=True,
                             n_restarts_optimizer=5,
@@ -304,11 +323,19 @@ def acq_max(ac, gp, y_max, bounds, random_state, n_warmup=10000, n_iter=10, data
                     gp.fit(old_x, old_y)
                     ys = ac(x_tries, gp=gp, y_max=y_max, iter_num=iter_num, at_least_one_feasible_found=at_least_one_feasible_found)
                     for idx_ in range(len(ys)):
-                            if x_tries[idx_].tolist() in np.array(old_x).tolist():
-                                ys[idx_] = -np.inf
+                        if x_tries[idx_].tolist() in np.array(old_x).tolist():
+                            ys[idx_] = -np.inf
 
                     idx = ys.argmax()
                     x_max = x_tries[idx]
+
+                    if not x_max.tolist() in np.array(old_x).tolist():
+                        if adaptive_method_parameters["kernel"] == "RBF":
+                            adaptive_method_parameters["l"] = temp_l
+                            if debug: print("Updated l = %s" %(temp_l))
+                        else:
+                            adaptive_method_parameters["nu"] = temp_nu
+                            if debug: print("Updated nu = %s" %(temp_nu))
 
 
     if dataset is not None:
@@ -316,7 +343,7 @@ def acq_max(ac, gp, y_max, bounds, random_state, n_warmup=10000, n_iter=10, data
         # idx becomes the true dataset index of the selected point, rather than being relative to x_tries
         idx = dataset.index[idx]
         if debug: print("End of acq_max(): maximizer of utility is x = data[{}] = {}, with ac(x) = {}".format(idx, x_max, max_acq))
-        return x_max, idx, max_acq
+        return x_max, idx, max_acq, reparametrized
 
     max_acq = ys[idx]
     if debug: print("Best point on initial grid is ac({}) = {}".format(x_max, max_acq))
@@ -346,7 +373,7 @@ def acq_max(ac, gp, y_max, bounds, random_state, n_warmup=10000, n_iter=10, data
 
     # Clip output to make sure it lies within the bounds. Due to floating
     # point technicalities this is not always the case.
-    return np.clip(x_max, bounds[:, 0], bounds[:, 1]), None, max_acq
+    return np.clip(x_max, bounds[:, 0], bounds[:, 1]), None, max_acq, reparametrized
 
 
 class UtilityFunction(object):
