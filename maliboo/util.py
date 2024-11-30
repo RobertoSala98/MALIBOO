@@ -521,14 +521,14 @@ class UtilityFunction(object):
 
     def utility(self, x, gp, y_max, iter_num, at_least_one_feasible_found, beta=1.0, pick_random=False):
 
-        if self.kind == 'no_BO' or not at_least_one_feasible_found or pick_random:
+        if self.kind == 'no_BO' or pick_random:
             res = self._no_BO(x)
         elif self.kind == 'ucb':
             res = self._ucb(x, gp, self.kappa)
         elif self.kind == 'poi':
             res = self._poi(x, gp, y_max, self.xi)
         elif self.kind == 'ei':
-            res = self._ei(x, gp, y_max, self.xi)
+            res = self._ei(x, gp, y_max, self.xi, at_least_one_feasible_found)
 
         elif self.kind == 'eic':
             res = self._eic(x, gp, y_max, self.xi, self.eic_bounds, self.eic_P_func, self.eic_Q_func)
@@ -550,7 +550,7 @@ class UtilityFunction(object):
         if self._ml_on_bounds and self.kind != 'eic':
             res *= self._consider_ml_on_bounds(x, self.ml_model, self.ml_bounds, self.ml_bounds_type, self.ml_bounds_model)
         
-        if self._ml_on_target and not pick_random and at_least_one_feasible_found:
+        if self._ml_on_target and not pick_random:
 
             parameters = {}
 
@@ -597,14 +597,19 @@ class UtilityFunction(object):
 
 
     @staticmethod
-    def _ei(x, gp, y_max, xi):
+    def _ei(x, gp, y_max, xi, at_least_one_feasible_found):
         """Compute Expected Improvement"""
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
             mean, std = gp.predict(x, return_std=True)
-  
-        a = (mean - y_max - xi)
-        z = a / std
+
+        if at_least_one_feasible_found:
+            a = (mean - y_max - xi)
+            z = a / std
+        else:
+            a = (mean -(mean - 3*std) - xi)
+            z = a / std
+
         return a * norm.cdf(z) + std * norm.pdf(z)
 
 
