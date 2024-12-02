@@ -161,9 +161,9 @@ class BayesianOptimization(Observable):
         return self._space.dataset
 
 
-    def register(self, params, target, idx=None, feasibility=True):
+    def register(self, params, target, idx=None, feasibility=True, reparametrized=False):
         """Expect observation with known target"""
-        self._space.register(params, target, idx, feasibility)
+        self._space.register(params, target, idx, feasibility, reparametrized)
         self.dispatch(Events.OPTIMIZATION_STEP)
 
 
@@ -251,7 +251,7 @@ class BayesianOptimization(Observable):
             at_least_one_feasible_found = True
         
         # Find argmax of the acquisition function
-        suggestion, idx, acq_val = acq_max(
+        suggestion, idx, acq_val, reparametrized = acq_max(
             ac=utility_function.utility,
             gp=self._gp,
             y_max=self._space.max()['target'],
@@ -278,7 +278,7 @@ class BayesianOptimization(Observable):
         if self.dataset is not None:
             self.update_memory_queue(self.dataset[self._space.keys], suggestion)
 
-        return self._space.array_to_params(suggestion), idx, acq_val
+        return self._space.array_to_params(suggestion), idx, acq_val, reparametrized
 
 
     def _prime_queue(self, init_points):
@@ -486,6 +486,7 @@ class BayesianOptimization(Observable):
                 print(f"Recovered {old_iters} values from temporary file")
 
             # Sample new point from GP
+            reparametrized = False
             if not self._queue.empty():
                 # get point from queue
                 idx, x_probe = self._queue.get(block=False)
@@ -508,7 +509,7 @@ class BayesianOptimization(Observable):
                 if ml_on_target:
                     objective_ml_model = self.train_objective_ml_model(acq_info=acq_info)
                     util.set_objective_ml_model(objective_ml_model)
-                x_probe, idx, acq_val = self.suggest(util, iter_num=iteration, ml_on_bounds=ml_on_bounds, 
+                x_probe, idx, acq_val, reparametrized = self.suggest(util, iter_num=iteration, ml_on_bounds=ml_on_bounds, 
                                                      consider_max_only_on_feasible=consider_max_only_on_feasible, 
                                                      epsilon_greedy=epsilon_greedy, adaptive_method=adaptive_method)
                 if self._debug: print("Suggested point: index {}, value {}, acquisition {}".format(idx, x_probe, acq_val))
@@ -534,7 +535,7 @@ class BayesianOptimization(Observable):
                         feasibility = _ml_target >= util.ml_bounds[0] and _ml_target <= util.ml_bounds[1]
                     else:
                         feasibility = True
-                self.register(self._space.params_to_array(x_probe), target_value, idx, feasibility)
+                self.register(self._space.params_to_array(x_probe), target_value, idx, feasibility, reparametrized)
 
             # Compute ML prediction and check stopping condition
             y_true_ml = self.get_ml_target_data(util.ml_target).iloc[-1] if hasattr(util, 'ml_model') else None
@@ -554,6 +555,7 @@ class BayesianOptimization(Observable):
                 other_info.loc[idx, 'feasible'] = self.dataset.loc[idx, util.ml_target] >= util.ml_bounds[0] and self.dataset.loc[idx, util.ml_target] <= util.ml_bounds[1]
             else:
                 other_info.loc[idx, 'feasible'] = True
+            other_info.loc[idx, 'reparametrized'] = reparametrized
             self.register_optimization_info(other_info)
 
             if self._debug: print("End of current iteration", 24*"+", sep="\n")

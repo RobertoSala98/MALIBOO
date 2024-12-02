@@ -114,209 +114,246 @@ def acq_max(ac, gp, y_max, bounds, random_state, n_warmup=10000, n_iter=10, data
         
     ys = ac(x_tries, gp=gp, y_max=y_max, iter_num=iter_num, at_least_one_feasible_found=at_least_one_feasible_found, pick_random=pick_random)
     if debug: print("Acquisition evaluated successfully on grid")
-    idx = ys.argmax()  # this index is relative to the local x_tries values matrix
+    indices = np.where(ys == max(ys))[0]
+    idx = random.choice(indices)  # this index is relative to the local x_tries values matrix
     x_max = x_tries[idx]
+
+    reparametrized = False
     
     if adaptive_method and not pick_random:
 
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
 
-            if x_max.tolist() in np.array(old_x).tolist():
+            while x_max.tolist() in np.array(old_x).tolist():
+                
+                if at_least_one_feasible_found:
+                    #print("Riparametrizzo")
+                    reparametrized = True
 
-                if kind == 'ucb':
+                    if kind == 'ucb':
 
-                    def f(x): 
+                        def f(x): 
 
-                        x[0] = max(x[0], adaptive_method_parameters["beta"] + 1e-10)
-                        x[0] = min(x[0], adaptive_method_parameters["beta"] + adaptive_method_parameters["beta_h"])
+                            x[0] = max(x[0], adaptive_method_parameters["beta"] + 1e-10)
+                            x[0] = min(x[0], adaptive_method_parameters["beta"] + adaptive_method_parameters["beta_h"])
+
+                            if adaptive_method_parameters["kernel"] == "RBF":
+
+                                x[1] = max(x[1], 1e-5)
+                                x[1] = min(x[1], adaptive_method_parameters["l_h"])
+
+                                cand_gp = GaussianProcessRegressor(
+                                    kernel=CustomRBFKernel(length_scale=x[1], sigma_2=adaptive_method_parameters["sigma_2"]),
+                                    alpha=1e-6,
+                                    normalize_y=True,
+                                    n_restarts_optimizer=5,
+                                    random_state=random_state,
+                                )
+                            else:
+
+                                x[1] = max(x[1], 0.5)
+                                x[1] = min(x[1], adaptive_method_parameters["nu_h"])
+                                
+                                cand_gp = GaussianProcessRegressor(
+                                    kernel=Matern(nu=x[1]),
+                                    alpha=1e-6,
+                                    normalize_y=True,
+                                    n_restarts_optimizer=5,
+                                    random_state=random_state,
+                                )
+
+                            cand_gp.fit(old_x, old_y)
+
+                            ys = ac(x_tries, gp=cand_gp, y_max=y_max, iter_num=iter_num, at_least_one_feasible_found=at_least_one_feasible_found, beta=x[0])
+                            for idx_ in range(len(ys)):
+                                if x_tries[idx_].tolist() in np.array(old_x).tolist():
+                                    ys[idx_] = -np.inf
+
+                            idx = ys.argmax()
+                            candidate_x_ = x_tries[idx]
+
+                            return (x[0]-adaptive_method_parameters["beta"]) + np.linalg.norm(candidate_x_ - x_max) + 1e30*(candidate_x_.tolist() in np.array(old_x).tolist())
+
+                        constraints = [{'type': 'ineq', 'fun': lambda x: x[0] - adaptive_method_parameters["beta"] - 1e-10},       # beta_new >= beta_old to have convergence guarantees of UCB
+                                    {'type': 'ineq', 'fun': lambda x: adaptive_method_parameters["beta_h"] - (x[0] - adaptive_method_parameters["beta"])}]  
+                        
+                        if adaptive_method_parameters["kernel"] == "RBF":
+                            x0 = [random.uniform(adaptive_method_parameters["beta"]+1e-10, adaptive_method_parameters["beta"]+adaptive_method_parameters["beta_h"]), random.uniform(1e-5, adaptive_method_parameters["l_h"])]
+                            constraints.append({'type': 'ineq', 'fun': lambda x: x[1] - 1e-5})
+                            constraints.append({'type': 'ineq', 'fun': lambda x: adaptive_method_parameters["l_h"] - x[1]})        
+                        else:
+                            x0 = [random.uniform(adaptive_method_parameters["beta"]+1e-10, adaptive_method_parameters["beta"]+adaptive_method_parameters["beta_h"]), random.uniform(0.5, adaptive_method_parameters["nu_h"])]
+                            constraints.append({'type': 'ineq', 'fun': lambda x: x[1] - 0.5})
+                            constraints.append({'type': 'ineq', 'fun': lambda x: adaptive_method_parameters["nu_h"] - x[1]})
+                        
+                        result = minimize(f, x0, constraints=constraints)       
+                        optimal_values = result.x
+
+                        #adaptive_method_parameters["beta"] = min(max(optimal_values[0], adaptive_method_parameters["beta"] + 1e-10), adaptive_method_parameters["beta"] + adaptive_method_parameters["beta_h"])
+                        temp_beta = min(max(optimal_values[0], adaptive_method_parameters["beta"] + 1e-10), adaptive_method_parameters["beta"] + adaptive_method_parameters["beta_h"])
+
+                        if adaptive_method_parameters["kernel"] == "RBF":
+                            
+                            #adaptive_method_parameters["l"] = min(max(optimal_values[1], 1e-5), adaptive_method_parameters["l_h"])
+                            temp_l = min(max(optimal_values[1], 1e-5), adaptive_method_parameters["l_h"])
+                            if debug: print("Trying beta = %s, l = %s" %(temp_beta, temp_l))
+
+                            gp = GaussianProcessRegressor(
+                                kernel=CustomRBFKernel(length_scale=temp_l, sigma_2=adaptive_method_parameters["sigma_2"]),
+                                alpha=1e-6,
+                                normalize_y=True,
+                                n_restarts_optimizer=5,
+                                random_state=random_state,
+                            )
+
+                        else:
+
+                            #adaptive_method_parameters["nu"] = min(max(optimal_values[1], 0.5), adaptive_method_parameters["nu_h"])
+                            temp_nu = min(max(optimal_values[1], 0.5), adaptive_method_parameters["nu_h"])
+                            if debug: print("Updated beta = %s, nu = %s" %(temp_beta, temp_nu))
+
+                            gp = GaussianProcessRegressor(
+                                kernel=Matern(nu=temp_nu),
+                                alpha=1e-6,
+                                normalize_y=True,
+                                n_restarts_optimizer=5,
+                                random_state=random_state,
+                            )
+
+                        gp.fit(old_x, old_y)
+                        ys = ac(x_tries, gp=gp, y_max=y_max, iter_num=iter_num, at_least_one_feasible_found=at_least_one_feasible_found, beta=adaptive_method_parameters["beta"])
+                        for idx_ in range(len(ys)):
+                                if x_tries[idx_].tolist() in np.array(old_x).tolist():
+                                    ys[idx_] = -np.inf
+
+                        idx = ys.argmax()
+                        x_max = x_tries[idx]
+
+                        if not x_max.tolist() in np.array(old_x).tolist():
+
+                            adaptive_method_parameters["beta"] = temp_beta
+
+                            if adaptive_method_parameters["kernel"] == "RBF":
+                                adaptive_method_parameters["l"] = temp_l
+                                if debug: print("Updated beta = %s, l = %s" %(temp_beta, temp_l))
+                            else:
+                                adaptive_method_parameters["nu"] = temp_nu
+                                if debug: print("Updated beta = %s, nu = %s" %(temp_beta, temp_nu))
+
+                    else:
+
+                        def f(x): 
+                            if adaptive_method_parameters["kernel"] == "RBF":
+
+                                x = max(x, 1e-5)
+                                x = min(x, adaptive_method_parameters["l_h"])
+
+                                cand_gp = GaussianProcessRegressor(
+                                    kernel=CustomRBFKernel(length_scale=x, sigma_2=adaptive_method_parameters["sigma_2"]),
+                                    alpha=1e-6,
+                                    normalize_y=True,
+                                    n_restarts_optimizer=5,
+                                    random_state=random_state,
+                                )
+                            else:
+
+                                x = max(x, 0.5)
+                                x = min(x, adaptive_method_parameters["nu_h"])
+
+                                cand_gp = GaussianProcessRegressor(
+                                    kernel=Matern(nu=x),
+                                    alpha=1e-6,
+                                    normalize_y=True,
+                                    n_restarts_optimizer=5,
+                                    random_state=random_state,
+                                )
+
+                            cand_gp.fit(old_x, old_y)
+
+                            ys = ac(x_tries, gp=cand_gp, y_max=y_max, iter_num=iter_num, at_least_one_feasible_found=at_least_one_feasible_found)
+                            for idx_ in range(len(ys)):
+                                if x_tries[idx_].tolist() in np.array(old_x).tolist():
+                                    ys[idx_] = -np.inf
+
+                            idx = ys.argmax()
+                            candidate_x_ = x_tries[idx]
+
+                            return np.linalg.norm(candidate_x_ - x_max) + 1e30*(candidate_x_.tolist() in np.array(old_x).tolist())
+
+                        constraints = []  
+                        
+                        if adaptive_method_parameters["kernel"] == "RBF":
+                            x0 = random.uniform(1e-5, adaptive_method_parameters["l_h"])
+                            constraints.append({'type': 'ineq', 'fun': lambda x: x - 1e-5})
+                            constraints.append({'type': 'ineq', 'fun': lambda x: adaptive_method_parameters["l_h"] - x})        
+                        else:
+                            x0 = random.uniform(0.5, adaptive_method_parameters["nu_h"])
+                            constraints.append({'type': 'ineq', 'fun': lambda x: x - 0.5})
+                            constraints.append({'type': 'ineq', 'fun': lambda x: adaptive_method_parameters["nu_h"] - x})
+                        
+                        result = minimize(f, x0, constraints=constraints)   
 
                         if adaptive_method_parameters["kernel"] == "RBF":
 
-                            x[1] = max(x[1], 1e-5)
-                            x[1] = min(x[1], adaptive_method_parameters["l_h"])
+                            #adaptive_method_parameters["l"] = min(max(result.x[0], 1e-5), adaptive_method_parameters["l_h"])
+                            temp_l = min(max(result.x[0], 1e-5), adaptive_method_parameters["l_h"])
+                            if debug: print("Trying l = %s" %(temp_l))
 
-                            cand_gp = GaussianProcessRegressor(
-                                kernel=CustomRBFKernel(length_scale=x[1], sigma_2=adaptive_method_parameters["sigma_2"]),
+                            gp = GaussianProcessRegressor(
+                                kernel=CustomRBFKernel(length_scale=temp_l, sigma_2=adaptive_method_parameters["sigma_2"]),
                                 alpha=1e-6,
                                 normalize_y=True,
                                 n_restarts_optimizer=5,
                                 random_state=random_state,
                             )
+
                         else:
 
-                            x[1] = max(x[1], 0.5)
-                            x[1] = min(x[1], adaptive_method_parameters["nu_h"])
-                            
-                            cand_gp = GaussianProcessRegressor(
-                                kernel=Matern(nu=x[1]),
+                            #adaptive_method_parameters["nu"] = min(max(result.x[0], 0.5), adaptive_method_parameters["nu_h"])
+                            temp_nu = min(max(result.x[0], 0.5), adaptive_method_parameters["nu_h"])
+                            if debug: print("Trying nu = %s" %(temp_nu))
+
+                            gp = GaussianProcessRegressor(
+                                kernel=Matern(nu=temp_nu),
                                 alpha=1e-6,
                                 normalize_y=True,
                                 n_restarts_optimizer=5,
                                 random_state=random_state,
                             )
 
-                        cand_gp.fit(old_x, old_y)
-
-                        ys = ac(x_tries, gp=cand_gp, y_max=y_max, iter_num=iter_num, at_least_one_feasible_found=at_least_one_feasible_found, beta=x[0])
+                        gp.fit(old_x, old_y)
+                        ys = ac(x_tries, gp=gp, y_max=y_max, iter_num=iter_num, at_least_one_feasible_found=at_least_one_feasible_found)
                         for idx_ in range(len(ys)):
                             if x_tries[idx_].tolist() in np.array(old_x).tolist():
                                 ys[idx_] = -np.inf
 
                         idx = ys.argmax()
-                        candidate_x_ = x_tries[idx]
+                        x_max = x_tries[idx]
 
-                        return (x[0]-adaptive_method_parameters["beta"]) + np.linalg.norm(candidate_x_ - x_max) + 1e30*(candidate_x_.tolist() in np.array(old_x).tolist())
-
-                    constraints = [{'type': 'ineq', 'fun': lambda x: x[0] - adaptive_method_parameters["beta"] - 1e-10},       # beta_new >= beta_old to have convergence guarantees of UCB
-                                   {'type': 'ineq', 'fun': lambda x: adaptive_method_parameters["beta_h"] - (x[0] - adaptive_method_parameters["beta"])}]  
-                    
-                    if adaptive_method_parameters["kernel"] == "RBF":
-                        x0 = [random.uniform(adaptive_method_parameters["beta"]+1e-10, adaptive_method_parameters["beta"]+adaptive_method_parameters["beta_h"]), random.uniform(1e-5, adaptive_method_parameters["l_h"])]
-                        constraints.append({'type': 'ineq', 'fun': lambda x: x[1] - 1e-5})
-                        constraints.append({'type': 'ineq', 'fun': lambda x: adaptive_method_parameters["l_h"] - x[1]})        
-                    else:
-                        x0 = [random.uniform(adaptive_method_parameters["beta"]+1e-10, adaptive_method_parameters["beta"]+adaptive_method_parameters["beta_h"]), random.uniform(0.5, adaptive_method_parameters["nu_h"])]
-                        constraints.append({'type': 'ineq', 'fun': lambda x: x[1] - 0.5})
-                        constraints.append({'type': 'ineq', 'fun': lambda x: adaptive_method_parameters["nu_h"] - x[1]})
-                    
-                    result = minimize(f, x0, constraints=constraints)       
-                    optimal_values = result.x
-                    #adaptive_method_parameters["beta"] = optimal_values[0]
-                    adaptive_method_parameters["beta"] = max(optimal_values[0], adaptive_method_parameters["beta"] + 1e-10)
-                    adaptive_method_parameters["beta"] = min(optimal_values[0], adaptive_method_parameters["beta"] + adaptive_method_parameters["beta_h"])
-
-                    if adaptive_method_parameters["kernel"] == "RBF":
-                        adaptive_method_parameters["l"] = max(optimal_values[1], 1e-5)
-                        adaptive_method_parameters["l"] = min(optimal_values[1], adaptive_method_parameters["l_h"])
-                        #print("beta_old = %s" %beta_old)
-                        if debug: print("Updated beta = %s, l = %s" %(adaptive_method_parameters["beta"], adaptive_method_parameters["l"]))
-                    else:
-                        adaptive_method_parameters["nu"] = max(optimal_values[1], 0.5)
-                        adaptive_method_parameters["nu"] = min(optimal_values[1], adaptive_method_parameters["nu_h"])
-                        if debug: print("Updated beta = %s, nu = %s" %(adaptive_method_parameters["beta"], adaptive_method_parameters["nu"]))
-
-                    if adaptive_method_parameters["kernel"] == "RBF":
-                        gp = GaussianProcessRegressor(
-                            kernel=CustomRBFKernel(length_scale=adaptive_method_parameters["l"], sigma_2=adaptive_method_parameters["sigma_2"]),
-                            alpha=1e-6,
-                            normalize_y=True,
-                            n_restarts_optimizer=5,
-                            random_state=random_state,
-                        )
-                    else:
-                        gp = GaussianProcessRegressor(
-                            kernel=Matern(nu=adaptive_method_parameters["nu"]),
-                            alpha=1e-6,
-                            normalize_y=True,
-                            n_restarts_optimizer=5,
-                            random_state=random_state,
-                        )
-
-                    gp.fit(old_x, old_y)
-                    ys = ac(x_tries, gp=gp, y_max=y_max, iter_num=iter_num, at_least_one_feasible_found=at_least_one_feasible_found, beta=adaptive_method_parameters["beta"])
-                    for idx_ in range(len(ys)):
-                            if x_tries[idx_].tolist() in np.array(old_x).tolist():
-                                ys[idx_] = -np.inf
-
-                    idx = ys.argmax()
-                    x_max = x_tries[idx]
+                        if not x_max.tolist() in np.array(old_x).tolist():
+                            if adaptive_method_parameters["kernel"] == "RBF":
+                                adaptive_method_parameters["l"] = temp_l
+                                if debug: print("Updated l = %s" %(temp_l))
+                            else:
+                                adaptive_method_parameters["nu"] = temp_nu
+                                if debug: print("Updated nu = %s" %(temp_nu))
 
                 else:
-
-                    def f(x): 
-                        if adaptive_method_parameters["kernel"] == "RBF":
-
-                            x = max(x, 1e-5)
-                            x = min(x, adaptive_method_parameters["l_h"])
-
-                            cand_gp = GaussianProcessRegressor(
-                                kernel=CustomRBFKernel(length_scale=x, sigma_2=adaptive_method_parameters["sigma_2"]),
-                                alpha=1e-6,
-                                normalize_y=True,
-                                n_restarts_optimizer=5,
-                                random_state=random_state,
-                            )
-                        else:
-
-                            x = max(x, 0.5)
-                            x = min(x, adaptive_method_parameters["nu_h"])
-
-                            cand_gp = GaussianProcessRegressor(
-                                kernel=Matern(nu=x),
-                                alpha=1e-6,
-                                normalize_y=True,
-                                n_restarts_optimizer=5,
-                                random_state=random_state,
-                            )
-
-                        cand_gp.fit(old_x, old_y)
-
-                        ys = ac(x_tries, gp=cand_gp, y_max=y_max, iter_num=iter_num, at_least_one_feasible_found=at_least_one_feasible_found)
-                        for idx_ in range(len(ys)):
-                            if x_tries[idx_].tolist() in np.array(old_x).tolist():
-                                ys[idx_] = -np.inf
-
-                        idx = ys.argmax()
-                        candidate_x_ = x_tries[idx]
-
-                        return np.linalg.norm(candidate_x_ - x_max) + 1e30*(candidate_x_.tolist() in np.array(old_x).tolist())
-
-                    constraints = []  
-                    
-                    if adaptive_method_parameters["kernel"] == "RBF":
-                        x0 = random.uniform(1e-5, adaptive_method_parameters["l_h"])
-                        constraints.append({'type': 'ineq', 'fun': lambda x: x - 1e-5})
-                        constraints.append({'type': 'ineq', 'fun': lambda x: adaptive_method_parameters["l_h"] - x})        
-                    else:
-                        x0 = random.uniform(0.5, adaptive_method_parameters["nu_h"])
-                        constraints.append({'type': 'ineq', 'fun': lambda x: x - 0.5})
-                        constraints.append({'type': 'ineq', 'fun': lambda x: adaptive_method_parameters["nu_h"] - x})
-                    
-                    result = minimize(f, x0, constraints=constraints)       
-
-                    if adaptive_method_parameters["kernel"] == "RBF":
-                        adaptive_method_parameters["l"] = max(result.x[0], 1e-5)
-                        adaptive_method_parameters["l"] = min(result.x[0], adaptive_method_parameters["l_h"])
-                        if debug: print("Updated l = %s" %(adaptive_method_parameters["l"]))
-                    else:
-                        adaptive_method_parameters["nu"] = max(result.x[0], 0.5)
-                        adaptive_method_parameters["nu"] = min(result.x[0], adaptive_method_parameters["nu_h"])
-                        if debug: print("Updated nu = %s" %(adaptive_method_parameters["nu"]))
-
-                    if adaptive_method_parameters["kernel"] == "RBF":
-                        gp = GaussianProcessRegressor(
-                            kernel=CustomRBFKernel(length_scale=adaptive_method_parameters["l"], sigma_2=adaptive_method_parameters["sigma_2"]),
-                            alpha=1e-6,
-                            normalize_y=True,
-                            n_restarts_optimizer=5,
-                            random_state=random_state,
-                        )
-                    else:
-                        gp = GaussianProcessRegressor(
-                            kernel=Matern(nu=adaptive_method_parameters["nu"]),
-                            alpha=1e-6,
-                            normalize_y=True,
-                            n_restarts_optimizer=5,
-                            random_state=random_state,
-                        )
-
-                    gp.fit(old_x, old_y)
                     ys = ac(x_tries, gp=gp, y_max=y_max, iter_num=iter_num, at_least_one_feasible_found=at_least_one_feasible_found)
                     for idx_ in range(len(ys)):
-                            if x_tries[idx_].tolist() in np.array(old_x).tolist():
-                                ys[idx_] = -np.inf
-
-                    idx = ys.argmax()
+                        if x_tries[idx_].tolist() in np.array(old_x).tolist():
+                            ys[idx_] = -np.inf
+                    indices = np.where(ys == max(ys))[0]
+                    idx = random.choice(indices)
                     x_max = x_tries[idx]
-
 
     if dataset is not None:
         max_acq = ys[idx]
         # idx becomes the true dataset index of the selected point, rather than being relative to x_tries
         idx = dataset.index[idx]
         if debug: print("End of acq_max(): maximizer of utility is x = data[{}] = {}, with ac(x) = {}".format(idx, x_max, max_acq))
-        return x_max, idx, max_acq
+        return x_max, idx, max_acq, reparametrized
 
     max_acq = ys[idx]
     if debug: print("Best point on initial grid is ac({}) = {}".format(x_max, max_acq))
@@ -346,7 +383,7 @@ def acq_max(ac, gp, y_max, bounds, random_state, n_warmup=10000, n_iter=10, data
 
     # Clip output to make sure it lies within the bounds. Due to floating
     # point technicalities this is not always the case.
-    return np.clip(x_max, bounds[:, 0], bounds[:, 1]), None, max_acq
+    return np.clip(x_max, bounds[:, 0], bounds[:, 1]), None, max_acq, reparametrized
 
 
 class UtilityFunction(object):
@@ -484,14 +521,14 @@ class UtilityFunction(object):
 
     def utility(self, x, gp, y_max, iter_num, at_least_one_feasible_found, beta=1.0, pick_random=False):
 
-        if self.kind == 'no_BO' or not at_least_one_feasible_found or pick_random:
+        if self.kind == 'no_BO' or pick_random:
             res = self._no_BO(x)
         elif self.kind == 'ucb':
             res = self._ucb(x, gp, self.kappa)
         elif self.kind == 'poi':
             res = self._poi(x, gp, y_max, self.xi)
         elif self.kind == 'ei':
-            res = self._ei(x, gp, y_max, self.xi)
+            res = self._ei(x, gp, y_max, self.xi, at_least_one_feasible_found)
 
         elif self.kind == 'eic':
             res = self._eic(x, gp, y_max, self.xi, self.eic_bounds, self.eic_P_func, self.eic_Q_func)
@@ -560,14 +597,19 @@ class UtilityFunction(object):
 
 
     @staticmethod
-    def _ei(x, gp, y_max, xi):
+    def _ei(x, gp, y_max, xi, at_least_one_feasible_found):
         """Compute Expected Improvement"""
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
             mean, std = gp.predict(x, return_std=True)
-  
-        a = (mean - y_max - xi)
-        z = a / std
+
+        if at_least_one_feasible_found:
+            a = (mean - y_max - xi)
+            z = a / std
+        else:
+            a = (mean -(mean - 3*std) - xi)
+            z = a / std
+
         return a * norm.cdf(z) + std * norm.pdf(z)
 
 

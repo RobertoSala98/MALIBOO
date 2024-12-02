@@ -60,6 +60,7 @@ class TargetSpace(object):
         self._params = pd.DataFrame()
         self._target = np.empty(shape=(0))
         self._feasibility = np.empty(shape=(0))
+        self._reparametrized = np.empty(shape=(0))
 
         # Other information to be recorded
         self._target_dict_info = pd.DataFrame()
@@ -154,7 +155,7 @@ class TargetSpace(object):
         return x
 
 
-    def register(self, params, target, idx=None, feasibility=True):
+    def register(self, params, target, idx=None, feasibility=True, reparametrized=False):
         """
         Append a point and its target value to the known data.
 
@@ -193,6 +194,7 @@ class TargetSpace(object):
         self._params = pd.concat((self._params, x_df))
         self._target = np.concatenate([self._target, [value]])
         self._feasibility = np.concatenate([self._feasibility, [feasibility]])
+        self._reparametrized = np.concatenate([self._reparametrized, [reparametrized]])
         if info:  # The return value of the target function is a dict
             if self._target_dict_info.empty:
                 # Initialize member
