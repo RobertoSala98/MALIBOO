@@ -58,7 +58,7 @@ acquisition_info:
     ml_bounds: [0.0, 300.00001]
     ml_bounds_coeff: [None, None]
     ml_bounds_type: probability
-    ml_bounds_model: XGBoost
+    ml_bounds_model: Ridge
     Ridge:
       alpha: 0.579
     XGBoost:
