@@ -12,7 +12,51 @@ from sklearn.gaussian_process.kernels import Matern, RBF
 from sklearn.gaussian_process import GaussianProcessRegressor
 from math import sqrt
 import random
+from scipy.spatial.distance import cdist # used for BO
+import pandas as pd
 
+
+class Penalizer():
+    """
+    This class represent the method that will penalize the acquisition function, based on the values of the
+    discrete variables. 
+    
+    Parameters
+    ----------
+    dataset_discrete: pd.DataFrame
+        The dataset that contains all the possible combinations of the discrete variables. 
+        This dataset MUST contain the header. It is important that the name of the discrete variable are specified.
+    alpha: float, default is 1 (no effect)
+        The scaling factor that acts on the exponential
+    
+    debug: bool, default is False
+        
+    Methods
+    ----------
+    penalize: takes as input an array of points for which we want to compute the penaization.
+             It returns the array of the penality. This method shall be passed as argument to the 
+             UtilityFunction.utility() method. 
+    """
+    def __init__(self, dataset_discrete: pd.DataFrame, all_variables_names: list[str], alpha: float = 1.0, debug: bool = False):
+        
+
+        self.dataset_discrete = dataset_discrete
+        self.all_variables_names = all_variables_names
+        self.alpha = alpha
+        self._debug = debug
+        if self._debug: print("Penalizer initialization completed")
+
+    def penalize(self, x):
+
+        # just for now... We convert x in a pd.DataFrame. I imagine this is very inefficient but ...
+
+        x = pd.DataFrame(x, columns = self.all_variables_names)
+        x_discrete = x[self.dataset_discrete.columns]
+        m = self.dataset_discrete.shape[0]
+        n = x_discrete.shape[0]
+        dis = cdist(x_discrete, self.dataset_discrete, metric='euclidean')
+        pen = np.exp(-self.alpha*np.min(dis.reshape(n, m), axis = 1 ))
+        return pen
 
 class CustomRBFKernel(RBF):
     def __init__(self, length_scale=1.0, sigma_2=1.0, **kwargs):
@@ -48,7 +92,7 @@ def min_max_normalize(vector):
 
 def acq_max(ac, gp, y_max, bounds, random_state, n_warmup=10000, n_iter=10, dataset=None, debug=False, iter_num=0, 
             kind='ucb', at_least_one_feasible_found=True, epsilon_greedy=False, adaptive_method=False,
-            old_x=[], old_y=[], adaptive_method_parameters={}, prob_eps_greedy=0.1):
+            old_x=[], old_y=[], adaptive_method_parameters={}, prob_eps_greedy=0.1, penalization = None):
     """
     A function to find the maximum of the acquisition function
 
@@ -112,7 +156,7 @@ def acq_max(ac, gp, y_max, bounds, random_state, n_warmup=10000, n_iter=10, data
         probabilities = [prob_eps_greedy, 1-prob_eps_greedy]
         pick_random = random_state.choice(choices, p=probabilities)
         
-    ys = ac(x_tries, gp=gp, y_max=y_max, iter_num=iter_num, at_least_one_feasible_found=at_least_one_feasible_found, pick_random=pick_random)
+    ys = ac(x_tries, gp=gp, y_max=y_max, iter_num=iter_num, at_least_one_feasible_found=at_least_one_feasible_found, pick_random=pick_random, penalization = penalization)
     if debug: print("Acquisition evaluated successfully on grid")
     indices = np.where(ys == max(ys))[0]
     idx = random.choice(indices)  # this index is relative to the local x_tries values matrix
@@ -165,7 +209,7 @@ def acq_max(ac, gp, y_max, bounds, random_state, n_warmup=10000, n_iter=10, data
 
                             cand_gp.fit(old_x, old_y)
 
-                            ys = ac(x_tries, gp=cand_gp, y_max=y_max, iter_num=iter_num, at_least_one_feasible_found=at_least_one_feasible_found, beta=x[0])
+                            ys = ac(x_tries, gp=cand_gp, y_max=y_max, iter_num=iter_num, at_least_one_feasible_found=at_least_one_feasible_found, beta=x[0], penalization = penalization)
                             for idx_ in range(len(ys)):
                                 if x_tries[idx_].tolist() in np.array(old_x).tolist():
                                     ys[idx_] = -np.inf
@@ -222,7 +266,7 @@ def acq_max(ac, gp, y_max, bounds, random_state, n_warmup=10000, n_iter=10, data
                             )
 
                         gp.fit(old_x, old_y)
-                        ys = ac(x_tries, gp=gp, y_max=y_max, iter_num=iter_num, at_least_one_feasible_found=at_least_one_feasible_found, beta=adaptive_method_parameters["beta"])
+                        ys = ac(x_tries, gp=gp, y_max=y_max, iter_num=iter_num, at_least_one_feasible_found=at_least_one_feasible_found, beta=adaptive_method_parameters["beta"], penalization = penalization)
                         for idx_ in range(len(ys)):
                                 if x_tries[idx_].tolist() in np.array(old_x).tolist():
                                     ys[idx_] = -np.inf
@@ -271,7 +315,7 @@ def acq_max(ac, gp, y_max, bounds, random_state, n_warmup=10000, n_iter=10, data
 
                             cand_gp.fit(old_x, old_y)
 
-                            ys = ac(x_tries, gp=cand_gp, y_max=y_max, iter_num=iter_num, at_least_one_feasible_found=at_least_one_feasible_found)
+                            ys = ac(x_tries, gp=cand_gp, y_max=y_max, iter_num=iter_num, at_least_one_feasible_found=at_least_one_feasible_found, penalization = penalization)
                             for idx_ in range(len(ys)):
                                 if x_tries[idx_].tolist() in np.array(old_x).tolist():
                                     ys[idx_] = -np.inf
@@ -323,7 +367,7 @@ def acq_max(ac, gp, y_max, bounds, random_state, n_warmup=10000, n_iter=10, data
                             )
 
                         gp.fit(old_x, old_y)
-                        ys = ac(x_tries, gp=gp, y_max=y_max, iter_num=iter_num, at_least_one_feasible_found=at_least_one_feasible_found)
+                        ys = ac(x_tries, gp=gp, y_max=y_max, iter_num=iter_num, at_least_one_feasible_found=at_least_one_feasible_found, penalization = penalization)
                         for idx_ in range(len(ys)):
                             if x_tries[idx_].tolist() in np.array(old_x).tolist():
                                 ys[idx_] = -np.inf
@@ -340,7 +384,7 @@ def acq_max(ac, gp, y_max, bounds, random_state, n_warmup=10000, n_iter=10, data
                                 if debug: print("Updated nu = %s" %(temp_nu))
 
                 else:
-                    ys = ac(x_tries, gp=gp, y_max=y_max, iter_num=iter_num, at_least_one_feasible_found=at_least_one_feasible_found)
+                    ys = ac(x_tries, gp=gp, y_max=y_max, iter_num=iter_num, at_least_one_feasible_found=at_least_one_feasible_found, penalization = penalization)
                     for idx_ in range(len(ys)):
                         if x_tries[idx_].tolist() in np.array(old_x).tolist():
                             ys[idx_] = -np.inf
@@ -366,7 +410,7 @@ def acq_max(ac, gp, y_max, bounds, random_state, n_warmup=10000, n_iter=10, data
 
     for x_try in x_seeds:
         # Find the minimum of minus the acquisition function
-        res = minimize(lambda x: -ac(x.reshape(1, -1), gp=gp, y_max=y_max, iter_num=iter_num, at_least_one_feasible_found=at_least_one_feasible_found),
+        res = minimize(lambda x: -ac(x.reshape(1, -1), gp=gp, y_max=y_max, iter_num=iter_num, at_least_one_feasible_found=at_least_one_feasible_found, penalization = penalization),
                        x_try,
                        bounds=bounds,
                        method="L-BFGS-B")
@@ -392,7 +436,7 @@ class UtilityFunction(object):
 
     See the maximize() function in bayesian_optimization.py for a description of the constructor arguments.
     """
-    def __init__(self, kind, kappa, xi, kappa_decay=1, kappa_decay_delay=0, acq_info={}, ml_on_bounds=False, ml_on_target=False, debug=False):
+    def __init__(self, kind, kappa, xi, kappa_decay=1, kappa_decay_delay=0, acq_info={}, ml_on_bounds=False, ml_on_target=False, debug=False, penalization=None):
 
         self._debug = debug
         self.kappa = kappa
@@ -519,7 +563,7 @@ class UtilityFunction(object):
         self.objective_ml_model = model
 
 
-    def utility(self, x, gp, y_max, iter_num, at_least_one_feasible_found, beta=1.0, pick_random=False):
+    def utility(self, x, gp, y_max, iter_num, at_least_one_feasible_found, beta=1.0, pick_random=False, penalization = None):
 
         if self.kind == 'no_BO' or pick_random:
             res = self._no_BO(x)
@@ -566,7 +610,14 @@ class UtilityFunction(object):
 
             res = self._consider_ml_on_target(x, self.objective_ml_model, self.ml_target_type,  self.ml_target_model, res, iter_num, y_max, parameters)
 
-        return res
+
+        if penalization is None:
+            return res
+        
+        # here we are in context of mixedBO
+       
+        return res*penalization(x)
+
     
     
     @staticmethod

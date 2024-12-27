@@ -17,7 +17,9 @@ from sklearn.pipeline import make_pipeline
 from .target_space import TargetSpace
 from .event import Events, DEFAULT_EVENTS
 from .logger import _get_default_logger
-from .util import UtilityFunction, StoppingCriterion, acq_max, ensure_rng
+from .util import UtilityFunction, StoppingCriterion, acq_max, ensure_rng, Penalizer
+
+from scipy.spatial.distance import cdist
 
 
 class CustomRBFKernel(RBF):
@@ -106,7 +108,7 @@ class BayesianOptimization(Observable):
         Whether or not to print detailed debugging information
     """
     def __init__(self, f=None, pbounds=None, random_state=None, verbose=2, bounds_transformer=None,
-                 dataset=None, output_path=None, target_column=None, debug=False):
+                 dataset=None, output_path=None, target_column=None, debug=False, dataset_discrete=None):
         # Initialize members from arguments
         self._random_state = ensure_rng(random_state)
         self._verbose = verbose
@@ -141,6 +143,9 @@ class BayesianOptimization(Observable):
 
         super(BayesianOptimization, self).__init__(events=DEFAULT_EVENTS)
 
+        # mixedBO modification
+        self.dataset_discrete = dataset_discrete
+        
         if self._debug: print("BayesianOptimization initialization completed")
 
 
@@ -250,6 +255,9 @@ class BayesianOptimization(Observable):
         else:
             at_least_one_feasible_found = True
         
+
+        penalizer = Penalizer(self.dataset_discrete, all_variables_names = self._space.keys  ,debug = self._debug)
+    
         # Find argmax of the acquisition function
         suggestion, idx, acq_val, reparametrized = acq_max(
             ac=utility_function.utility,
@@ -267,8 +275,31 @@ class BayesianOptimization(Observable):
             old_x=self._space.params,
             old_y=self._space.target,
             adaptive_method_parameters=self.adaptive_method_parameters,
-            prob_eps_greedy=self._prob_random_pick
+            prob_eps_greedy=self._prob_random_pick,
+            penalization = penalizer.penalize if self.dataset_discrete is not None else None
         )
+
+        # After the penalization has been applied, it is necessary to impose that the discrete part of the suggestion
+        # is a feasible point in the discrete domain.  
+
+        if self.dataset_discrete is not None:
+            sugg_old = suggestion
+            all_variables_name =  self._space.keys
+           
+            sugg_old = pd.DataFrame([sugg_old], columns = all_variables_name)
+
+            discrete_variables_names = self.dataset_discrete.columns
+            
+            sugg_discrete_old = sugg_old[discrete_variables_names]
+           
+            
+            dis = cdist(sugg_discrete_old, self.dataset_discrete, metric='euclidean')
+            id_min = np.argmin(dis)
+            suggest_discrete = self.dataset_discrete.iloc[id_min]
+            sugg_old[discrete_variables_names] = suggest_discrete
+            suggestion = sugg_old
+            suggestion = suggestion.values
+            suggestion = suggestion[0]
 
         if self.relaxation:
             sugg_old = suggestion
@@ -277,7 +308,8 @@ class BayesianOptimization(Observable):
 
         if self.dataset is not None:
             self.update_memory_queue(self.dataset[self._space.keys], suggestion)
-
+        
+   
         return self._space.array_to_params(suggestion), idx, acq_val, reparametrized
 
 
