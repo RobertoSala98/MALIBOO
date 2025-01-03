@@ -34,9 +34,11 @@ class Penalizer():
     Methods
     ----------
     penalize: takes as input an array of points for which we want to compute the penaization.
-             It returns the array of the penality. This method shall be passed as argument to the 
+             It returns the array of the penalities. This method must be passed as argument to the 
              UtilityFunction.utility() method. 
     """
+    
+    
     def __init__(self, dataset_discrete: pd.DataFrame, all_variables_names: list[str], alpha: float = 1.0, debug: bool = False):
         
 
@@ -45,17 +47,16 @@ class Penalizer():
         self.alpha = alpha
         self._debug = debug
         if self._debug: print("Penalizer initialization completed")
+        self.m = None if dataset_discrete is None else dataset_discrete.shape[0]
 
     def penalize(self, x):
 
-        # just for now... We convert x in a pd.DataFrame. I imagine this is very inefficient but ...
-
         x = pd.DataFrame(x, columns = self.all_variables_names)
         x_discrete = x[self.dataset_discrete.columns]
-        m = self.dataset_discrete.shape[0]
         n = x_discrete.shape[0]
         dis = cdist(x_discrete, self.dataset_discrete, metric='euclidean')
-        pen = np.exp(-self.alpha*np.min(dis.reshape(n, m), axis = 1 ))
+        pen = np.exp(-self.alpha*np.min(dis.reshape(n, self.m), axis = 1 ))
+
         return pen
 
 class CustomRBFKernel(RBF):

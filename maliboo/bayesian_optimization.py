@@ -296,7 +296,7 @@ class BayesianOptimization(Observable):
             dis = cdist(sugg_discrete_old, self.dataset_discrete, metric='euclidean')
             id_min = np.argmin(dis)
             suggest_discrete = self.dataset_discrete.iloc[id_min]
-            sugg_old[discrete_variables_names] = suggest_discrete
+            sugg_old.loc[:, discrete_variables_names] = suggest_discrete.loc[discrete_variables_names].values
             suggestion = sugg_old
             suggestion = suggestion.values
             suggestion = suggestion[0]
@@ -321,7 +321,25 @@ class BayesianOptimization(Observable):
         if self._debug: print("_prime_queue(): initializing", init_points, "random points")
 
         for _ in range(init_points):
+
             idx, x_init = self._space.random_sample()
+
+            if self.dataset_discrete is not None:
+                all_variables_name =  self._space.keys
+                discrete_variables_names = self.dataset_discrete.columns
+                x_init = pd.DataFrame([x_init], columns = all_variables_name)
+
+                #import pdb; pdb.set_trace()
+
+                sugg_discrete_old = x_init[discrete_variables_names]
+           
+                dis = cdist(sugg_discrete_old, self.dataset_discrete, metric='euclidean')
+                id_min = np.argmin(dis)
+                suggest_discrete = self.dataset_discrete.iloc[id_min]
+                x_init.loc[:, discrete_variables_names] = suggest_discrete.loc[discrete_variables_names].values
+                x_init = x_init.values[0]
+
+
             self._queue.put((idx, x_init))
             if self.dataset is not None:
                 self.update_memory_queue(self.dataset[self._space.keys],
@@ -515,7 +533,7 @@ class BayesianOptimization(Observable):
                 ## If there still are iterations left, advance counter by the difference
                 if old_iters > init_points:
                     iteration += old_iters - init_points
-                print(f"Recovered {old_iters} values from temporary file")
+                print(f"Recovered {old_iters} values from temporary file: {self._results_file_tmp}")
 
             # Sample new point from GP
             reparametrized = False
@@ -554,6 +572,7 @@ class BayesianOptimization(Observable):
             if self.dataset is None or self._space.target_column is None:
                 # No dataset, or dataset for X only: we evaluate the target function directly
                 if self._debug: print("No dataset, or dataset for X only: evaluating target function")
+                #import pdb; pdb.set_trace()
                 target_value = self.probe(x_probe, idx=idx, lazy=False)
             else:
                 # Dataset for both X and y: register point entirely from dataset without probe()
