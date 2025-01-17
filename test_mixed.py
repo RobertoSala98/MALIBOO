@@ -17,6 +17,9 @@ debug = False
 
 def plot_regret(output_path):
 
+    path = Path(output_path)
+    test_name = path.parent.name
+
     test_data = pd.read_csv(output_path)
     n_iterations = len(test_data.index)
 
@@ -25,10 +28,13 @@ def plot_regret(output_path):
     plt.ylabel('log(regret)')
     plt.legend()
     plt.yscale('log')
+    plt.title(f'{test_name}: regret')
+    
 
-    plt.title('regret vs iterations')
-    path = Path(output_path)
     filename = path.parent / (str(path.stem) + '.png')
+    
+   
+
     plt.savefig(filename)
     plt.clf()
 
