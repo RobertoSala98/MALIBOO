@@ -40,7 +40,7 @@ def compare_regret(test_names: list[str], test_path: str = 'outputs/'):
     """
     This function takes as input a list of test and compares them, in term of regret. 
     It may be useful to comapre the result of the same benchmark function, optimized with 
-    different penalizations.
+    different penalizations, or different parameters.
     """
 
     test_path =  Path(test_path)
@@ -149,12 +149,50 @@ def test_branin(output_path):
     optimizer.maximize(init_points=2, n_iter=10, acq='ei')
     plot_regret(output_path=output_path + "/results.csv")
 
-test_mixed_2d()
-# test_continuos()
-test_goldstain()
-test_branin()
 
-compare_regret(['test_mixed_2d','test_goldstain', 'test_branin'])
+@perform_test
+def test_branin_a_10(output_path):
+        
+    def h(x1, x2):
+        term1 = (15 * x2 - (5 / (4 * np.pi**2)) * (15 * x1 - 5)**2 + (5 / np.pi) * (15 * x1 - 5) - 6)**2
+        term2 = 10 * (1 - 1 / (8 * np.pi)) * np.cos(15 * x1 - 5) + 10
+        return (term1 + term2 - 54.8104) * (1 / 51.9496)
+
+    def branin(x1, x2, x3, x4):
+        if x3 == 0 and x4 == 0:
+            return h(x1, x2)
+        elif x3 == 0 and x4 == 1:
+            return 0.4 * h(x1, x2)
+        elif x3 == 1 and x4 == 0:
+            return -0.75 * h(x1, x2) + 3.0
+        elif x3 == 1 and x4 == 1:
+            return -0.5 * h(x1, x2) + 1.4
+        else: 
+            raise ValueError("Error! This function can be evaluated only for x3,x4 in {0, 1}")
+
+    dataset_discrete = pd.DataFrame({'x3': [0, 0, 1, 1], 'x4': [0, 1, 0, 1]})
+    optimizer = BO(
+        f=branin,
+        pbounds={'x1': (0, 1), 'x2': (0, 1), 'x3': (0, 1), 'x4': (0, 1)},
+        random_state=seed,
+        debug=debug,
+        dataset_discrete=dataset_discrete,
+        output_path=output_path,
+        true_maximum_value=4.8344,
+        penalization_alpha=10
+    )
+
+    optimizer.maximize(init_points=2, n_iter=10, acq='ei')
+    plot_regret(output_path=output_path + "/results.csv")
+
+
+#test_mixed_2d()
+#test_continuos()
+#test_goldstain()
+#test_branin()
+#test_branin_a_10()
+
+compare_regret(['test_mixed_2d','test_goldstain', 'test_branin', 'test_branin_a_10'])
 
 from test import test03_dataset_X
 

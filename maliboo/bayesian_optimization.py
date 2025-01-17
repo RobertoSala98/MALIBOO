@@ -108,7 +108,8 @@ class BayesianOptimization(Observable):
         Whether or not to print detailed debugging information
     """
     def __init__(self, f=None, pbounds=None, random_state=None, verbose=2, bounds_transformer=None,
-                 dataset=None, output_path=None, target_column=None, debug=False, dataset_discrete=None, true_maximum_value = None):
+                 dataset=None, output_path=None, target_column=None, debug=False, dataset_discrete=None, 
+                 true_maximum_value = None, penalization_alpha: float = 1.):
         # Initialize members from arguments
         self._random_state = ensure_rng(random_state)
         self._verbose = verbose
@@ -118,6 +119,7 @@ class BayesianOptimization(Observable):
         self._results_file     = os.path.join(self._output_path, 'results.csv')
         self._results_file_tmp = os.path.join(self._output_path, 'results.csv.tmp')
         self._true_maximum_value: float = true_maximum_value
+        self._penalization_alpha: float = penalization_alpha
 
         # Check for coherence among constructor arguments
         if pbounds is None:
@@ -257,7 +259,11 @@ class BayesianOptimization(Observable):
             at_least_one_feasible_found = True
         
 
-        penalizer = Penalizer(self.dataset_discrete, all_variables_names = self._space.keys  ,debug = self._debug)
+        penalizer = Penalizer(self.dataset_discrete, 
+                              all_variables_names = self._space.keys,
+                              alpha=self._penalization_alpha,
+                              debug = self._debug
+                              )
     
         # Find argmax of the acquisition function
         suggestion, idx, acq_val, reparametrized = acq_max(
