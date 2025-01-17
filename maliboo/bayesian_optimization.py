@@ -108,7 +108,7 @@ class BayesianOptimization(Observable):
         Whether or not to print detailed debugging information
     """
     def __init__(self, f=None, pbounds=None, random_state=None, verbose=2, bounds_transformer=None,
-                 dataset=None, output_path=None, target_column=None, debug=False, dataset_discrete=None):
+                 dataset=None, output_path=None, target_column=None, debug=False, dataset_discrete=None, true_maximum_value = None):
         # Initialize members from arguments
         self._random_state = ensure_rng(random_state)
         self._verbose = verbose
@@ -117,6 +117,7 @@ class BayesianOptimization(Observable):
         self._output_path = os.getcwd() if output_path is None else os.path.join(output_path)
         self._results_file     = os.path.join(self._output_path, 'results.csv')
         self._results_file_tmp = os.path.join(self._output_path, 'results.csv.tmp')
+        self._true_maximum_value: float = true_maximum_value
 
         # Check for coherence among constructor arguments
         if pbounds is None:
@@ -283,24 +284,9 @@ class BayesianOptimization(Observable):
         # is a feasible point in the discrete domain.  
 
         if self.dataset_discrete is not None:
-            sugg_old = suggestion
-            all_variables_name =  self._space.keys
-           
-            sugg_old = pd.DataFrame([sugg_old], columns = all_variables_name)
-
-            discrete_variables_names = self.dataset_discrete.columns
+          
+          suggestion = self._approximate_discrete_variables(suggestion)
             
-            sugg_discrete_old = sugg_old[discrete_variables_names]
-           
-            
-            dis = cdist(sugg_discrete_old, self.dataset_discrete, metric='euclidean')
-            id_min = np.argmin(dis)
-            suggest_discrete = self.dataset_discrete.iloc[id_min]
-            sugg_old.loc[:, discrete_variables_names] = suggest_discrete.loc[discrete_variables_names].values
-            suggestion = sugg_old
-            suggestion = suggestion.values
-            suggestion = suggestion[0]
-
         if self.relaxation:
             sugg_old = suggestion
             idx, suggestion = self.get_approximation(suggestion, dataset_approx)
@@ -311,6 +297,26 @@ class BayesianOptimization(Observable):
         
    
         return self._space.array_to_params(suggestion), idx, acq_val, reparametrized
+
+
+    def _approximate_discrete_variables(self, x: list[float]) -> list[float]:
+        
+        if self.dataset_discrete is None:
+            return x
+        
+        variables_name =  self._space.keys
+        discrete_variables_names = self.dataset_discrete.columns
+        x = pd.DataFrame([x], columns = variables_name)
+
+        discrete = x[discrete_variables_names]
+
+        dis = cdist(discrete, self.dataset_discrete, metric='euclidean')
+        id_min = np.argmin(dis)
+
+        discrete = self.dataset_discrete.iloc[id_min]
+        x.loc[:, discrete_variables_names] = discrete.loc[discrete_variables_names].values
+        x = x.values[0]
+        return x
 
 
     def _prime_queue(self, init_points):
@@ -325,20 +331,8 @@ class BayesianOptimization(Observable):
             idx, x_init = self._space.random_sample()
 
             if self.dataset_discrete is not None:
-                all_variables_name =  self._space.keys
-                discrete_variables_names = self.dataset_discrete.columns
-                x_init = pd.DataFrame([x_init], columns = all_variables_name)
-
-                #import pdb; pdb.set_trace()
-
-                sugg_discrete_old = x_init[discrete_variables_names]
-           
-                dis = cdist(sugg_discrete_old, self.dataset_discrete, metric='euclidean')
-                id_min = np.argmin(dis)
-                suggest_discrete = self.dataset_discrete.iloc[id_min]
-                x_init.loc[:, discrete_variables_names] = suggest_discrete.loc[discrete_variables_names].values
-                x_init = x_init.values[0]
-
+                
+                x_init = self._approximate_discrete_variables(x_init)
 
             self._queue.put((idx, x_init))
             if self.dataset is not None:
@@ -572,7 +566,7 @@ class BayesianOptimization(Observable):
             if self.dataset is None or self._space.target_column is None:
                 # No dataset, or dataset for X only: we evaluate the target function directly
                 if self._debug: print("No dataset, or dataset for X only: evaluating target function")
-                #import pdb; pdb.set_trace()
+                
                 target_value = self.probe(x_probe, idx=idx, lazy=False)
             else:
                 # Dataset for both X and y: register point entirely from dataset without probe()
@@ -593,6 +587,9 @@ class BayesianOptimization(Observable):
             if acq_val is None:
                 if self._debug: print("Point was not selected by suggest(): skipping termination check")
             else:
+
+                # HERE WE ARE PRINTING: No termination criteria have been used
+
                 terminated = terminated or stopcrit.terminate(x_probe, target_value, iteration, util, y_true_ml)
             # Register other information about the new point
             other_info = pd.DataFrame(index=[idx])
@@ -669,6 +666,14 @@ class BayesianOptimization(Observable):
         """Save results of the optimization to the given .csv file"""
         os.makedirs(self._output_path, exist_ok=True)
         results = self._space.params.copy()
+        
+        regret = None
+        if self._true_maximum_value is not None:
+            regret = []
+            for idx in range(len(self._space.target)):
+                regret.append(self._true_maximum_value - np.max(self._space.target[:idx+1])) 
+
+        results['regret'] =  regret
         results['target'] = self._space.target
         results['memory_queue'] = '//'.join(['/'.join([str(_) for _ in l]) for l in self.memory_queue])
         results = pd.concat((results, self._space._optimization_info), axis=1)

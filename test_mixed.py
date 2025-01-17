@@ -4,7 +4,8 @@ import os
 import time
 import numpy as np
 from test import perform_test
-
+import matplotlib.pyplot as plt
+from pathlib import Path
 
 def target_func(x1, x2):
     return -x1 ** 2 - (x2 - 1) ** 2 + 2
@@ -13,6 +14,24 @@ def target_func(x1, x2):
 seed = 42
 debug = False
 
+
+def plot_regret(output_path):
+
+    test_data = pd.read_csv(output_path)
+    n_iterations = len(test_data.index)
+
+    plt.plot(range(n_iterations), test_data["regret"], label = 'regret')
+    plt.xlabel('iteration')
+    plt.ylabel('log(regret)')
+    plt.legend()
+    plt.yscale('log')
+
+    plt.title('regret vs iterations')
+    path = Path(output_path)
+    filename = path.parent / (str(path.stem) + '.png')
+    plt.savefig(filename)
+    plt.clf()
+
 ### Test 0: used during the development, first in case of mixed, then in case of continuos variables.
 
 
@@ -20,7 +39,8 @@ debug = False
 def test_mixed_2d(output_path):
     dataset_discrete = pd.DataFrame({'x2': [1, 2, 3]})
     optimizer = BO(f=target_func, pbounds={'x1': (-2, 4), 'x2': (-3, 3)},
-                 random_state=seed, debug = debug, dataset_discrete = dataset_discrete, output_path=output_path)
+                 random_state=seed, debug = debug, dataset_discrete = dataset_discrete, output_path=output_path,
+                 true_maximum_value=2)
 
     optimizer.maximize(init_points = 2, n_iter = 10, acq = 'ei')
 
@@ -60,10 +80,14 @@ def test_goldstain(output_path):
    
     dataset_discrete = pd.DataFrame({'x3': [0, 0, 0, 1, 1, 1, 2, 2, 2], 'x4': [0, 1, 2, 0, 1, 2, 0, 1, 2]})
     optimizer = BO(f=goldstain, pbounds={'x1': (0, 100), 'x2': (0, 100), 'x3': (0, 2), 'x4': (0, 2)},
-                 random_state=seed, debug = debug, dataset_discrete = dataset_discrete, output_path=output_path)
+                 random_state=seed, debug = debug, dataset_discrete = dataset_discrete, output_path=output_path
+                 , true_maximum_value=74.4970)
 
     optimizer.maximize(init_points = 5, n_iter = 10, acq = 'ei')
 
+    plot_regret(output_path=output_path + "/results.csv")
+
+### Test 2: branin
 
 @perform_test
 def test_branin(output_path):
@@ -92,17 +116,18 @@ def test_branin(output_path):
         random_state=seed,
         debug=debug,
         dataset_discrete=dataset_discrete,
-        output_path=output_path
+        output_path=output_path,
+        true_maximum_value=4.8344
     )
 
     optimizer.maximize(init_points=2, n_iter=10, acq='ei')
+    plot_regret(output_path=output_path + "/results.csv")
 
-
-test_mixed_2d()
-test_continuos()
+# test_mixed_2d()
+# test_continuos()
 test_goldstain()
 test_branin()
 
 from test import test03_dataset_X
 
-test03_dataset_X()
+# test03_dataset_X()
