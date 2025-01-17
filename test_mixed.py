@@ -20,6 +20,9 @@ def plot_regret(output_path, save_fig = True):
     path = Path(output_path)
     test_name = path.parent.name
 
+    if not path.exists():
+        raise FileNotFoundError({f'Cannot plot the following test regret since it has not beed perfomed yet: {test_name}'})
+    
     test_data = pd.read_csv(output_path)
     n_iterations = len(test_data.index)
 
@@ -186,11 +189,11 @@ def test_branin_a_10(output_path):
     plot_regret(output_path=output_path + "/results.csv")
 
 
-#test_mixed_2d()
-#test_continuos()
-#test_goldstain()
-#test_branin()
-#test_branin_a_10()
+test_mixed_2d()
+test_continuos()
+test_goldstain()
+test_branin()
+test_branin_a_10()
 
 compare_regret(['test_mixed_2d','test_goldstain', 'test_branin', 'test_branin_a_10'])
 
