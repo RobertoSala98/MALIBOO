@@ -189,13 +189,13 @@ def test_branin_a_10(output_path):
     plot_regret(output_path=output_path + "/results.csv")
 
 
-test_mixed_2d()
-test_continuos()
-test_goldstain()
-test_branin()
-test_branin_a_10()
+#test_mixed_2d()
+#test_continuos()
+#test_goldstain()
+#test_branin()
+#test_branin_a_10()
 
-compare_regret(['test_mixed_2d','test_goldstain', 'test_branin', 'test_branin_a_10'])
+#compare_regret(['test_mixed_2d','test_goldstain', 'test_branin', 'test_branin_a_10'])
 
 from test import test03_dataset_X
 
