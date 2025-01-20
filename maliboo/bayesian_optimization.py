@@ -20,7 +20,7 @@ from .logger import _get_default_logger
 from .util import UtilityFunction, StoppingCriterion, acq_max, ensure_rng, Penalizer
 
 from scipy.spatial.distance import cdist
-
+import pdb
 
 class CustomRBFKernel(RBF):
     def __init__(self, length_scale=1.0, sigma_2=1.0, **kwargs):
@@ -594,8 +594,6 @@ class BayesianOptimization(Observable):
                 if self._debug: print("Point was not selected by suggest(): skipping termination check")
             else:
 
-                # HERE WE ARE PRINTING: No termination criteria have been used
-
                 terminated = terminated or stopcrit.terminate(x_probe, target_value, iteration, util, y_true_ml)
             # Register other information about the new point
             other_info = pd.DataFrame(index=[idx])
@@ -606,7 +604,13 @@ class BayesianOptimization(Observable):
                 if self._debug: print("True vs predicted '{}' value: {} vs {}".format(util.ml_target, y_true_ml, y_bar[0]))
                 other_info['ml_mape'] = mape([y_true_ml], y_bar)
             if ml_on_bounds:
-                other_info.loc[idx, 'feasible'] = self.dataset.loc[idx, util.ml_target] >= util.ml_bounds[0] and self.dataset.loc[idx, util.ml_target] <= util.ml_bounds[1]
+                if (self.dataset is not None):
+                    other_info.loc[idx, 'feasible'] = self.dataset.loc[idx, util.ml_target] >= util.ml_bounds[0] and self.dataset.loc[idx, util.ml_target] <= util.ml_bounds[1]
+                else:
+                    if(iteration==0):
+                        other_info.loc[idx, 'feasible'] = self._space.target_func(*x_probe)[util.ml_target] >= util.ml_bounds[0] and self._space.target_func(*x_probe)[util.ml_target] <= util.ml_bounds[1]
+                    else:
+                        other_info.loc[idx, 'feasible'] = self._space.target_func(*[*x_probe.values()])[util.ml_target] >= util.ml_bounds[0] and self._space.target_func(*[*x_probe.values()])[util.ml_target] <= util.ml_bounds[1]
             else:
                 other_info.loc[idx, 'feasible'] = True
             other_info.loc[idx, 'reparametrized'] = reparametrized

@@ -46,7 +46,7 @@ def test_goldstain_ml(output_path):
             - 1.88719 * x1 * x2 * x4 * 1e-6 \
             + 2.50923 * x1 * x3 * x4 * 1e-5 \
             - 5.62199 * x2 * x3 * x4 * 1e-5
-            
+        ret['field'] = "idk"    
         ret['blackbox'] = c1*np.sin((x1/10)**3)+c2*np.cos((x2/20)**2)
         return ret
     
@@ -55,12 +55,12 @@ def test_goldstain_ml(output_path):
  
     
     dataset_discrete = pd.DataFrame({'x3': [0, 0, 0, 1, 1, 1, 2, 2, 2], 'x4': [0, 1, 2, 0, 1, 2, 0, 1, 2]})
-    optimizer = BO(f=goldstain_value_only, pbounds={'x1': (0, 100), 'x2': (0, 100), 'x3': (0, 2), 'x4': (0, 2)},
+    optimizer = BO(f=goldstain, pbounds={'x1': (0, 100), 'x2': (0, 100), 'x3': (0, 2), 'x4': (0, 2)},
                  random_state=seed, debug = debug, dataset_discrete = dataset_discrete, output_path=output_path
                  , true_maximum_value=74.4970)
 
-    optimizer.maximize(init_points=2, n_iter=10, acq='ei',
-                     acq_info={'ml_target': 'blackbox', 'ml_bounds': (0, float('inf'))})
+    optimizer.maximize(init_points=2, n_iter=10, acq='ei', ml_on_bounds=True,
+                     acq_info={'ml_target': 'blackbox', 'ml_bounds': (0, float('inf')), 'ml_bounds_type':'probability', 'ml_bounds_model':'Ridge', 'ml_bounds_alpha':float(0.5)})
     #plot_regret(output_path=output_path + "/results.csv")
 
 ### Test 2: branin
@@ -159,9 +159,9 @@ def test_branin_a_10_ml(output_path):
 
 #test_mixed_2d_ml()
 #test_continuos()
-#test_goldstain_ml()
+test_goldstain_ml()
 #test_branin_ml()
-test_branin_a_10_ml()
+#test_branin_a_10_ml()
 
 #compare_regret(['test_mixed_2d','test_goldstain', 'test_branin', 'test_branin_a_10'])
 
