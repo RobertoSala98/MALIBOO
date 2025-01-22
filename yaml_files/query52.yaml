@@ -3,7 +3,7 @@ general_setting:
   initial_points: []
   num_iterations: 30
   repetitions: 30
-  random_seed: True
+  random_seed: False
   seeds: []
   output_path: ./outputs/query52
   delete_previous_output: False
@@ -17,7 +17,7 @@ optimizer:
   dataset: "resources/query52_vm_ram.csv"
   target_column: "-cost"
 stopping_criteria:
-  stopping_criteria: True
+  stopping_criteria: False
   hard_stop: False
   conjunction: "or"
 acquisition_info:
@@ -35,7 +35,7 @@ acquisition_info:
     ucb_af:
       initial_beta: 1.0
       beta_h: 10.0
-    kernel: Matern
+    kernel: RBF
     RBF_parameters:
       sigma_2: 1.0
       initial_l: 1.0
@@ -57,7 +57,7 @@ acquisition_info:
     Ridge:
       alpha: 0.973
     indicator_parameters:
-      coeff: [1.333, None]
+      coeff: [1.111, None]
     sum_parameters:
       ml_target_gamma_iter0: 0
       ml_target_gamma_iterN: 15

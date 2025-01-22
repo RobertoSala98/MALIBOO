@@ -6,7 +6,7 @@ general_setting:
   random_seed: False
   seeds: [916634440]
   output_path: "./outputs/test"
-  delete_previous_output: True
+  delete_previous_output: False
   debug: False
   verbose: 0
   max: -0.174361111
@@ -33,11 +33,11 @@ acquisition_info:
     prob_random_pick: 0.1
   adaptive_method_parameters:
     ucb_af:
-      initial_beta: 40.0
+      initial_beta: 1.0
       beta_h: 10.0
     kernel: RBF
     RBF_parameters:
-      sigma_2: 0.025
+      sigma_2: 1.0
       initial_l: 1.0
       l_h: 10.0
     Matern_parameters:
@@ -56,7 +56,7 @@ acquisition_info:
   ml_on_bounds_parameters:
     ml_target: "total_time"
     ml_bounds: [0.0, 300.00001]
-    ml_bounds_coeff: [None, None]
+    ml_bounds_coeff: [0.9, None]
     ml_bounds_type: probability
     ml_bounds_model: Ridge
     Ridge:
@@ -77,7 +77,7 @@ acquisition_info:
       max_depth: 10
       n_estimators: 10
     indicator_parameters:
-      coeff: [1.333, None]
+      coeff: [1.111, None]
     sum_parameters:
       ml_target_gamma_iter0: 0
       ml_target_gamma_iterN: 5

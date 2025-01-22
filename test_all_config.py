@@ -6,7 +6,7 @@ import os
 from numpy.random import randint
 
 cores_number = 1
-datasets = ["oscarp", "query26", "stereomatch", "ligen"]
+datasets = ["query52", "query26", "stereomatch", "ligen"]
 
 def generate_folder_structure(path):
 
@@ -40,23 +40,27 @@ for dataset in datasets:
         "oscarp": [150, 300, 450, 600],
         "query26": [195000, 205000, 215000, 225000],
         "stereomatch": [8000, 10000, 12000, 17000, 20000, 40000],
-        "ligen": [2.0, 2.1, 2.2, 2.45, 2.75]
+        "ligen": [2.0, 2.1, 2.2, 2.45, 2.75],
+        "query52": [262887, 334000, 407000, 645000, 2.25e6]
     }
 
     maximum = {
         "oscarp": [-0.174361111, -0.174361111, -0.174361111, -0.174361111],
         "query26": [-4079658.0, -4079658.0, -4079658.0, -4022118.0],
         "stereomatch": [-50776.0, -45525.0, -40196.0, -40196.0, -37412.0, -36791.0],
-        "ligen": [-567.312555400384, -567.312555400384, -464.349441178703, -424.355184049556, -340.099251789615]
+        "ligen": [-567.312555400384, -567.312555400384, -464.349441178703, -424.355184049556, -340.099251789615],
+        "query52": [-682215, -682215, -682215, -682215, -682215]
     }
     
     configurations_best = [
-        {'ml_bounds': 'indicator', 'ml_target': 'probability', 'consider_only_true_max': True, 'epsilon_greedy': True, 'adaptive_method_kernel': 'Matern', 'af': 'ei'},
-        {'ml_bounds': 'indicator', 'ml_target': 'probability', 'consider_only_true_max': True, 'epsilon_greedy': True, 'adaptive_method_kernel': 'Matern', 'af': 'ucb'},
-        {'ml_bounds': 'indicator', 'ml_target': 'probability', 'consider_only_true_max': True, 'epsilon_greedy': True, 'adaptive_method_kernel': 'RBF', 'af': 'ei'},
-        {'ml_bounds': 'indicator', 'ml_target': 'probability', 'consider_only_true_max': True, 'epsilon_greedy': True, 'adaptive_method_kernel': 'RBF', 'af': 'ucb'},
-        {'ml_bounds': 'indicator', 'ml_target': 'probability', 'consider_only_true_max': True, 'epsilon_greedy': True, 'adaptive_method_kernel': 'None', 'af': 'ei'},
-        {'ml_bounds': 'None', 'ml_target': 'None', 'consider_only_true_max': True, 'epsilon_greedy': False, 'adaptive_method_kernel': 'RBF', 'af': 'ucb', "is_DiscreteBO": True}
+        {'ml_bounds': 'indicator', 'ml_target': 'probability', 'consider_only_true_max': True, 'epsilon_greedy': True, 'adaptive_method_kernel': 'Matern', 'af': 'ei'}, # REBOLD
+        {'ml_bounds': 'indicator', 'ml_target': 'probability', 'consider_only_true_max': True, 'epsilon_greedy': True, 'adaptive_method_kernel': 'Matern', 'af': 'ucb'}, # REBOLD
+        {'ml_bounds': 'indicator', 'ml_target': 'probability', 'consider_only_true_max': True, 'epsilon_greedy': True, 'adaptive_method_kernel': 'RBF', 'af': 'ei'}, # REBOLD
+        {'ml_bounds': 'indicator', 'ml_target': 'probability', 'consider_only_true_max': True, 'epsilon_greedy': True, 'adaptive_method_kernel': 'RBF', 'af': 'ucb'}, # REBOLD
+        {'ml_bounds': 'indicator', 'ml_target': 'probability', 'consider_only_true_max': True, 'epsilon_greedy': True, 'adaptive_method_kernel': 'None', 'af': 'ei'}, # d-MALIBOO
+        {'ml_bounds': 'indicator', 'ml_target': 'None', 'consider_only_true_max': True, 'epsilon_greedy': False, 'adaptive_method_kernel': 'None', 'af': 'ei'}, # MALIBOO fixed
+        {'ml_bounds': 'indicator', 'ml_target': 'None', 'consider_only_true_max': False, 'epsilon_greedy': False, 'adaptive_method_kernel': 'None', 'af': 'ei'}, # MALIBOO original
+        {'ml_bounds': 'None', 'ml_target': 'None', 'consider_only_true_max': False, 'epsilon_greedy': False, 'adaptive_method_kernel': 'RBF', 'af': 'ucb', "is_DiscreteBO": True} # discreteBO
     ]
 
     seeds = []
