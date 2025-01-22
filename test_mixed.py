@@ -39,12 +39,14 @@ def plot_regret(output_path, save_fig = True):
         plt.savefig(filename)
         plt.clf()
 
-def compare_regret(test_names: list[str], test_path: str = 'outputs/'):
+def compare_regret(test_names: list[str], test_path: str = 'outputs/', output_name: str = None):
     """
     This function takes as input a list of test and compares them, in term of regret. 
     It may be useful to comapre the result of the same benchmark function, optimized with 
     different penalizations, or different parameters.
     """
+    if output_name is None:
+        output_name = "comparision.png"
 
     test_path =  Path(test_path)
     plt.clf()
@@ -56,7 +58,7 @@ def compare_regret(test_names: list[str], test_path: str = 'outputs/'):
     comaprison_path.mkdir(exist_ok=True)
 
     plt.title('Regret comparision')
-    plt.savefig(comaprison_path / 'comparision.png')
+    plt.savefig(comaprison_path / output_name)
     plt.clf()
 
 
@@ -112,7 +114,7 @@ def test_goldstain(output_path):
                  random_state=seed, debug = debug, dataset_discrete = dataset_discrete, output_path=output_path
                  , true_maximum_value=74.4970)
 
-    optimizer.maximize(init_points = 2, n_iter = 10, acq = 'ei')
+    optimizer.maximize(init_points = 2, n_iter = 20, acq = 'ei')
 
     plot_regret(output_path=output_path + "/results.csv")
 
@@ -149,7 +151,7 @@ def test_branin(output_path):
         true_maximum_value=4.8344
     )
 
-    optimizer.maximize(init_points=2, n_iter=10, acq='ei')
+    optimizer.maximize(init_points=2, n_iter=20, acq='ei')
     plot_regret(output_path=output_path + "/results.csv")
 
 
@@ -185,7 +187,7 @@ def test_branin_a_10(output_path):
         penalization_alpha=10
     )
 
-    optimizer.maximize(init_points=2, n_iter=10, acq='ei')
+    optimizer.maximize(init_points=2, n_iter=20, acq='ei')
     plot_regret(output_path=output_path + "/results.csv")
 
 
