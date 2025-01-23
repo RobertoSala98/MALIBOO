@@ -681,7 +681,14 @@ class BayesianOptimization(Observable):
         if self._true_maximum_value is not None:
             regret = []
             for idx in range(len(self._space.target)):
-                regret.append( np.abs( self._true_maximum_value - np.max(self._space.target[:idx+1]) )  ) 
+                sampled_target = self._space.target[:idx+1]
+                feasibility = self._space._feasibility[:idx+1]
+                
+                last_feasible_maximum = None
+                if np.any(self._space._feasibility > 0):
+                    last_feasible_maximum = np.max( sampled_target[np.where(  feasibility>0  )] )
+                
+                regret.append( np.abs( self._true_maximum_value - np.max(last_feasible_maximum) )  ) 
 
         results['regret'] =  regret
         results['target'] = self._space.target
