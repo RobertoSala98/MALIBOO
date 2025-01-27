@@ -314,11 +314,21 @@ class BayesianOptimization(Observable):
             for point in points:
 
                 idx, coord = self.get_approximation(point, self.dataset.loc[:,self._space.keys])
-                mask[idx] = 0
+
+                matches = self.dataset.loc[:,self._space.keys].eq(coord).all(axis=1)
+                indices = matches[matches].index.tolist()
+
+                if idx not in indices:
+                    print("ERROR")
+                    import pdb; pdb.set_trace()
+
+                for idx_ in indices:
+                    mask[idx_] = 0
+
                 point = {}
 
-                for idx in range(n_variables):
-                    point[self._space.keys[idx]] = coord[idx]
+                for _idx in range(n_variables):
+                    point[self._space.keys[_idx]] = coord[_idx]
 
                 self._queue.put((idx, point))
                 if self.dataset is not None:
