@@ -5,8 +5,8 @@ import functools
 import os
 from numpy.random import randint
 
-cores_number = 1
-datasets = ["oscarp", "query52", "query26"]
+cores_number = 10
+datasets = ["ligen"]
 
 def generate_folder_structure(path):
 
@@ -482,7 +482,7 @@ for dataset in datasets:
 
         return results
 
-    """
+    
     def split_list(input_list, num_chunks):
         
         avg_chunk_size = len(input_list) // num_chunks
@@ -508,8 +508,8 @@ for dataset in datasets:
 
     for cc in range(cores_number):
         data = data + batch_results_parallel[cc] 
-    """
-    data = process_batch(setting)
+    
+    #data = process_batch(setting)
 
     with open("%s_best_config.csv" %dataset, 'w', encoding='UTF8', newline='') as f:
         writer = csv.writer(f, delimiter=',')
