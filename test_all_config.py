@@ -466,8 +466,6 @@ for dataset in datasets:
             setting.append([ml_bounds, ml_target, consider_only_true_max, epsilon_greedy, adaptive_method_kernel, af, threshold, is_DBO, output_name])
     """
     print("You are testing %s different settings" %idx_setting)
-
-    import pdb; pdb.set_trace()
     
     def process_batch(settings):
 
