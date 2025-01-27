@@ -281,19 +281,49 @@ class BayesianOptimization(Observable):
         return self._space.array_to_params(suggestion), idx, acq_val, reparametrized
 
 
-    def _prime_queue(self, init_points):
+    def _prime_queue(self, init_points, method='random'):
         """Make sure there's something in the queue at the very beginning."""
         if self._queue.empty() and self._space.empty:
             init_points = max(init_points, 1)
 
-        if self._debug: print("_prime_queue(): initializing", init_points, "random points")
+        if method == 'random':
 
-        for _ in range(init_points):
-            idx, x_init = self._space.random_sample()
-            self._queue.put((idx, x_init))
-            if self.dataset is not None:
-                self.update_memory_queue(self.dataset[self._space.keys],
-                                         self._space.params_to_array(x_init))
+            if self._debug: print("_prime_queue(): initializing", init_points, "random points")
+
+            for _ in range(init_points):
+                idx, x_init = self._space.random_sample()
+                self._queue.put((idx, x_init))
+                if self.dataset is not None:
+                    self.update_memory_queue(self.dataset[self._space.keys],
+                                            self._space.params_to_array(x_init))
+                    
+        elif method == 'latin':
+
+            n_variables = len(self._space._bounds)
+            points = np.zeros((init_points, n_variables))
+
+            for i, (low, high) in enumerate(self._space._bounds): 
+                
+                intervals = np.linspace(low, high, init_points + 1)[:-1]
+                shuffled = np.random.permutation(intervals)
+                offsets = np.random.uniform(low=0, high=(high - low) / init_points, size=init_points)
+                points[:, i] = shuffled + offsets
+
+            mask = np.ones(self.dataset.shape[0], bool)
+
+            for point in points:
+
+                idx, coord = self.get_approximation(point, self.dataset.loc[:,self._space.keys])
+                mask[idx] = 0
+                point = {}
+
+                for idx in range(n_variables):
+                    point[self._space.keys[idx]] = coord[idx]
+
+                self._queue.put((idx, point))
+                if self.dataset is not None:
+                    self.update_memory_queue(self.dataset[self._space.keys],
+                                            self._space.params_to_array(point))
 
 
     def _prime_subscriptions(self):
@@ -306,6 +336,7 @@ class BayesianOptimization(Observable):
 
     def maximize(self,
                  init_points,
+                 initial_points_selection_method,
                  n_iter,
                  acq='ucb',
                  ml_on_bounds=False,
@@ -446,7 +477,7 @@ class BayesianOptimization(Observable):
         # Initialize other stuff
         self._prime_subscriptions()
         self.dispatch(Events.OPTIMIZATION_START)
-        self._prime_queue(init_points)
+        self._prime_queue(init_points, initial_points_selection_method)
         self.set_gp_params(**gp_params)
 
         self._prob_random_pick = 0.0

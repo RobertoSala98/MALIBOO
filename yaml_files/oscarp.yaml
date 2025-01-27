@@ -1,5 +1,6 @@
 general_setting:
   num_initial_points: 3
+  initial_points_selection_method: 'latin'
   initial_points: []
   num_iterations: 10
   repetitions: 30

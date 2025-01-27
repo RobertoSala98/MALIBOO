@@ -53,7 +53,7 @@ def variance(lst):
     return variance_val
 
 
-def single_simulation(f, pbounds, dataset, target_column, output_path, debug, verbose, init_points, n0, n_iter, acq, ml_on_bounds, ml_on_target, epsilon_greedy, adaptive_method, 
+def single_simulation(f, pbounds, dataset, target_column, output_path, debug, verbose, init_points, n0, initial_points_selection_method, n_iter, acq, ml_on_bounds, ml_on_target, epsilon_greedy, adaptive_method, 
                       memory_queue_len, acquisition_info, stopping_criteria, relaxation, consider_max_only_on_feasible, is_DBO, print_res, real_max, seeds, seed):
     
     idx = seeds.index(seed)
@@ -80,6 +80,7 @@ def single_simulation(f, pbounds, dataset, target_column, output_path, debug, ve
             optimizer.add_initial_points(init_points)
         
         optimizer.maximize(init_points=n0, 
+                           initial_points_selection_method=initial_points_selection_method,
                             n_iter=n_iter, 
                             acq=acq,
                             ml_on_bounds=ml_on_bounds, 
@@ -120,6 +121,7 @@ def main(yaml_file_path, is_DBO=False, print_res=True, is_single_sim=False):
     parsed_data = parse_yaml_file(yaml_file_path)
 
     n0 = parsed_data['general_setting']['num_initial_points']
+    initial_points_selection_method = 'random'
 
     variables_names = parsed_data['optimizer']['pbounds']
 
@@ -132,6 +134,7 @@ def main(yaml_file_path, is_DBO=False, print_res=True, is_single_sim=False):
             init_points = init_points.append(point_, ignore_index=True)
     else:
         init_points = None
+        initial_points_selection_method = parsed_data['general_setting']['initial_points_selection_method']
 
     n_iter = parsed_data['general_setting']['num_iterations']
 
@@ -317,7 +320,7 @@ def main(yaml_file_path, is_DBO=False, print_res=True, is_single_sim=False):
         with Pool(processes = cores_number) as pool:
 
             partial_gp = functools.partial(single_simulation,
-                                           f, pbounds, dataset, target_column, output_path, debug, verbose, init_points, n0, n_iter, acq, ml_on_bounds, ml_on_target, 
+                                           f, pbounds, dataset, target_column, output_path, debug, verbose, init_points, n0, initial_points_selection_method, n_iter, acq, ml_on_bounds, ml_on_target, 
                                            epsilon_greedy, adaptive_method, memory_queue_len, acquisition_info, stopping_criteria, relaxation, consider_max_only_on_feasible, is_DBO, 
                                            print_res, real_max, seeds)
                 
@@ -334,7 +337,7 @@ def main(yaml_file_path, is_DBO=False, print_res=True, is_single_sim=False):
             seed = seeds[idx]
             print("\nSimulation %s out of %s, Seed: %s\n" %(idx+1,len(seeds),seed))
 
-            result, duration = single_simulation(f, pbounds, dataset, target_column, output_path, debug, verbose, init_points, n0, n_iter, acq, ml_on_bounds, ml_on_target, 
+            result, duration = single_simulation(f, pbounds, dataset, target_column, output_path, debug, verbose, init_points, n0, initial_points_selection_method, n_iter, acq, ml_on_bounds, ml_on_target, 
                                                 epsilon_greedy, adaptive_method, memory_queue_len, acquisition_info, stopping_criteria, relaxation, consider_max_only_on_feasible, is_DBO, 
                                                 print_res, real_max, seeds, seed)
 

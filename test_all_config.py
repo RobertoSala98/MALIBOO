@@ -6,7 +6,7 @@ import os
 from numpy.random import randint
 
 cores_number = 1
-datasets = ["query52", "query26", "stereomatch", "ligen"]
+datasets = ["oscarp", "query52", "query26"]
 
 def generate_folder_structure(path):
 
@@ -88,6 +88,12 @@ for dataset in datasets:
             for idx in range(len(lines)):
 
                 line = lines[idx]
+
+                if "  initial_points_selection_method: " in line:
+                    if adaptive_method_kernel == 'None' or 'is_DiscreteBO' in config:
+                        lines[idx] = "  initial_points_selection_method: random" + "\n"
+                    else:
+                        lines[idx] = "  initial_points_selection_method: latin" + "\n"
 
                 if "  seeds: " in line:
 
@@ -460,6 +466,8 @@ for dataset in datasets:
             setting.append([ml_bounds, ml_target, consider_only_true_max, epsilon_greedy, adaptive_method_kernel, af, threshold, is_DBO, output_name])
     """
     print("You are testing %s different settings" %idx_setting)
+
+    import pdb; pdb.set_trace()
     
     def process_batch(settings):
 
