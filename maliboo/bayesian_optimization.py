@@ -313,7 +313,7 @@ class BayesianOptimization(Observable):
 
             for point in points:
 
-                idx, coord = self.get_approximation(point, self.dataset.loc[:,self._space.keys])
+                idx, coord = self.get_approximation(point, self.dataset.loc[mask,self._space.keys])
 
                 matches = self.dataset.loc[:,self._space.keys].eq(coord).all(axis=1)
                 indices = matches[matches].index.tolist()
