@@ -3,7 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from scipy.optimize import minimize
 import pdb
-from joblib import Parallel, delayed
+
 
 def convert_to_discrete(z1, z2):
     # Definizione delle categorie discrete per x3 e x4
@@ -100,3 +100,13 @@ print(min_x2)
 print(min_z)
 
 plt.savefig('goldstain_constraint.png')
+
+#optimum x = [94.24712356, 98.14907454, 2, 2] f(x) = 38.11340175
+
+#[70.28514257  8.10405203 78.58929465 77.28864432 89.89494747 85.29264632
+ #82.44122061 87.94397199 94.24712356]
+#[100.           0.           2.30115058 100.         100.
+#   3.2016008    0.           2.60130065  98.14907454]
+#[49.17861332 51.43116346 48.27748025 47.06305414 45.91549622 42.9685138
+# 43.50824191 41.45802338 38.11340175]
+

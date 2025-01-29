@@ -87,7 +87,7 @@ def test_goldstain_ml(output_path):
 
         optimizer.maximize(init_points=5, n_iter=15, acq='ei', ml_on_bounds=True,
                         acq_info={'ml_target': 'blackbox', 'ml_bounds': (0, float('inf')), 'ml_bounds_type':'probability', 'ml_bounds_model':'Ridge', 'ml_bounds_alpha':float(0.5)})
-        #plot_regret(output_path=output_path + '_' + str(i) + "/results.csv")
+        plot_regret(output_path=output_path + '_' + str(i) + "/results.csv")
 
 ### Test 2: branin
 
@@ -180,7 +180,7 @@ def test_branin_a_10_ml(output_path):
     # optimizer.maximize(init_points=2, n_iter=10, acq='ei')
     optimizer.maximize(init_points=2, n_iter=10, acq='ei',
                      acq_info={'ml_target': 'blackbox', 'ml_bounds': (0, float('inf'))})
-    #plot_regret(output_path=output_path + "/results.csv")
+    plot_regret(output_path=output_path + "/results.csv")
 
 
 #test_mixed_2d_ml()

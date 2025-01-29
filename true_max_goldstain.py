@@ -88,10 +88,6 @@ for z1 in z1_vals:
             print(f"x1 = {result.x[0]:.4f}, x2 = {result.x[1]:.4f}")
             print(f"Valore della funzione obiettivo: {result.fun:.4f}")
 
-            # Calcola e stampa il valore del vincolo
-            #constraint_value = constraint_function(result.x)
-            #print(f"Valore del vincolo: {constraint_value}")
-            #print()
-        #else:
-        #    print(f"L'ottimizzazione non è riuscita per z1 = {z1_val}, z2 = {z2_val}.")
-        #    print()
+#solution for z1 = 2, z2 = 2:
+#x1 = 94.5443, x2 = 100.0000
+#Valore della funzione obiettivo: 38.0847

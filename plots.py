@@ -44,7 +44,7 @@ def compare_regret(test_names: list[str], test_path: str = 'outputs/', output_na
     different penalizations, or different parameters.
     """
     if output_name is None:
-        output_name = "comparision.png"
+        output_name = "comparison.png"
 
     test_path =  Path(test_path)
     plt.clf()
@@ -55,7 +55,7 @@ def compare_regret(test_names: list[str], test_path: str = 'outputs/', output_na
     comaprison_path: Path = Path(test_path / 'comparison')
     comaprison_path.mkdir(exist_ok=True)
 
-    plt.title('Regret comparision')
+    plt.title('Regret comparison')
     plt.savefig(comaprison_path / output_name)
     plt.clf()
 
