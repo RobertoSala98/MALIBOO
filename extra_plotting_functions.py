@@ -70,5 +70,4 @@ def compare_regret(test_names: list[str],  true_maximum_values : list[float], te
     plt.savefig(comaprison_path / output_name)
     plt.clf()
 
-
-compare_regret(test_names=['test_goldstain'], true_maximum_values=[74.4970], output_name='goldstain_comparison')
+# compare_regret(test_names=['test_goldstain'], true_maximum_values=[74.4970], output_name='goldstain_comparison')
