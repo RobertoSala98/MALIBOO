@@ -165,3 +165,4 @@ def plot_average(test_name: str, true_opt_value: float, test_path: str = 'output
 #compare_regret(goldstain_files)
 
 #plot_average(test_name= 'test_goldstain_ml', true_opt_value=38.11, optimization_type='min', output_name='avg_opt_goldstain_ml', init_points=5)
+plot_average(test_name= 'test_branin_ml', true_opt_value=-0.8143, optimization_type='min', output_name='avg_opt_branin_ml', init_points=5)
