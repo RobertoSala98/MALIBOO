@@ -65,13 +65,14 @@ for z1 in z1_vals:
             print(f"Value of the objective function: {result.fun:.4f}")
             # print the value of the constraint",
             constraint_value = constraint_function(result.x)
-            print(f'Valore del vincolo: {constraint_value}')
+            print(f'constraint value: {constraint_value}')
             print()
             
         else:
-            print(f"L'ottimizzazione non è riuscita per z1 = {z1_val}, z2 = {z2_val}.")
+            print(f"optimization failed for z1 = {z1_val}, z2 = {z2_val}.")
             print()
 
-#Soluzione per z1 = 1, z2 = 0:
-#x1 = 0.9617, x2 = 0.1500
-#Valore della funzione obiettivo: -3.7856
+#Solution for z1 = 0, z2 = 0:
+#x1 = 1.0000, x2 = 0.4000
+#Value of the objective function: -0.8143
+#Valore del vincolo: 1.1309597702791052e-10

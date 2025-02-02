@@ -14,16 +14,16 @@ def h(x1, x2):
 def branin(x1, x2, z1, z2):
     ret = {}
     if z1 == 0 and z2 == 0:
-        ret['value'] = -h(x1, x2)
+        ret['value'] = h(x1, x2)
         ret['blackbox'] = x1 * x2 - 0.4
     elif z1 == 0 and z2 == 1:
-        ret['value'] = -0.4 * h(x1, x2)
+        ret['value'] = 0.4 * h(x1, x2)
         ret['blackbox'] = 1.5 * x1 * x2 - 0.4
     elif z1 == 1 and z2 == 0:
-        ret['value'] = -(-0.75 * h(x1, x2) + 3.0)
+        ret['value'] = -0.75 * h(x1, x2) + 3.0
         ret['blackbox'] = 1.5 * x1 * x2 - 0.2
     elif z1 == 1 and z2 == 1:
-        ret['value'] = -(-0.5 * h(x1, x2) + 1.4)
+        ret['value'] = -0.5 * h(x1, x2) + 1.4
         ret['blackbox'] = 1.2 * x1 * x2 - 0.3
     else:
         raise ValueError("Error! This function can be evaluated only for z1,z2 in {0, 1}")
@@ -42,14 +42,14 @@ for z1 in z1_vals:
 
         initial_guess = [np.random.uniform(0, 1), np.random.uniform(0, 1)]
         result = minimize(objective_function, initial_guess,
-                          bounds=[(0, 1), (0, 1)],  method='L-BFGS-B')
+                          bounds=[(0, 1), (0, 1)],  method='SLSQP', )
 
         # Stampa della soluzione per la combinazione corrente
         if result.success:
-            print(f"Soluzione per z1 = {z1}, z2 = {z2}:")
+            print(f"Solution for z1 = {z1}, z2 = {z2}:")
             print(f"x1 = {result.x[0]:.4f}, x2 = {result.x[1]:.4f}")
-            print(f"Valore della funzione obiettivo: {result.fun:.4f}")
+            print(f"Value of the objective function: {result.fun:.4f}")
 
-#solution for z1 = 2, z2 = 2:
-#x1 = 94.5443, x2 = 100.0000
-#Valore della funzione obiettivo: 38.0847
+#Soluzione per z1 = 1, z2 = 0:
+#x1 = 0.9617, x2 = 0.1500
+#Valore della funzione obiettivo: -3.7856
