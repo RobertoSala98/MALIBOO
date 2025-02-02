@@ -109,6 +109,7 @@ def test_branin_ml(output_path):
             ret['blackbox'] = 1.5 * x1 * x2 - 0.4
         elif z1 == 1 and z2 == 0:
             ret['value'] = -(-0.75 * h(x1, x2) + 3.0)
+            ret['blackbox'] = 1.5 * x1 * x2 - 0.2
         elif z1 == 1 and z2 == 1:
             ret['value'] = -(-0.5 * h(x1, x2) + 1.4)
             ret['blackbox'] = 1.2 * x1 * x2 - 0.3
@@ -116,19 +117,17 @@ def test_branin_ml(output_path):
             raise ValueError("Error! This function can be evaluated only for z1,z2 in {0, 1}")
         return ret
    
-    def branin_value_only(x1, x2, x3, x4):
-        return branin(x1, x2, x3, x4)['value']
- 
     dataset_discrete = pd.DataFrame({'z1': [0, 0, 1, 1], 'z2': [0, 1, 0, 1]})
     
     for i in range(10):
         
-
-        optimizer = BO(f=branin, pbounds={'x1': (0, 1), 'x2': (0, 1), 'z1': (0, 1), 'z2': (0, 1)}, debug = debug, dataset_discrete = dataset_discrete, output_path=output_path + '_' + str(i)
+        optimizer = BO(f=branin, pbounds={'x1': (0, 1), 'x2': (0, 1), 'z1': (0, 1), 'z2': (0, 1)}, debug = debug, dataset_discrete = dataset_discrete, output_path=output_path + '_indicator_' + str(i)
                     , true_maximum_value=0.8143)
 
-        optimizer.maximize(init_points=5, n_iter=15, acq='ei', ml_on_bounds=True,
-                        acq_info={'ml_target': 'blackbox', 'ml_bounds': (0, float('inf')), 'ml_bounds_type':'probability', 'ml_bounds_model':'Ridge', 'ml_bounds_alpha':float(1)})
+        #optimizer.maximize(init_points=5, n_iter=50, acq='ei', ml_on_bounds=True,
+        #                acq_info={'ml_target': 'blackbox', 'ml_bounds': (0, float('inf')), 'ml_bounds_type':'probability', 'ml_bounds_model':'Ridge', 'ml_bounds_alpha':float(1)})
+        optimizer.maximize(init_points=5, n_iter=50, acq='ei', ml_on_bounds=True,
+                        acq_info={'ml_target': 'blackbox', 'ml_bounds': (0, float('inf')), 'ml_bounds_type':'indicator', 'ml_bounds_model':'Ridge', 'ml_bounds_alpha':float(1)})
         #plot_regret(output_path=output_path + '_' + str(i) + "/results.csv")
 @perform_test
 def test_branin_a_10_ml(output_path):
