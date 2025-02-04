@@ -149,7 +149,7 @@ def plot_average(test_name: str, true_opt_value: float, test_path: str = 'output
     plt.ylabel('Average optimum value')
     plt.legend() #loc='upper left', bbox_to_anchor=(1, 1)
     plt.gca().xaxis.set_major_locator(MaxNLocator(integer=True))
-    plt.fill_between(range(numeber_of_iterations), lower_quantiles, upper_quantiles, color='lightblue', alpha=0.3, label="90% CI")
+    #plt.fill_between(range(numeber_of_iterations), lower_quantiles, upper_quantiles, color='lightblue', alpha=0.3, label="90% CI")
 
     #import pdb; pdb.set_trace()
     plt.plot(2*[init_points], [min_y_value, max_y_value], linestyle = '-.', color = 'red')
@@ -167,4 +167,9 @@ for i in range(10):
 #compare_regret(branin_files)
 #plot_average(test_name= 'test_goldstain_ml', true_opt_value=38.11, optimization_type='min', output_name='avg_opt_goldstain_ml', init_points=5)
 #plot_average(test_name= 'test_branin_ml', true_opt_value=-0.8143, optimization_type='min', output_name='avg_opt_branin_ml', init_points=5)
-plot_average(test_name= 'test_branin_ml_indicator', true_opt_value=-0.8143, optimization_type='min', output_name='avg_opt_branin_ml', init_points=5)
+#plot_average(test_name= 'test_branin_ml_indicator', true_opt_value=-0.8143, optimization_type='min', output_name='avg_opt_branin_ml', init_points=5)
+
+plot_average(test_name= 'test_goldstain_ml_mltarget', true_opt_value=38.11, optimization_type='min', output_name='avg_opt_goldstain', init_points=5)
+plot_average(test_name= 'test_goldstain_ml', true_opt_value=38.11, optimization_type='min', output_name='avg_opt_goldstain', init_points=5)
+plot_average(test_name= 'test_goldstain_ml_epsgreedy', true_opt_value=38.11, optimization_type='min', output_name='avg_opt_goldstain', init_points=5)
+plot_average(test_name= 'test_goldstain_ml_epsgreedy_probontarget', true_opt_value=38.11, optimization_type='min', output_name='avg_opt_goldstain', init_points=5)

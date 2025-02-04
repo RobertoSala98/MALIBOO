@@ -5,6 +5,7 @@ import pandas as pd
 import warnings
 from queue import Queue
 import xgboost as xgb
+import pdb
 
 from sklearn.gaussian_process.kernels import Matern, RBF
 from sklearn.gaussian_process import GaussianProcessRegressor
@@ -20,7 +21,7 @@ from .logger import _get_default_logger
 from .util import UtilityFunction, StoppingCriterion, acq_max, ensure_rng, Penalizer
 
 from scipy.spatial.distance import cdist
-import pdb
+
 
 class CustomRBFKernel(RBF):
     def __init__(self, length_scale=1.0, sigma_2=1.0, **kwargs):
@@ -749,7 +750,6 @@ class BayesianOptimization(Observable):
         X = self._space._params
         if self._debug: print("Dataset for ML model has shape", X.shape)
         y = self.get_ml_target_data(y_name)
-
         log_transformer = FunctionTransformer(np.log1p, validate=False)
         inv_transformer = FunctionTransformer(lambda x: 1 / x, validate=False)
 
@@ -827,7 +827,6 @@ class BayesianOptimization(Observable):
         # Build training dataset for the ML model
         X = self._space.params
         y = self._space.target
-
         log_transformer = FunctionTransformer(np.log1p, validate=False)
         inv_transformer = FunctionTransformer(lambda x: 1 / x, validate=False)
 

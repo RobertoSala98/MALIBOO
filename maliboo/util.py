@@ -14,7 +14,7 @@ from math import sqrt
 import random
 from scipy.spatial.distance import cdist # used for BO
 import pandas as pd
-
+import pdb
 
 class Penalizer():
     """
@@ -598,7 +598,6 @@ class UtilityFunction(object):
         if self._ml_on_target and not pick_random:
 
             parameters = {}
-
             if self.ml_target_type == 'sum':
 
                 parameters = {'ml_target_gamma_iter0': self.ml_target_gamma_iter0,
@@ -711,16 +710,16 @@ class UtilityFunction(object):
             
             elif ml_target_type == 'indicator':
                 lb_coeff, ub_coeff = parameters['ml_target_coeff']
-
                 for idx in range(len(f_tilde)):
 
                     if lb_coeff != None:
+                       
                         if f_tilde[idx] < lb_coeff*y_max:
-                            res[idx] = -float_info.max
+                            res[idx] = 0
 
                     if ub_coeff != None:
                         if f_tilde[idx] > ub_coeff*y_max:
-                            res[idx] = -float_info.max
+                            res[idx] = 0
             
         return res
     

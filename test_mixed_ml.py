@@ -75,19 +75,21 @@ def test_goldstain_ml(output_path):
         ret['blackbox'] = c1*np.sin((x1/10)**3)+c2*np.cos((x2/20)**2)
         return ret
     
-    def goldstain_value_only(x1, x2, x3, x4):         
-        return goldstain(x1, x2, x3, x4)['value']
  
-    
     dataset_discrete = pd.DataFrame({'z1': [0, 0, 0, 1, 1, 1, 2, 2, 2], 'z2': [0, 1, 2, 0, 1, 2, 0, 1, 2]})
     
     for i in range(10):
-        optimizer = BO(f=goldstain, pbounds={'x1': (0, 100), 'x2': (0, 100), 'z1': (0, 2), 'z2': (0, 2)}, debug = debug, dataset_discrete = dataset_discrete, output_path=output_path + '_' + str(i)
+        optimizer = BO(f=goldstain, pbounds={'x1': (0, 100), 'x2': (0, 100), 'z1': (0, 2), 'z2': (0, 2)}, debug = debug, dataset_discrete = dataset_discrete, output_path=output_path + '_epsgreedy_probontarget_' + str(i)
                     , true_maximum_value=-38.11)
 
-        optimizer.maximize(init_points=5, n_iter=15, acq='ei', ml_on_bounds=True,
-                        acq_info={'ml_target': 'blackbox', 'ml_bounds': (0, float('inf')), 'ml_bounds_type':'probability', 'ml_bounds_model':'Ridge', 'ml_bounds_alpha':float(0.5)})
-        plot_regret(output_path=output_path + '_' + str(i) + "/results.csv")
+        optimizer.maximize(init_points=5, n_iter=15, acq='ei', ml_on_bounds=True, ml_on_target=True, epsilon_greedy=True, 
+                        acq_info={'ml_target': 'blackbox', 'ml_bounds': (0, float('inf')), 'ml_bounds_type':'indicator',
+                                  'ml_bounds_model':'Ridge', 'ml_bounds_alpha':float(0.5), 'ml_target_type':'probability',
+                                  'ml_target_model':'Ridge', 'ml_target_alpha':float(0.025), 'ml_target_coeff':[float(1.0), None],
+                                  'eps_greedy_random_prob':float(0.1)}
+                        )
+        
+        #plot_regret(output_path=output_path + '_' + str(i) + "/results.csv")
 
 ### Test 2: branin
 
@@ -178,8 +180,8 @@ def test_branin_a_10_ml(output_path):
 
 #test_mixed_2d_ml()
 #test_continuos()
-#test_goldstain_ml()
-test_branin_ml()
+test_goldstain_ml()
+#test_branin_ml()
 #test_branin_a_10_ml()
 
 #compare_regret(['test_mixed_2d','test_goldstain', 'test_branin', 'test_branin_a_10'])
