@@ -319,10 +319,6 @@ class BayesianOptimization(Observable):
                 matches = self.dataset.loc[:,self._space.keys].eq(coord).all(axis=1)
                 indices = matches[matches].index.tolist()
 
-                if idx not in indices:
-                    print("ERROR")
-                    import pdb; pdb.set_trace()
-
                 for idx_ in indices:
                     mask[idx_] = 0
 
