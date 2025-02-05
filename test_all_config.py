@@ -6,7 +6,7 @@ import os
 from numpy.random import randint
 
 cores_number = 4
-datasets = ["oscarp", "query52", "stereomatch", "ligen"]
+datasets = ["oscarp", "query52"]
 
 def generate_folder_structure(path):
 
@@ -50,6 +50,14 @@ for dataset in datasets:
         "stereomatch": [-50776.0, -45525.0, -40196.0, -40196.0, -37412.0, -36791.0],
         "ligen": [-567.312555400384, -567.312555400384, -464.349441178703, -424.355184049556, -340.099251789615],
         "query52": [-682215, -682215, -682215, -682215, -682215]
+    }
+
+    max_points = {
+        "oscarp": 13,
+        "query26": 33,
+        "query52": 33,
+        "stereomatch": 63,
+        "ligen": 71
     }
     
     configurations_best = [
@@ -131,6 +139,9 @@ for dataset in datasets:
                         
                 if "  consider_max_only_on_feasible: " in line:
                     lines[idx] = "  consider_max_only_on_feasible: " + str(consider_only_true_max) + "\n"
+
+                if "  memory_queue_len: " in line and "is_DiscreteBO" in config:
+                    lines[idx] = "  memory_queue_len: " + str(max_points[dataset]) + "\n"
 
                 if "  epsilon_greedy: " in line:
                     lines[idx] = "  epsilon_greedy: " + str(epsilon_greedy) + "\n"
