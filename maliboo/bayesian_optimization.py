@@ -267,7 +267,8 @@ class BayesianOptimization(Observable):
             old_x=self._space.params,
             old_y=self._space.target,
             adaptive_method_parameters=self.adaptive_method_parameters,
-            prob_eps_greedy=self._prob_random_pick
+            prob_eps_greedy=self._prob_random_pick,
+            memory_queue_len=self.memory_queue_len
         )
 
         if self.relaxation:
@@ -467,7 +468,7 @@ class BayesianOptimization(Observable):
             else:
                 raise NotImplementedError("No other kernels implemented for adaptive methods")
 
-            memory_queue_len = 0
+            #memory_queue_len = 0
 
         else:
             self._gp = GaussianProcessRegressor(

@@ -48,7 +48,7 @@ def min_max_normalize(vector):
 
 def acq_max(ac, gp, y_max, bounds, random_state, n_warmup=10000, n_iter=10, dataset=None, debug=False, iter_num=0, 
             kind='ucb', at_least_one_feasible_found=True, epsilon_greedy=False, adaptive_method=False,
-            old_x=[], old_y=[], adaptive_method_parameters={}, prob_eps_greedy=0.1):
+            old_x=[], old_y=[], adaptive_method_parameters={}, prob_eps_greedy=0.1, memory_queue_len=1e10):
     """
     A function to find the maximum of the acquisition function
 
@@ -125,10 +125,10 @@ def acq_max(ac, gp, y_max, bounds, random_state, n_warmup=10000, n_iter=10, data
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
 
-            while x_max.tolist() in np.array(old_x).tolist():
+            while x_max.tolist() in np.array(old_x[-memory_queue_len:]).tolist():
                 
                 if at_least_one_feasible_found:
-                    #print("Riparametrizzo")
+                    #print("Reparametrizing...")
                     reparametrized = True
 
                     if kind == 'ucb':

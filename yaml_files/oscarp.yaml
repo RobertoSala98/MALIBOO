@@ -28,7 +28,7 @@ acquisition_info:
   consider_max_only_on_feasible: True
   epsilon_greedy: True
   adaptive_method: False
-  memory_queue_len: 13
+  memory_queue_len: 5
   relaxation: False
   epsilon_greedy_parameters:
     prob_random_pick: 0.1

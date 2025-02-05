@@ -5,8 +5,8 @@ import functools
 import os
 from numpy.random import randint
 
-cores_number = 1
-datasets = ["oscarp", "query52", "query26"]
+cores_number = 4
+datasets = ["oscarp", "query52", "stereomatch", "ligen"]
 
 def generate_folder_structure(path):
 
@@ -57,8 +57,8 @@ for dataset in datasets:
         {'ml_bounds': 'indicator', 'ml_target': 'probability', 'consider_only_true_max': True, 'epsilon_greedy': True, 'adaptive_method_kernel': 'Matern', 'af': 'ucb'}, # REBOLD
         {'ml_bounds': 'indicator', 'ml_target': 'probability', 'consider_only_true_max': True, 'epsilon_greedy': True, 'adaptive_method_kernel': 'RBF', 'af': 'ei'}, # REBOLD
         {'ml_bounds': 'indicator', 'ml_target': 'probability', 'consider_only_true_max': True, 'epsilon_greedy': True, 'adaptive_method_kernel': 'RBF', 'af': 'ucb'}, # REBOLD
-        {'ml_bounds': 'indicator', 'ml_target': 'probability', 'consider_only_true_max': True, 'epsilon_greedy': True, 'adaptive_method_kernel': 'None', 'af': 'ei'}, # d-MALIBOO
-        {'ml_bounds': 'indicator', 'ml_target': 'None', 'consider_only_true_max': True, 'epsilon_greedy': False, 'adaptive_method_kernel': 'None', 'af': 'ei'}, # MALIBOO fixed
+        #{'ml_bounds': 'indicator', 'ml_target': 'probability', 'consider_only_true_max': True, 'epsilon_greedy': True, 'adaptive_method_kernel': 'None', 'af': 'ei'}, # d-MALIBOO
+        #{'ml_bounds': 'indicator', 'ml_target': 'None', 'consider_only_true_max': True, 'epsilon_greedy': False, 'adaptive_method_kernel': 'None', 'af': 'ei'}, # MALIBOO fixed
         {'ml_bounds': 'indicator', 'ml_target': 'None', 'consider_only_true_max': False, 'epsilon_greedy': False, 'adaptive_method_kernel': 'None', 'af': 'ei'}, # MALIBOO original
         {'ml_bounds': 'None', 'ml_target': 'None', 'consider_only_true_max': False, 'epsilon_greedy': False, 'adaptive_method_kernel': 'RBF', 'af': 'ucb', "is_DiscreteBO": True} # discreteBO
     ]
@@ -482,7 +482,7 @@ for dataset in datasets:
 
         return results
 
-    """
+    
     def split_list(input_list, num_chunks):
         
         avg_chunk_size = len(input_list) // num_chunks
@@ -497,19 +497,20 @@ for dataset in datasets:
 
         return chunks
 
+    if cores_number > 1:
+        setting_parallel = split_list(setting, cores_number)
 
-    setting_parallel = split_list(setting, cores_number)
+        with Pool(processes = cores_number) as pool:
 
-    with Pool(processes = cores_number) as pool:
+            partial_gp = functools.partial(process_batch)
+                
+            batch_results_parallel = pool.map(partial_gp, setting_parallel)
 
-        partial_gp = functools.partial(process_batch)
-            
-        batch_results_parallel = pool.map(partial_gp, setting_parallel)
-
-    for cc in range(cores_number):
-        data = data + batch_results_parallel[cc] 
-    """
-    data = process_batch(setting)
+        for cc in range(cores_number):
+            data = data + batch_results_parallel[cc] 
+    
+    else:
+        data = process_batch(setting)
 
     with open("%s_best_config.csv" %dataset, 'w', encoding='UTF8', newline='') as f:
         writer = csv.writer(f, delimiter=',')
