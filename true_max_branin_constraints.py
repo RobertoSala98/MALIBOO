@@ -33,6 +33,9 @@ def branin(x1, x2, z1, z2):
 z1_vals = [0, 1]
 z2_vals = [0, 1]
 
+
+Mit = 10000
+
 for z1 in z1_vals:  
     for z2 in z2_vals: 
         
@@ -44,19 +47,25 @@ for z1 in z1_vals:
             x1, x2 = x
             return branin(x1, x2, z1, z2)['blackbox']
         
-        nofeasible_initial = False
-        initial_guess = [np.random.uniform(0, 1), np.random.uniform(0, 1)]
-        if(constraint_function(initial_guess)<0):
-            nofeasible_initial=True
-        while(nofeasible_initial):
-            initial_guess = [np.random.uniform(0, 1), np.random.uniform(0, 1)]
-            if(constraint_function(initial_guess)>=0):
-                nofeasible_initial=False
                 
         constraint = {'type': 'ineq', 'fun': constraint_function}  
         
-        result = minimize(objective_function, initial_guess,
-                          bounds=[(0, 1), (0, 1)],  method='SLSQP', constraints = constraint)
+        constraints_ko = True
+        maxit = 0
+        while(constraints_ko and maxit<Mit):
+            nofeasible_initial=True
+            while(nofeasible_initial):
+                initial_guess = [np.random.uniform(0, 1), np.random.uniform(0, 1)]
+                if(constraint_function(initial_guess)>=0):
+                    nofeasible_initial=False
+                         
+            result = minimize(objective_function, initial_guess,
+                            bounds=[(0, 1), (0, 1)],  method='SLSQP', constraints = constraint)
+            if constraint_function(result.x)>0:
+                constraints_ko = False
+                
+            maxit+=1
+            
 
         # print the current solution
         if result.success:
@@ -72,7 +81,9 @@ for z1 in z1_vals:
             print(f"optimization failed for z1 = {z1_val}, z2 = {z2_val}.")
             print()
 
+
+
 #Solution for z1 = 0, z2 = 0:
 #x1 = 1.0000, x2 = 0.4000
 #Value of the objective function: -0.8143
-#Valore del vincolo: 1.1309597702791052e-10
+#constraint value: 5.551115123125783e-17
