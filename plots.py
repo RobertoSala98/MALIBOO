@@ -8,6 +8,7 @@ import matplotlib.pyplot as plt
 from matplotlib.ticker import MaxNLocator
 
 from pathlib import Path
+import shutil
 
 
 
@@ -68,9 +69,22 @@ def plot_average(test_name: str, true_opt_value: float, test_path: str = 'output
     if output_name is None:
         output_name = "average.png"
     
+    folder_name = Path(output_name).stem
+    folder_name = Path(test_path) / "comparison" / folder_name
+    folder_name.mkdir(exist_ok=True)
+
     test_path = test_path + test_name
+
+    if Path(test_path + f"_{0}").exists():
+        metadata_file = (Path(test_path + f"_{0}") / "metadata.json")
+        if metadata_file.exists():
+           shutil.copy(metadata_file, folder_name/"metadata.json")
+    else:
+        raise ValueError(f'Cannot find test: {test_path + f"_{0}"}')
+
     i = 0
     results = []
+    
 
     while Path(test_path + f"_{i}").exists():
         result_path = Path(test_path + f"_{i}") / "results.csv"
@@ -160,7 +174,7 @@ def plot_average(test_name: str, true_opt_value: float, test_path: str = 'output
 
     if output_name is not None:
         figname = output_name
-        plt.savefig(Path('outputs/comparison/') / figname )
+        plt.savefig( folder_name / figname )
 
 goldstain_files = []
 branin_files = []

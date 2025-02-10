@@ -8,6 +8,75 @@ import matplotlib.pyplot as plt
 from pathlib import Path
 import pdb
 
+import json
+from pathlib import Path
+from typing import Any, Dict
+from datetime import datetime
+
+
+def save_optimizer_params(constructor_params: Dict[str, Any] = None,
+                        maximize_params: Dict[str, Any] = None,
+                        output_path: str = "optimizer_params.json") -> None:
+    """
+    Save both constructor and maximize parameters to a JSON file with metadata.
+    
+    Args:
+        constructor_params: Dictionary of BO constructor parameters (optional)
+        maximize_params: Dictionary of maximize method parameters (optional)
+        output_path: Path where the JSON file should be saved
+    """
+    def make_serializable(obj):
+        if isinstance(obj, pd.DataFrame):
+            return obj.to_dict(orient='records')
+        if isinstance(obj, np.ndarray):
+            return obj.tolist()
+        if isinstance(obj, float) and np.isinf(obj):
+            return "inf"
+        if isinstance(obj, float):
+            return float(obj)
+        if obj is None:
+            return None
+        if isinstance(obj, dict):
+            return {k: make_serializable(v) for k, v in obj.items()}
+        if isinstance(obj, (list, tuple)):
+            return [make_serializable(v) for v in obj]
+        if callable(obj):
+            return obj.__name__ if hasattr(obj, "__name__") else str(obj)
+        return str(obj)
+    
+    metadata = {
+        "timestamp": datetime.now().isoformat(),
+        "optimizer_config": {}
+    }
+    
+    # Add constructor parameters if provided
+    if constructor_params:
+        metadata["optimizer_config"]["constructor"] = {
+            "class": "BO",
+            "parameters": constructor_params
+        }
+    
+    # Add maximize parameters if provided
+    if maximize_params:
+        metadata["optimizer_config"]["maximize"] = {
+            "method": "maximize",
+            "parameters": {
+                k: v for k, v in maximize_params.items() 
+                if k != "acq_info"
+            },
+            "acquisition_info": maximize_params.get("acq_info", {})
+        }
+    
+    # Ensure the directory exists
+    Path(output_path).parent.mkdir(parents=True, exist_ok=True)
+    
+    # Convert all values to be JSON-serializable and save
+    try:
+        with open(output_path, 'w') as f:
+            json.dump(metadata, f, indent=2, default=make_serializable)
+    except Exception as e:
+        print(f"Error saving metadata: {str(e)}")
+        raise
 
 
 seed = 42
@@ -76,22 +145,38 @@ def test_goldstain_ml(output_path):
  
     dataset_discrete = pd.DataFrame({'z1': [0, 0, 0, 1, 1, 1, 2, 2, 2], 'z2': [0, 1, 2, 0, 1, 2, 0, 1, 2]})
     
+    params = {
+        "init_points": 5,
+        "n_iter": 45,
+        "acq": "ei",
+        "ml_on_bounds": True,
+        "ml_on_target": True,
+        "epsilon_greedy": True,
+        "acq_info": {
+        "ml_target": "blackbox",
+        "ml_bounds": (0, float('inf')),
+        "ml_bounds_type": "indicator",
+        "ml_bounds_model": "Ridge",
+        "ml_bounds_alpha": 0.5,
+        "ml_target_type": "probability",
+        "ml_target_model": "Ridge",
+        "ml_target_alpha": 0.025,
+        "ml_target_coeff": [1.0, None],
+        "eps_greedy_random_prob": 0.1
+    }
+    }
+
+
     for i in range(10):
+        iteration_output_path = output_path + '_all_' + str(i)
         optimizer = BO(f=goldstain, pbounds={'x1': (0, 100), 'x2': (0, 100), 'z1': (0, 2), 'z2': (0, 2)}, 
                        debug = debug, dataset_discrete = dataset_discrete, 
-                       output_path=output_path + '_epsgreedy_probontarget_' + str(i), 
+                       output_path=iteration_output_path, 
                        true_maximum_value=-38.11)
 
-        optimizer.maximize(init_points=5, n_iter=15, acq='ei', ml_on_bounds=True, ml_on_target=True, epsilon_greedy=True, 
-                        acq_info={'ml_target': 'blackbox', 'ml_bounds': (0, float('inf')), 'ml_bounds_type':'indicator',
-                                  'ml_bounds_model':'Ridge', 'ml_bounds_alpha':float(0.5), 'ml_target_type':'probability',
-                                  'ml_target_model':'Ridge', 'ml_target_alpha':float(0.025), 'ml_target_coeff':[float(1.0), None],
-                                  'eps_greedy_random_prob':float(0.1)}
-                        )
-        
-        #plot_regret(output_path=output_path + '_' + str(i) + "/results.csv")
+        optimizer.maximize(**params)
 
-
+        save_optimizer_params(maximize_params=params, output_path= Path(iteration_output_path) / "metadata.json")
 
 
 #####################################################
@@ -131,30 +216,47 @@ def test_branin_ml(output_path):
     dataset_discrete = pd.DataFrame({'z1': [0, 0, 1, 1], 'z2': [0, 1, 0, 1]})
     
     for i in range(10):
-        
+        iteration_output_path = output_path + '_indicator_' + str(i)
         optimizer = BO(f=branin, pbounds={'x1': (0, 1), 'x2': (0, 1), 'z1': (0, 1), 'z2': (0, 1)}, debug = debug, 
-                       dataset_discrete = dataset_discrete, output_path=output_path + '_indicator_' + str(i)
+                       dataset_discrete = dataset_discrete, output_path=iteration_output_path
                     , true_maximum_value=0.81439)
 
-        
-        optimizer.maximize(init_points=5, n_iter=45, acq='ei', ml_on_bounds=True, ml_on_target=True, epsilon_greedy=True,
-                        acq_info={'ml_target': 'blackbox', 'ml_bounds': (0, float('inf')), 'ml_bounds_type':'indicator', 
-                                  'ml_bounds_model':'Ridge', 'ml_bounds_alpha':float(0.5),  # it was set to 1
-                                  'ml_target_type':'probability',
-                                  'ml_target_model':'Ridge', 'ml_target_alpha':float(0.025), 'ml_target_coeff':[float(1.0), None],
-                                  'eps_greedy_random_prob':float(0.1)}, 
-                        )
-        
 
-#test_goldstain_ml()
-#test_branin_ml()
+        params = {
+            "init_points": 5,
+            "n_iter": 45,
+            "acq": "ei",
+            "ml_on_bounds": True,
+            "ml_on_target": True,
+            "epsilon_greedy": True,
+            "acq_info": {
+            "ml_target": "blackbox",
+            "ml_bounds": (0, float('inf')),
+            "ml_bounds_type": "indicator",
+            "ml_bounds_model": "Ridge",
+            "ml_bounds_alpha": 0.5,
+            "ml_target_type": "probability",
+            "ml_target_model": "Ridge",
+            "ml_target_alpha": 0.025,
+            "ml_target_coeff": [1.0, None],
+            "eps_greedy_random_prob": 0.1
+        }
+        }
+        
+        optimizer.maximize(**params)
+        
+        save_optimizer_params(maximize_params=params, output_path= Path(iteration_output_path) / "metadata.json")
+
+
+# test_goldstain_ml()
+# test_branin_ml()
 
 from plots import plot_average
 
-plot_average('test_branin_ml_indicator', 
-             true_opt_value=-0.81439, 
-             output_name='branin_avg', 
+plot_average('test_goldstain_ml_all', 
+             true_opt_value=38.11, 
+             output_name='goldstain_avg', 
              optimization_type='min', 
              init_points=5, 
              plot_quantiles=True, 
-             avg_label='branin_all_active')
+             avg_label='goldstain_all_active')
