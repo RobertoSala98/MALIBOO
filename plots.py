@@ -61,14 +61,15 @@ def compare_regret(test_names: list[str], test_path: str = 'outputs/', output_na
     plt.savefig(comaprison_path / output_name)
     plt.clf()
 
-def plot_average(test_name: str, true_opt_value: float, test_path: str = 'outputs/',output_name: str = None, optimization_type: str = 'max', init_points: int = 0):
+def plot_average(test_name: str, true_opt_value: float, test_path: str = 'outputs/',
+                 output_name: str = None, optimization_type: str = 'max', init_points: int = 0,
+                 plot_quantiles = False, avg_label = None):
     
     if output_name is None:
         output_name = "average.png"
     
     test_path = test_path + test_name
     i = 0
-  
     results = []
 
     while Path(test_path + f"_{i}").exists():
@@ -139,8 +140,10 @@ def plot_average(test_name: str, true_opt_value: float, test_path: str = 'output
         max_y_value = np.nanmax(lower_quantiles)
         min_y_value = true_opt_value
     
+    if avg_label is None:
+        avg_label = test_name
 
-    plt.plot(range(numeber_of_iterations), average_maximum_per_iteration, label = test_name, marker='o')
+    plt.plot(range(numeber_of_iterations), average_maximum_per_iteration, label = avg_label, marker='o')
     
     if output_name is not None:
         plt.plot(range(numeber_of_iterations), [true_opt_value]*numeber_of_iterations, linestyle='--', label = 'True optimum value')
@@ -149,7 +152,8 @@ def plot_average(test_name: str, true_opt_value: float, test_path: str = 'output
     plt.ylabel('Average optimum value')
     plt.legend() #loc='upper left', bbox_to_anchor=(1, 1)
     plt.gca().xaxis.set_major_locator(MaxNLocator(integer=True))
-    #plt.fill_between(range(numeber_of_iterations), lower_quantiles, upper_quantiles, color='lightblue', alpha=0.3, label="90% CI")
+    if plot_quantiles:
+        plt.fill_between(range(numeber_of_iterations), lower_quantiles, upper_quantiles, color='lightblue', alpha=0.3, label="90% CI")
 
     #import pdb; pdb.set_trace()
     plt.plot(2*[init_points], [min_y_value, max_y_value], linestyle = '-.', color = 'red')
@@ -169,7 +173,7 @@ for i in range(10):
 #plot_average(test_name= 'test_branin_ml', true_opt_value=-0.8143, optimization_type='min', output_name='avg_opt_branin_ml', init_points=5)
 #plot_average(test_name= 'test_branin_ml_indicator', true_opt_value=-0.8143, optimization_type='min', output_name='avg_opt_branin_ml', init_points=5)
 
-plot_average(test_name= 'test_goldstain_ml_mltarget', true_opt_value=38.11, optimization_type='min', output_name='avg_opt_goldstain', init_points=5)
-plot_average(test_name= 'test_goldstain_ml', true_opt_value=38.11, optimization_type='min', output_name='avg_opt_goldstain', init_points=5)
-plot_average(test_name= 'test_goldstain_ml_epsgreedy', true_opt_value=38.11, optimization_type='min', output_name='avg_opt_goldstain', init_points=5)
-plot_average(test_name= 'test_goldstain_ml_epsgreedy_probontarget', true_opt_value=38.11, optimization_type='min', output_name='avg_opt_goldstain', init_points=5)
+#plot_average(test_name= 'test_goldstain_ml_mltarget', true_opt_value=38.11, optimization_type='min', output_name='avg_opt_goldstain', init_points=5)
+#plot_average(test_name= 'test_goldstain_ml', true_opt_value=38.11, optimization_type='min', output_name='avg_opt_goldstain', init_points=5)
+#plot_average(test_name= 'test_goldstain_ml_epsgreedy', true_opt_value=38.11, optimization_type='min', output_name='avg_opt_goldstain', init_points=5)
+#plot_average(test_name= 'test_goldstain_ml_epsgreedy_probontarget', true_opt_value=38.11, optimization_type='min', output_name='avg_opt_goldstain', init_points=5)

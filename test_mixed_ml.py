@@ -7,18 +7,16 @@ from test import perform_test
 import matplotlib.pyplot as plt
 from pathlib import Path
 import pdb
-#from test_mixed import plot_regret, compare_regret
 
-def target_func(x1, x2):
-    return -x1 ** 2 - (x2 - 1) ** 2 + 2
 
 
 seed = 42
 debug = False
 
 
-### Test 1: goldstain. 
-#guarda il file goldstain
+#####################################################
+##################  Goldstain  ######################
+#####################################################
 
 
 @perform_test
@@ -79,8 +77,10 @@ def test_goldstain_ml(output_path):
     dataset_discrete = pd.DataFrame({'z1': [0, 0, 0, 1, 1, 1, 2, 2, 2], 'z2': [0, 1, 2, 0, 1, 2, 0, 1, 2]})
     
     for i in range(10):
-        optimizer = BO(f=goldstain, pbounds={'x1': (0, 100), 'x2': (0, 100), 'z1': (0, 2), 'z2': (0, 2)}, debug = debug, dataset_discrete = dataset_discrete, output_path=output_path + '_epsgreedy_probontarget_' + str(i)
-                    , true_maximum_value=-38.11)
+        optimizer = BO(f=goldstain, pbounds={'x1': (0, 100), 'x2': (0, 100), 'z1': (0, 2), 'z2': (0, 2)}, 
+                       debug = debug, dataset_discrete = dataset_discrete, 
+                       output_path=output_path + '_epsgreedy_probontarget_' + str(i), 
+                       true_maximum_value=-38.11)
 
         optimizer.maximize(init_points=5, n_iter=15, acq='ei', ml_on_bounds=True, ml_on_target=True, epsilon_greedy=True, 
                         acq_info={'ml_target': 'blackbox', 'ml_bounds': (0, float('inf')), 'ml_bounds_type':'indicator',
@@ -91,7 +91,13 @@ def test_goldstain_ml(output_path):
         
         #plot_regret(output_path=output_path + '_' + str(i) + "/results.csv")
 
-### Test 2: branin
+
+
+
+#####################################################
+####################  Branin  #######################
+#####################################################
+
 
 @perform_test
 def test_branin_ml(output_path):
@@ -102,6 +108,9 @@ def test_branin_ml(output_path):
         return (term1 + term2 - 54.8104) * (1 / 51.9496)
  
     def branin(x1, x2, z1, z2):
+        # the function defined here is actually -branin.
+        # Since the optimization we want to solve is min(branin), we define -branin and solve
+        # max(-branin)
         ret = {}
         if z1 == 0 and z2 == 0:
             ret['value'] = -h(x1, x2)
@@ -123,69 +132,29 @@ def test_branin_ml(output_path):
     
     for i in range(10):
         
-        optimizer = BO(f=branin, pbounds={'x1': (0, 1), 'x2': (0, 1), 'z1': (0, 1), 'z2': (0, 1)}, debug = debug, dataset_discrete = dataset_discrete, output_path=output_path + '_indicator_' + str(i)
-                    , true_maximum_value=0.8143)
+        optimizer = BO(f=branin, pbounds={'x1': (0, 1), 'x2': (0, 1), 'z1': (0, 1), 'z2': (0, 1)}, debug = debug, 
+                       dataset_discrete = dataset_discrete, output_path=output_path + '_indicator_' + str(i)
+                    , true_maximum_value=0.81439)
 
-        #optimizer.maximize(init_points=5, n_iter=50, acq='ei', ml_on_bounds=True,
-        #                acq_info={'ml_target': 'blackbox', 'ml_bounds': (0, float('inf')), 'ml_bounds_type':'probability', 'ml_bounds_model':'Ridge', 'ml_bounds_alpha':float(1)})
-        optimizer.maximize(init_points=5, n_iter=50, acq='ei', ml_on_bounds=True,
-                        acq_info={'ml_target': 'blackbox', 'ml_bounds': (0, float('inf')), 'ml_bounds_type':'indicator', 'ml_bounds_model':'Ridge', 'ml_bounds_alpha':float(1)})
-        #plot_regret(output_path=output_path + '_' + str(i) + "/results.csv")
-@perform_test
-def test_branin_a_10_ml(output_path):
-       
-    def h(x1, x2):
-        term1 = (15 * x2 - (5 / (4 * np.pi**2)) * (15 * x1 - 5)**2 + (5 / np.pi) * (15 * x1 - 5) - 6)**2
-        term2 = 10 * (1 - 1 / (8 * np.pi)) * np.cos(15 * x1 - 5) + 10
-        return (term1 + term2 - 54.8104) * (1 / 51.9496)
- 
-    def branin(x1, x2, x3, x4):
-        ret = {}
-        if x3 == 0 and x4 == 0:
-            ret['value'] = h(x1, x2)
-            ret['blackbox'] = x1 * x2 - 0.4
-        elif x3 == 0 and x4 == 1:
-            ret['value'] = 0.4 * h(x1, x2)
-            ret['blackbox'] = 1.5 * x1 * x2 - 0.4
-        elif x3 == 1 and x4 == 0:
-            ret['value'] = -0.75 * h(x1, x2) + 3.0
-            ret['blackbox'] = 1.5 * x1 * x2 - 0.2
-        elif x3 == 1 and x4 == 1:
-            ret['value'] = -0.5 * h(x1, x2) + 1.4
-            ret['blackbox'] = 1.2 * x1 * x2 - 0.3
-        else:
-            raise ValueError("Error! This function can be evaluated only for x3,x4 in {0, 1}")
-        return ret
-   
-    def branin_value_only(x1, x2, x3, x4):
-        return branin(x1, x2, x3, x4)['value']
- 
-    dataset_discrete = pd.DataFrame({'z1': [0, 0, 1, 1], 'z2': [0, 1, 0, 1]})
-    optimizer = BO(
-        f=branin,
-        pbounds={'x1': (0, 1), 'x2': (0, 1), 'z1': (0, 1), 'z2': (0, 1)},
-        random_state=seed,
-        debug=debug,
-        dataset_discrete=dataset_discrete,
-        output_path=output_path,
-        true_maximum_value=4.8344,
-        penalization_alpha=10
-    )
- 
-    # optimizer.maximize(init_points=2, n_iter=10, acq='ei')
-    optimizer.maximize(init_points=2, n_iter=10, acq='ei',
-                     acq_info={'ml_target': 'blackbox', 'ml_bounds': (0, float('inf'))})
-    plot_regret(output_path=output_path + "/results.csv")
+        
+        optimizer.maximize(init_points=5, n_iter=45, acq='ei', ml_on_bounds=True, ml_on_target=True, epsilon_greedy=True,
+                        acq_info={'ml_target': 'blackbox', 'ml_bounds': (0, float('inf')), 'ml_bounds_type':'indicator', 
+                                  'ml_bounds_model':'Ridge', 'ml_bounds_alpha':float(0.5),  # it was set to 1
+                                  'ml_target_type':'probability',
+                                  'ml_target_model':'Ridge', 'ml_target_alpha':float(0.025), 'ml_target_coeff':[float(1.0), None],
+                                  'eps_greedy_random_prob':float(0.1)}, 
+                        )
+        
 
-
-#test_mixed_2d_ml()
-#test_continuos()
-test_goldstain_ml()
+#test_goldstain_ml()
 #test_branin_ml()
-#test_branin_a_10_ml()
 
-#compare_regret(['test_mixed_2d','test_goldstain', 'test_branin', 'test_branin_a_10'])
+from plots import plot_average
 
-from test import test03_dataset_X
-
-# test03_dataset_X()
+plot_average('test_branin_ml_indicator', 
+             true_opt_value=-0.81439, 
+             output_name='branin_avg', 
+             optimization_type='min', 
+             init_points=5, 
+             plot_quantiles=True, 
+             avg_label='branin_all_active')
