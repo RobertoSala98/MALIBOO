@@ -331,6 +331,48 @@ class BayesianOptimization(Observable):
                 if self.dataset is not None:
                     self.update_memory_queue(self.dataset[self._space.keys],
                                             self._space.params_to_array(point))
+                    
+        elif method == 'sobol':
+            
+            from scipy.stats.qmc import Sobol
+            dim = len(self._space._bounds)
+            num_samples = init_points
+
+            lower_bounds = []
+            upper_bounds = []
+
+            for i, (low, high) in enumerate(self._space._bounds): 
+                lower_bounds.append(low)
+                upper_bounds.append(high)
+
+            lower_bounds = np.array(lower_bounds)
+            upper_bounds = np.array(upper_bounds)
+            sobol_sampler = Sobol(d=dim, scramble=False)
+            samples = sobol_sampler.random(n=num_samples)
+            scaled_samples = lower_bounds + (upper_bounds - lower_bounds) * samples
+
+            mask = np.ones(self.dataset.shape[0], bool)
+
+            for point in scaled_samples:
+
+                idx, coord = self.get_approximation(point, self.dataset.loc[mask,self._space.keys])
+
+                matches = self.dataset.loc[:,self._space.keys].eq(coord).all(axis=1)
+                indices = matches[matches].index.tolist()
+
+                for idx_ in indices:
+                    mask[idx_] = 0
+
+                point = {}
+
+                for _idx in range(dim):
+                    point[self._space.keys[_idx]] = coord[_idx]
+
+                self._queue.put((idx, point))
+                if self.dataset is not None:
+                    self.update_memory_queue(self.dataset[self._space.keys],
+                                            self._space.params_to_array(point))
+
 
 
     def _prime_subscriptions(self):

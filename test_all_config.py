@@ -101,7 +101,7 @@ for dataset in datasets:
                     if adaptive_method_kernel == 'None' or 'is_DiscreteBO' in config:
                         lines[idx] = "  initial_points_selection_method: random" + "\n"
                     else:
-                        lines[idx] = "  initial_points_selection_method: latin" + "\n"
+                        lines[idx] = "  initial_points_selection_method: sobol" + "\n"
 
                 if "  seeds: " in line:
 
