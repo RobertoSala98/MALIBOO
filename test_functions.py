@@ -2,7 +2,8 @@ from maliboo import BayesianOptimization as BO
 import random
 import numpy as np
 from math import sqrt
-from concurrent.futures import ProcessPoolExecutor
+from concurrent.futures import ProcessPoolExecutor, as_completed
+from multiprocessing import cpu_count
 import os
 from time import time
 
@@ -77,7 +78,7 @@ def run_parallel(dim, tot_points, n_runs=os.cpu_count()):
 
 def run_dMALIBOO(f, pbounds, seed, output_path, adaptive_method, acq, kernel, ml_on_bounds, ml_on_target, epsilon_greedy, ml_bounds_type, ml_model, ml_target_type, ml_target_model, eps_greedy_prob, values):
 
-    optimizer = BO(f=f, pbounds=pbounds, random_state=seed, output_path=output_path, values=values)
+    optimizer = BO(f=f, pbounds=pbounds, random_state=seed, output_path=output_path, values=values, verbose=0)
 
     acquisition_info = {
         'ml_target': max_sqrt_abs,
@@ -126,7 +127,7 @@ def run_dMALIBOO(f, pbounds, seed, output_path, adaptive_method, acq, kernel, ml
 
     optimizer.maximize(init_points=10, 
                        initial_points_selection_method='sobol',
-                       n_iter=100, 
+                       n_iter=200, 
                        acq=acq,
                        ml_on_bounds=ml_on_bounds, 
                        ml_on_target=ml_on_target,
@@ -139,6 +140,28 @@ def run_dMALIBOO(f, pbounds, seed, output_path, adaptive_method, acq, kernel, ml
                        consider_max_only_on_feasible=True)
     
     print(f"Regret: {abs(-optimizer.max['target'] - best_values[dim])/best_values[dim]*100} %")
+
+    return -optimizer.max['target']
+
+def run_single(setting, idx, seeds, output_path, schwefel, pbounds, values, dim):
+    output_path_tmp = output_path + f"/{setting['ml_on_bounds']}/{setting['ml_on_target']}/{setting['epsilon_greedy']}/{setting['ml_bounds_type']}/{setting['ml_model']}/{setting['ml_target_type']}/{setting['ml_target_model']}/{setting['eps_greedy_prob']}/{idx}"
+    
+    start_time = time()
+    result = run_dMALIBOO(
+        schwefel, pbounds, int(seeds[idx]), output_path=output_path_tmp,
+        adaptive_method=False, acq='ei', kernel='Matern',
+        ml_on_bounds=setting["ml_on_bounds"],
+        ml_on_target=setting["ml_on_target"],
+        epsilon_greedy=setting["epsilon_greedy"],
+        ml_bounds_type=setting['ml_bounds_type'],
+        ml_model=setting['ml_model'],
+        ml_target_type=setting['ml_target_type'],
+        ml_target_model=setting['ml_target_model'],
+        eps_greedy_prob=setting['eps_greedy_prob'],
+        values=values[:dim]
+    )
+    elapsed = time() - start_time
+    return idx, result, elapsed
 
 if __name__ == "__main__":
 
@@ -160,12 +183,57 @@ if __name__ == "__main__":
         else:
             pbounds[f"x{_ + 1}"] = (-500.0, 500.0)
     
-    seed = random.randint(0, 2**32 - 1)
     output_path = f"outputs/Schwefel_d={dim}"
+    """
+    seed = random.randint(0, 2**32 - 1)
 
     run_dMALIBOO(schwefel, pbounds, seed, output_path=output_path,
-                 adaptive_method=True, acq='ei', kernel='Matern', 
+                 adaptive_method=False, acq='ei', kernel='Matern', 
                  ml_on_bounds=True, ml_on_target=True, epsilon_greedy=True, 
                  ml_bounds_type='indicator', ml_model='Ridge', ml_target_type='indicator', ml_target_model='Ridge',
                  eps_greedy_prob=0.1, values=values[:dim])
+    """
+
+    baseline_experiment = {
+        "ml_on_bounds": True,
+        "ml_bounds_type": 'indicator',
+        "ml_model": 'Ridge',
+        "ml_on_target": True,
+        "ml_target_type": 'indicator',
+        "ml_target_model": 'Ridge',
+        "epsilon_greedy": True,
+        "eps_greedy_prob": 0.1
+    }
+
+    settings = [baseline_experiment]
+
+    # Varying ml_type
+    settings.append(baseline_experiment.copy())
+    settings[-1]["ml_bounds_type"] = 'probability'
+    settings[-1]["ml_target_type"] = 'probability'
+
+    # Varying ml_model
+    for model in ['RandomForest', 'XGBoost', 'NeuralNetworks']:
+        settings.append(baseline_experiment.copy())
+        settings[-1]["ml_model"] = model
+        settings[-1]["ml_target_model"] = model
+
+    # Varying epsilon-greedy
+    for eps in [0.01, 0.025, 0.05, 0.2]:
+        settings.append(baseline_experiment.copy())
+        settings[-1]["eps_greedy_prob"] = eps
+
+    seeds = np.random.randint(0, 2**32, size=30)
+
+    for setting in settings:
+        MAPRs = [None] * 30
+        times = [None] * 30
+
+        with ProcessPoolExecutor(max_workers=cpu_count()) as executor:
+            futures = {executor.submit(run_single, setting, idx, seeds, output_path, schwefel, pbounds, values, dim): idx for idx in range(30)}
+            
+            for future in as_completed(futures):
+                idx, result, elapsed = future.result()
+                MAPRs[idx] = result
+                times[idx] = elapsed
     
