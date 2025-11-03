@@ -344,7 +344,7 @@ def main(yaml_file_path, is_DBO=False, print_res=True, is_single_sim=False):
             results.append(result)
             durations.append(duration)
 
-        os.system("mv %s %s" %(yaml_file_path, yaml_file_path[:-5]+"_done.yaml"))
+        #os.system("cp %s %s" %(yaml_file_path, yaml_file_path[:-5]+"_done.yaml"))
 
     results_cleaned = [x for x in results if x != float('inf') and x != float('-inf')]
     

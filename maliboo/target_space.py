@@ -34,7 +34,7 @@ class TargetSpace(object):
         Whether or not to print detailed debugging information
     """
     def __init__(self, target_func=None, pbounds=None, random_state=None,
-                 dataset=None, target_column=None, debug=False):
+                 dataset=None, target_column=None, debug=False, values=[]):
         if pbounds is None:
             raise ValueError("pbounds must be specified")
 
@@ -65,6 +65,8 @@ class TargetSpace(object):
         # Other information to be recorded
         self._target_dict_info = pd.DataFrame()
         self._optimization_info = pd.DataFrame()
+
+        self._values = values
 
         if self._debug: print("TargetSpace initialization completed")
 
@@ -237,8 +239,9 @@ class TargetSpace(object):
         if self._debug: print("Probing point: index {}, value {}".format(idx, params))
         x = self._as_array(params)
 
-        params = dict(zip(self._keys, x))
-        target = self.target_func(**params)
+        #params = dict(zip(self._keys, x))
+        #target = self.target_func(**params)
+        target = self.target_func(x)
         target_value = self.register(x, target, idx)
         if self._debug: print("Probed target value:", target_value)
         return target_value
@@ -273,7 +276,9 @@ class TargetSpace(object):
             idx = None
             data = np.empty((1, self.dim))
             for col, (lower, upper) in enumerate(self._bounds):
-                data.T[col] = self.random_state.uniform(lower, upper, size=1)
+                val = self.random_state.uniform(lower, upper, size=1)
+                if self._values != []:
+                    data.T[col] = self._values[col][np.argmin(np.abs(self._values[col] - val))]
             if self._debug: print("Uniform randomly sampled point: value {}".format(data))
         return idx, self.array_to_params(data.ravel())
 

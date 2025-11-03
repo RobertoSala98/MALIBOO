@@ -48,7 +48,7 @@ def min_max_normalize(vector):
 
 def acq_max(ac, gp, y_max, bounds, random_state, n_warmup=10000, n_iter=10, dataset=None, debug=False, iter_num=0, 
             kind='ucb', at_least_one_feasible_found=True, epsilon_greedy=False, adaptive_method=False,
-            old_x=[], old_y=[], adaptive_method_parameters={}, prob_eps_greedy=0.1, memory_queue_len=1e10):
+            old_x=[], old_y=[], adaptive_method_parameters={}, prob_eps_greedy=0.1, memory_queue_len=1e10, values=[]):
     """
     A function to find the maximum of the acquisition function
 
@@ -105,6 +105,11 @@ def acq_max(ac, gp, y_max, bounds, random_state, n_warmup=10000, n_iter=10, data
         if debug: print("No dataset, initial grid will be random with shape {}".format((n_warmup, bounds.shape[0])))
         x_tries = random_state.uniform(bounds[:, 0], bounds[:, 1], size=(n_warmup, bounds.shape[0]))
 
+        if values != []:
+            for x_try in x_tries:
+                for col in range(len(x_try)):
+                    x_try[col] = values[col][np.argmin(np.abs(values[col] - x_try[col]))]
+
     # epsilon-greedy implementation
     pick_random = False
     if epsilon_greedy:
@@ -112,7 +117,7 @@ def acq_max(ac, gp, y_max, bounds, random_state, n_warmup=10000, n_iter=10, data
         probabilities = [prob_eps_greedy, 1-prob_eps_greedy]
         pick_random = random_state.choice(choices, p=probabilities)
         
-    ys = ac(x_tries, gp=gp, y_max=y_max, iter_num=iter_num, at_least_one_feasible_found=at_least_one_feasible_found, pick_random=pick_random)
+    ys = ac(x_tries, gp=gp, y_max=y_max, iter_num=iter_num, at_least_one_feasible_found=at_least_one_feasible_found, pick_random=pick_random, values=values)
     if debug: print("Acquisition evaluated successfully on grid")
     indices = np.where(ys == max(ys))[0]
     idx = random.choice(indices)  # this index is relative to the local x_tries values matrix
@@ -125,7 +130,7 @@ def acq_max(ac, gp, y_max, bounds, random_state, n_warmup=10000, n_iter=10, data
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
 
-            while x_max.tolist() in np.array(old_x[-memory_queue_len:]).tolist():
+            while x_max.tolist() in old_x.iloc[-min(memory_queue_len, len(old_x)):].values.tolist():
                 
                 if at_least_one_feasible_found:
                     #print("Reparametrizing...")
@@ -163,9 +168,10 @@ def acq_max(ac, gp, y_max, bounds, random_state, n_warmup=10000, n_iter=10, data
                                     random_state=random_state,
                                 )
 
-                            cand_gp.fit(old_x, old_y)
+                            with warnings.catch_warnings():
+                                cand_gp.fit(old_x, old_y)
 
-                            ys = ac(x_tries, gp=cand_gp, y_max=y_max, iter_num=iter_num, at_least_one_feasible_found=at_least_one_feasible_found, beta=x[0])
+                            ys = ac(x_tries, gp=cand_gp, y_max=y_max, iter_num=iter_num, at_least_one_feasible_found=at_least_one_feasible_found, beta=x[0], values=values)
                             for idx_ in range(len(ys)):
                                 if x_tries[idx_].tolist() in np.array(old_x).tolist():
                                     ys[idx_] = -np.inf
@@ -221,11 +227,13 @@ def acq_max(ac, gp, y_max, bounds, random_state, n_warmup=10000, n_iter=10, data
                                 random_state=random_state,
                             )
 
-                        gp.fit(old_x, old_y)
-                        ys = ac(x_tries, gp=gp, y_max=y_max, iter_num=iter_num, at_least_one_feasible_found=at_least_one_feasible_found, beta=adaptive_method_parameters["beta"])
+                        with warnings.catch_warnings():
+                            gp.fit(old_x, old_y)
+                        
+                        ys = ac(x_tries, gp=gp, y_max=y_max, iter_num=iter_num, at_least_one_feasible_found=at_least_one_feasible_found, beta=adaptive_method_parameters["beta"], values=values)
                         for idx_ in range(len(ys)):
-                                if x_tries[idx_].tolist() in np.array(old_x).tolist():
-                                    ys[idx_] = -np.inf
+                            if x_tries[idx_].tolist() in np.array(old_x).tolist():
+                                ys[idx_] = -np.inf
 
                         idx = ys.argmax()
                         x_max = x_tries[idx]
@@ -269,9 +277,10 @@ def acq_max(ac, gp, y_max, bounds, random_state, n_warmup=10000, n_iter=10, data
                                     random_state=random_state,
                                 )
 
-                            cand_gp.fit(old_x, old_y)
+                            with warnings.catch_warnings():
+                                cand_gp.fit(old_x, old_y)
 
-                            ys = ac(x_tries, gp=cand_gp, y_max=y_max, iter_num=iter_num, at_least_one_feasible_found=at_least_one_feasible_found)
+                            ys = ac(x_tries, gp=cand_gp, y_max=y_max, iter_num=iter_num, at_least_one_feasible_found=at_least_one_feasible_found, values=values)
                             for idx_ in range(len(ys)):
                                 if x_tries[idx_].tolist() in np.array(old_x).tolist():
                                     ys[idx_] = -np.inf
@@ -322,8 +331,10 @@ def acq_max(ac, gp, y_max, bounds, random_state, n_warmup=10000, n_iter=10, data
                                 random_state=random_state,
                             )
 
-                        gp.fit(old_x, old_y)
-                        ys = ac(x_tries, gp=gp, y_max=y_max, iter_num=iter_num, at_least_one_feasible_found=at_least_one_feasible_found)
+                        with warnings.catch_warnings():
+                            gp.fit(old_x, old_y)
+                        
+                        ys = ac(x_tries, gp=gp, y_max=y_max, iter_num=iter_num, at_least_one_feasible_found=at_least_one_feasible_found, values=values)
                         for idx_ in range(len(ys)):
                             if x_tries[idx_].tolist() in np.array(old_x).tolist():
                                 ys[idx_] = -np.inf
@@ -340,7 +351,7 @@ def acq_max(ac, gp, y_max, bounds, random_state, n_warmup=10000, n_iter=10, data
                                 if debug: print("Updated nu = %s" %(temp_nu))
 
                 else:
-                    ys = ac(x_tries, gp=gp, y_max=y_max, iter_num=iter_num, at_least_one_feasible_found=at_least_one_feasible_found)
+                    ys = ac(x_tries, gp=gp, y_max=y_max, iter_num=iter_num, at_least_one_feasible_found=at_least_one_feasible_found, values=values)
                     for idx_ in range(len(ys)):
                         if x_tries[idx_].tolist() in np.array(old_x).tolist():
                             ys[idx_] = -np.inf
@@ -361,15 +372,26 @@ def acq_max(ac, gp, y_max, bounds, random_state, n_warmup=10000, n_iter=10, data
     # Explore the parameter space more throughly
     x_seeds = random_state.uniform(bounds[:, 0], bounds[:, 1],
                                    size=(n_iter, bounds.shape[0]))
+    
+    if values != []:
+        for x_try in x_seeds:
+            for col in range(len(x_try)):
+                x_try[col] = values[col][np.argmin(np.abs(values[col] - x_try[col]))]
 
     if debug: print("Calling minimize() with", len(x_seeds), "different starting seeds")
 
     for x_try in x_seeds:
         # Find the minimum of minus the acquisition function
-        res = minimize(lambda x: -ac(x.reshape(1, -1), gp=gp, y_max=y_max, iter_num=iter_num, at_least_one_feasible_found=at_least_one_feasible_found),
-                       x_try.reshape(1, -1),
-                       bounds=bounds,
-                       method="L-BFGS-B")
+        if x_try.ndim == 1:
+            res = minimize(lambda x: -ac(x.reshape(1, -1), gp=gp, y_max=y_max, iter_num=iter_num, at_least_one_feasible_found=at_least_one_feasible_found, values=values),
+                        x_try,
+                        bounds=bounds,
+                        method="L-BFGS-B")
+        else: 
+            res = minimize(lambda x: -ac(x.reshape(1, -1), gp=gp, y_max=y_max, iter_num=iter_num, at_least_one_feasible_found=at_least_one_feasible_found, values=values),
+                        x_try.reshape(1, -1),
+                        bounds=bounds,
+                        method="L-BFGS-B")
 
         # See if success
         if not res.success:
@@ -377,7 +399,12 @@ def acq_max(ac, gp, y_max, bounds, random_state, n_warmup=10000, n_iter=10, data
         # Store it if better than previous minimum(maximum).
         if max_acq is None or -np.squeeze(res.fun) >= max_acq:
             x_max = res.x
-            max_acq = -np.squeeze(res.fun)
+            if values != []:
+                for col in range(len(x_max)):
+                    x_max[col] = values[col][np.argmin(np.abs(values[col] - x_max[col]))]
+                max_acq = ac(x_max.reshape(1, -1), gp=gp, y_max=y_max, iter_num=iter_num, at_least_one_feasible_found=at_least_one_feasible_found, values=values)
+            else:
+                max_acq = -np.squeeze(res.fun)
 
     if debug: print("End of acq_max(): maximizer of utility is ac({}) = {}".format(x_max, max_acq))
 
@@ -519,7 +546,12 @@ class UtilityFunction(object):
         self.objective_ml_model = model
 
 
-    def utility(self, x, gp, y_max, iter_num, at_least_one_feasible_found, beta=1.0, pick_random=False):
+    def utility(self, x, gp, y_max, iter_num, at_least_one_feasible_found, beta=1.0, pick_random=False, values=[]):
+
+        if values != []:
+            for x_ in x:
+                for col in range(len(x_)):
+                    x_[col] = values[col][np.argmin(np.abs(values[col] - x_[col]))]
 
         if self.kind == 'no_BO' or pick_random:
             res = self._no_BO(x)
@@ -627,7 +659,7 @@ class UtilityFunction(object):
             elif ml_bounds_type == 'probability':
                 if ml_bounds_model == "Ridge":
                     indicator = ml_model[1].decision_function(x)
-                elif ml_bounds_model == "XGBoost":
+                elif ml_bounds_model in ("XGBoost", "RandomForest", "NeuralNetwork"):
                     indicator = ml_model[1].predict_proba(x)[:,1]
                 return 1 / (1 + np.exp(-indicator))
 
@@ -653,8 +685,9 @@ class UtilityFunction(object):
             elif ml_target_type == 'probability':
                 if ml_target_model == "Ridge":
                     indicator = objective_ml_model[1].decision_function(x)
-                elif ml_target_model == "XGBoost":
-                    indicator = objective_ml_model[1].predict_proba(x)[:,1]
+                elif ml_target_model in ("XGBoost", "RandomForest", "NeuralNetwork"):
+                    with warnings.catch_warnings():
+                        indicator = objective_ml_model[1].predict_proba(x)[:,1]
                 res *= 1 / (1 + np.exp(-indicator))
             
             elif ml_target_type == 'indicator':

@@ -9,6 +9,10 @@ import xgboost as xgb
 from sklearn.gaussian_process.kernels import Matern, RBF
 from sklearn.gaussian_process import GaussianProcessRegressor
 from sklearn.linear_model import Ridge, RidgeClassifier
+from sklearn.ensemble import RandomForestRegressor
+from sklearn.neural_network import MLPRegressor
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.neural_network import MLPClassifier
 from sklearn.compose import ColumnTransformer
 from sklearn.metrics import mean_absolute_percentage_error as mape
 from sklearn.preprocessing import PolynomialFeatures, FunctionTransformer
@@ -106,7 +110,7 @@ class BayesianOptimization(Observable):
         Whether or not to print detailed debugging information
     """
     def __init__(self, f=None, pbounds=None, random_state=None, verbose=2, bounds_transformer=None,
-                 dataset=None, output_path=None, target_column=None, debug=False):
+                 dataset=None, output_path=None, target_column=None, debug=False, values=[]):
         # Initialize members from arguments
         self._random_state = ensure_rng(random_state)
         self._verbose = verbose
@@ -129,7 +133,7 @@ class BayesianOptimization(Observable):
         # Data structure containing the function to be optimized, the bounds of
         # its domain, and a record of the evaluations we have done so far
         self._space = TargetSpace(target_func=f, pbounds=pbounds, random_state=random_state, dataset=dataset,
-                                  target_column=target_column, debug=debug)
+                                  target_column=target_column, debug=debug, values=values)
         self._queue = Queue()
 
         if self._bounds_transformer:
@@ -268,7 +272,8 @@ class BayesianOptimization(Observable):
             old_y=self._space.target,
             adaptive_method_parameters=self.adaptive_method_parameters,
             prob_eps_greedy=self._prob_random_pick,
-            memory_queue_len=self.memory_queue_len
+            memory_queue_len=self.memory_queue_len,
+            values=self._space._values
         )
 
         if self.relaxation:
@@ -349,29 +354,48 @@ class BayesianOptimization(Observable):
             upper_bounds = np.array(upper_bounds)
             sobol_sampler = Sobol(d=dim, scramble=False)
             samples = sobol_sampler.random(n=num_samples)
-            scaled_samples = lower_bounds + (upper_bounds - lower_bounds) * samples
+            
+            if self._space._values != []:
+                for s in samples:
+                    sample_point = []
+                    for i, v_list in enumerate(self._space._values):
+                        n_vals = len(v_list)
+                        idx = int(np.floor(s[i] * n_vals))
+                        if idx == n_vals:
+                            idx = n_vals - 1
+                        sample_point.append(v_list[idx])
 
-            mask = np.ones(self.dataset.shape[0], bool)
+                    point = {}
 
-            for point in scaled_samples:
+                    for _idx in range(len(self._space._values)):
+                        point[self._space.keys[_idx]] = sample_point[_idx]
 
-                idx, coord = self.get_approximation(point, self.dataset.loc[mask,self._space.keys])
+                    self._queue.put((0, point))
 
-                matches = self.dataset.loc[:,self._space.keys].eq(coord).all(axis=1)
-                indices = matches[matches].index.tolist()
+            else:
+                scaled_samples = lower_bounds + (upper_bounds - lower_bounds) * samples
 
-                for idx_ in indices:
-                    mask[idx_] = 0
+                mask = np.ones(self.dataset.shape[0], bool)
 
-                point = {}
+                for point in scaled_samples:
 
-                for _idx in range(dim):
-                    point[self._space.keys[_idx]] = coord[_idx]
+                    idx, coord = self.get_approximation(point, self.dataset.loc[mask,self._space.keys])
 
-                self._queue.put((idx, point))
-                if self.dataset is not None:
-                    self.update_memory_queue(self.dataset[self._space.keys],
-                                            self._space.params_to_array(point))
+                    matches = self.dataset.loc[:,self._space.keys].eq(coord).all(axis=1)
+                    indices = matches[matches].index.tolist()
+
+                    for idx_ in indices:
+                        mask[idx_] = 0
+
+                    point = {}
+
+                    for _idx in range(dim):
+                        point[self._space.keys[_idx]] = coord[_idx]
+
+                    self._queue.put((idx, point))
+                    if self.dataset is not None:
+                        self.update_memory_queue(self.dataset[self._space.keys],
+                                                self._space.params_to_array(point))
 
 
 
@@ -618,7 +642,10 @@ class BayesianOptimization(Observable):
                 self.register(self._space.params_to_array(x_probe), target_value, idx, feasibility, reparametrized)
 
             # Compute ML prediction and check stopping condition
-            y_true_ml = self.get_ml_target_data(util.ml_target).iloc[-1] if hasattr(util, 'ml_model') else None
+            if callable(util.ml_target):
+                y_true_ml = util.ml_target(np.array(self.space.params.iloc[-1]))
+            else:
+                y_true_ml = self.get_ml_target_data(util.ml_target).iloc[-1] if hasattr(util, 'ml_model') else None
             if acq_val is None:
                 if self._debug: print("Point was not selected by suggest(): skipping termination check")
             else:
@@ -632,7 +659,10 @@ class BayesianOptimization(Observable):
                 if self._debug: print("True vs predicted '{}' value: {} vs {}".format(util.ml_target, y_true_ml, y_bar[0]))
                 other_info['ml_mape'] = mape([y_true_ml], y_bar)
             if ml_on_bounds:
-                other_info.loc[idx, 'feasible'] = self.dataset.loc[idx, util.ml_target] >= util.ml_bounds[0] and self.dataset.loc[idx, util.ml_target] <= util.ml_bounds[1]
+                if callable(util.ml_target):
+                    other_info.loc[idx, 'feasible'] = util.ml_target(np.array(list(x_probe.values()))) >= util.ml_bounds[0] and util.ml_target(np.array(list(x_probe.values()))) <= util.ml_bounds[1]
+                else:
+                    other_info.loc[idx, 'feasible'] = self.dataset.loc[idx, util.ml_target] >= util.ml_bounds[0] and self.dataset.loc[idx, util.ml_target] <= util.ml_bounds[1]
             else:
                 other_info.loc[idx, 'feasible'] = True
             other_info.loc[idx, 'reparametrized'] = reparametrized
@@ -754,6 +784,7 @@ class BayesianOptimization(Observable):
         # Build training dataset for the ML model
         X = self._space._params
         if self._debug: print("Dataset for ML model has shape", X.shape)
+        
         y = self.get_ml_target_data(y_name)
 
         log_transformer = FunctionTransformer(np.log1p, validate=False)
@@ -782,10 +813,51 @@ class BayesianOptimization(Observable):
                     remainder='passthrough'  # This allows the columns not specified to be passed through unchanged
                 ),
                 PolynomialFeatures(2),
-                xgb.XGBRegressor(gamma=acq_info['ml_bounds_gamma'], learning_rate=acq_info['ml_bounds_learning_rate'], max_depth=acq_info['ml_bounds_max_depth'], min_child_weight=1, n_estimators=acq_info['ml_bounds_n_estimators'])
+                xgb.XGBRegressor(gamma=acq_info['ml_bounds_gamma'], 
+                                 learning_rate=acq_info['ml_bounds_learning_rate'], 
+                                 max_depth=acq_info['ml_bounds_max_depth'], 
+                                 min_child_weight=1, 
+                                 n_estimators=acq_info['ml_bounds_n_estimators'])
             )
 
-        model.fit(X, y)
+        elif acq_info['ml_bounds_model'] == 'RandomForest':
+            model = make_pipeline(
+                ColumnTransformer(
+                    transformers=[
+                        ('log', log_transformer, []),
+                        ('inv', inv_transformer, [])
+                    ],
+                    remainder='passthrough'
+                ),
+                PolynomialFeatures(2),
+                RandomForestRegressor(
+                    n_estimators=acq_info['ml_bounds_n_estimators'],
+                    max_depth=acq_info['ml_bounds_max_depth'],
+                    min_samples_split=2,
+                    min_samples_leaf=1)
+            )
+
+        elif acq_info['ml_bounds_model'] == 'NeuralNetwork':
+            model = make_pipeline(
+                ColumnTransformer(
+                    transformers=[
+                        ('log', log_transformer, []),
+                        ('inv', inv_transformer, [])
+                    ],
+                    remainder='passthrough'
+                ),
+                PolynomialFeatures(2),
+                MLPRegressor(
+                    hidden_layer_sizes=(64, 32),
+                    activation=acq_info['ml_bounds_activation'],
+                    solver=acq_info['ml_bounds_solver'],
+                    learning_rate_init=acq_info['ml_bounds_learning_rate'],
+                    max_iter=acq_info['ml_bounds_max_iter']
+                )
+            )
+
+        with warnings.catch_warnings():
+            model.fit(X, y)
 
         if acq_info['ml_bounds_type'] == 'probability':
             if acq_info['ml_bounds_model'] == 'Ridge':
@@ -812,9 +884,48 @@ class BayesianOptimization(Observable):
                     PolynomialFeatures(2),
                     xgb.XGBClassifier(objective='multi:softprob', learning_rate=acq_info['ml_bounds_learning_rate'], max_depth=acq_info['ml_bounds_max_depth'], min_child_weight=1, n_estimators=acq_info['ml_bounds_n_estimators'], num_class=2)
                 )
+
+            elif acq_info['ml_bounds_model'] == 'RandomForest':
+                classifier = make_pipeline(
+                    ColumnTransformer(
+                        transformers=[
+                            ('log', log_transformer, []),
+                            ('inv', inv_transformer, [])
+                        ],
+                        remainder='passthrough'
+                    ),
+                    PolynomialFeatures(2),
+                    RandomForestClassifier(
+                        n_estimators=acq_info['ml_bounds_n_estimators'],
+                        max_depth=acq_info['ml_bounds_max_depth'],
+                        min_samples_split=2,
+                        min_samples_leaf=1,
+                    )
+                )
+
+            elif acq_info['ml_bounds_model'] == 'NeuralNetwork':
+                classifier = make_pipeline(
+                    ColumnTransformer(
+                        transformers=[
+                            ('log', log_transformer, []),
+                            ('inv', inv_transformer, [])
+                        ],
+                        remainder='passthrough'
+                    ),
+                    PolynomialFeatures(2),
+                    MLPClassifier(
+                        hidden_layer_sizes=(64, 32),
+                        activation=acq_info['ml_bounds_activation'],
+                        solver=acq_info['ml_bounds_solver'],
+                        learning_rate_init=acq_info['ml_bounds_learning_rate'],
+                        max_iter=acq_info['ml_bounds_max_iter']
+                    )
+                )
             
             lb, ub = acq_info['ml_bounds']
-            classifier.fit(X, (y >= lb)*(y <= ub).astype(int))
+            
+            with warnings.catch_warnings():
+                classifier.fit(X, (y >= lb)*(y <= ub).astype(int))
 
             return [model, classifier]
 
@@ -863,7 +974,45 @@ class BayesianOptimization(Observable):
                 xgb.XGBRegressor(gamma=acq_info['ml_target_gamma'], learning_rate=acq_info['ml_target_learning_rate'], max_depth=acq_info['ml_target_max_depth'], min_child_weight=1, n_estimators=acq_info['ml_target_n_estimators'])
             )
 
-        model.fit(X, y)
+        elif acq_info['ml_target_model'] == "RandomForest":
+            model = make_pipeline(
+                ColumnTransformer(
+                    transformers=[
+                        ('log', log_transformer, []),
+                        ('inv', inv_transformer, [])
+                    ],
+                    remainder='passthrough'
+                ),
+                PolynomialFeatures(2, include_bias=False),
+                RandomForestRegressor(
+                    n_estimators=acq_info['ml_target_n_estimators'],
+                    max_depth=acq_info['ml_target_max_depth'],
+                    min_samples_split=2,
+                    min_samples_leaf=1
+                )
+            )
+
+        elif acq_info['ml_target_model'] == "NeuralNetwork":
+            model = make_pipeline(
+                ColumnTransformer(
+                    transformers=[
+                        ('log', log_transformer, []),
+                        ('inv', inv_transformer, [])
+                    ],
+                    remainder='passthrough'
+                ),
+                PolynomialFeatures(2, include_bias=False),
+                MLPRegressor(
+                    hidden_layer_sizes=(64, 32),
+                    activation=acq_info['ml_target_activation'],
+                    solver=acq_info['ml_target_solver'],
+                    learning_rate_init=acq_info['ml_target_learning_rate'],
+                    max_iter=acq_info['ml_target_max_iter']
+                )
+            )
+
+        with warnings.catch_warnings():
+            model.fit(X, y)
 
         if acq_info['ml_target_type'] == 'probability':
             if acq_info['ml_target_model'] == "Ridge":
@@ -891,6 +1040,43 @@ class BayesianOptimization(Observable):
                     xgb.XGBClassifier(objective='multi:softprob', gamma=acq_info['ml_target_gamma'], learning_rate=acq_info['ml_target_learning_rate'], max_depth=acq_info['ml_target_max_depth'], min_child_weight=1, n_estimators=acq_info['ml_target_n_estimators'], num_class=2)
                 )
 
+            elif acq_info['ml_target_model'] == "RandomForest":
+                classifier = make_pipeline(
+                    ColumnTransformer(
+                        transformers=[
+                            ('log', log_transformer, []),
+                            ('inv', inv_transformer, [])
+                        ],
+                        remainder='passthrough'
+                    ),
+                    PolynomialFeatures(2, include_bias=False),
+                    RandomForestClassifier(
+                        n_estimators=acq_info['ml_target_n_estimators'],
+                        max_depth=acq_info['ml_target_max_depth'],
+                        min_samples_split=2,
+                        min_samples_leaf=1
+                    )
+                )
+
+            elif acq_info['ml_target_model'] == "NeuralNetwork":
+                classifier = make_pipeline(
+                    ColumnTransformer(
+                        transformers=[
+                            ('log', log_transformer, []),
+                            ('inv', inv_transformer, [])
+                        ],
+                        remainder='passthrough'
+                    ),
+                    PolynomialFeatures(2, include_bias=False),
+                    MLPClassifier(
+                        hidden_layer_sizes=(64, 32),
+                        activation=acq_info['ml_target_activation'],
+                        solver=acq_info['ml_target_solver'],
+                        learning_rate_init=acq_info['ml_target_learning_rate'],
+                        max_iter=acq_info['ml_target_max_iter']
+                    )
+                )
+
             lb, ub = acq_info['ml_target_coeff']
             y_max = self._space.max()['target']
 
@@ -900,7 +1086,8 @@ class BayesianOptimization(Observable):
             if ub != None:
                 y_train *= (y <= ub*y_max)
 
-            classifier.fit(X, y_train)
+            with warnings.catch_warnings():
+                classifier.fit(X, y_train)
 
             return [model, classifier]
         
@@ -909,6 +1096,10 @@ class BayesianOptimization(Observable):
 
     def get_ml_target_data(self, y_name):
         """Fetches target data for ML with the given field/column name"""
+
+        if callable(y_name):
+            return np.apply_along_axis(y_name, 1, self.space.params.to_numpy())
+
         if y_name in self._space._target_dict_info:
             return self._space._target_dict_info[y_name]
         elif self.dataset is None:
