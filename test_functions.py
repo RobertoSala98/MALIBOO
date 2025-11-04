@@ -2,10 +2,12 @@ from maliboo import BayesianOptimization as BO
 import random
 import numpy as np
 from math import sqrt
+from statistics import mean
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from multiprocessing import cpu_count
 import os
 from time import time
+import json
 
 values = [
     [-497.9895740203624, -495.3036388606715, -491.5757929496141, -486.3172836048071, -484.430167208316, -478.70673500121563, -474.4221380887609, -461.9010640175636, -458.092482302609, -456.726209329369, -455.5296248904577, -447.72582307627573, -444.1554421296533, -441.43342295508126, -440.1027191577125, -425.99850560885807, -420.8878256481902, -416.45788197523984, -414.17251466724457, -410.584571141389, -409.17135460363306, -405.22332439959655, -402.711689443066, -395.92829713083466, -393.8095483677202, -391.71140909589207, -389.4903483157242, -383.3921071070474, -379.0001643296773, -377.63046460296493, -363.276500123623, -358.53502653451096, -338.8818610721297, -327.3946649320578, -311.7269102751532, -310.9851622943813, -302.22831771084003, -300.2553412623903, -299.25211481481585, -287.17785985724186, -281.6281300807084, -280.169761957055, -280.13004029545993, -278.7525207385796, -265.7734002687956, -260.65250204862645, -260.2180537747323, -259.5593622658563, -247.70018715384035, -245.93820905690478, -244.983984999266, -242.17708063908628, -239.19120567998476, -226.63330601389066, -224.0025553952877, -210.59599437640344, -203.06961147294345, -193.2079593214222, -191.31835932995, -177.3657767305583, -176.33730614815937, -173.05221569588156, -172.64607753143434, -163.93004842496327, -162.3453147271826, -159.66787049966547, -159.24529384911568, -154.75986739879374, -146.40569631821944, -133.57677614277776, -131.655347757762, -118.92468807023647, -116.11454348496409, -104.4356752894916, -103.45560599707392, -99.77396599904154, -99.19512309820158, -95.26639876191092, -77.33983726466909, -76.39376288921005, -72.0990180538692, -71.61506340133326, -55.32245044295638, -50.48342691658149, -44.2641210486745, -42.456070046454556, -39.87778929641382, -36.45526600715789, -36.00004813908441, -33.8449485787138, -20.542498294065297, -9.540191703089192, -1.7300143362484164, 4.171411685769613, 9.044712241942364, 22.338176612266466, 30.286129961525035, 33.85938662639353, 35.982449959400014, 41.174484476746215, 51.59258956028896, 52.89843364068952, 61.90125971408031, 62.62773124500518, 63.07834619364485, 74.83374433767472, 75.2551968408826, 82.0158455517834, 86.92690107481303, 97.372486005925, 105.31118912157092, 105.40515105561974, 106.30694451602949, 107.43924679951715, 107.90334915806488, 109.77315902325597, 115.39174672495574, 115.94457403118167, 133.24019151118273, 134.1872671018375, 138.25697979079598, 138.3450042867903, 140.28634696707934, 141.4819788561157, 141.93396556729635, 143.63332191438133, 144.5159956204751, 146.20319060718793, 161.8603237968806, 164.89003735803385, 168.96917901688232, 176.02832145641958, 180.73271553548363, 183.13062329837237, 185.50925242690823, 187.77245745216624, 193.29389842825026, 208.94478682714168, 209.47488980499588, 221.57090556933179, 222.52671097923917, 229.49787010309626, 236.76782478853556, 241.30785574339814, 245.79521120945697, 247.14705582129682, 250.65788003070168, 255.4754626130191, 267.57298956784587, 268.6939315828796, 274.3670821579951, 278.44991864785595, 279.02518725322625, 286.8309508067987, 287.35559970329984, 291.3575382626159, 305.0956476662549, 305.50854312130014, 312.4657756433144, 312.6055611764249, 312.76611064200983, 321.01665276660754, 324.80070378163964, 330.36997543930704, 331.9275816245338, 333.10663227727343, 337.67328242559836, 340.78680801903647, 358.94527659972437, 362.10111843875984, 368.67114035206566, 376.7644903636502, 382.84099905313246, 389.89898347308065, 390.1254383372734, 394.52452038287197, 396.13656896022974, 412.67258562447546, 419.94621727919514, 428.0551783587604, 432.7183130183862, 440.818077258469, 442.8026972529568, 444.94385649579647, 445.85458660287156, 449.49241276460066, 450.1619576328177, 452.35240219701984, 452.4714586559262, 454.70746037801325, 456.75220045628225, 458.7031135785511, 462.0013884329319, 462.3780833096505, 467.2897186503278, 471.62572142533213, 489.10198376833205, 491.30678735915285, 491.46732646687155, 496.26628465444765],
@@ -92,6 +94,8 @@ def run_dMALIBOO(f, pbounds, seed, output_path, adaptive_method, acq, kernel, ml
         'ml_target_coeff': [1.111, None],
         'ml_target_alpha': 1.0,
         'eps_greedy_random_prob': eps_greedy_prob,
+        'ml_bounds_gamma': 0.1,
+        'ml_target_gamma': 0.1,
         'ml_bounds_n_estimators': 100,
         'ml_bounds_max_depth': None,
         'ml_target_n_estimators': 100,
@@ -139,15 +143,16 @@ def run_dMALIBOO(f, pbounds, seed, output_path, adaptive_method, acq, kernel, ml
                        relaxation=False,
                        consider_max_only_on_feasible=True)
     
-    print(f"Regret: {abs(-optimizer.max['target'] - best_values[dim])/best_values[dim]*100} %")
+    perc_feasibility = mean(optimizer._space.feasibility)*100
+    print(f"Regret: {abs(-optimizer.max['target'] - best_values[dim])/best_values[dim]*100} %, Feasibility: {perc_feasibility} %")
 
-    return -optimizer.max['target']
+    return -optimizer.max['target'], perc_feasibility
 
 def run_single(setting, idx, seeds, output_path, schwefel, pbounds, values, dim):
     output_path_tmp = output_path + f"/{setting['ml_on_bounds']}/{setting['ml_on_target']}/{setting['epsilon_greedy']}/{setting['ml_bounds_type']}/{setting['ml_model']}/{setting['ml_target_type']}/{setting['ml_target_model']}/{setting['eps_greedy_prob']}/{idx}"
     
     start_time = time()
-    result = run_dMALIBOO(
+    result, perc_feasibility = run_dMALIBOO(
         schwefel, pbounds, int(seeds[idx]), output_path=output_path_tmp,
         adaptive_method=False, acq='ei', kernel='Matern',
         ml_on_bounds=setting["ml_on_bounds"],
@@ -161,7 +166,7 @@ def run_single(setting, idx, seeds, output_path, schwefel, pbounds, values, dim)
         values=values[:dim]
     )
     elapsed = time() - start_time
-    return idx, result, elapsed
+    return idx, result, perc_feasibility, elapsed
 
 if __name__ == "__main__":
 
@@ -212,28 +217,42 @@ if __name__ == "__main__":
     settings[-1]["ml_bounds_type"] = 'probability'
     settings[-1]["ml_target_type"] = 'probability'
 
-    # Varying ml_model
-    for model in ['RandomForest', 'XGBoost', 'NeuralNetworks']:
-        settings.append(baseline_experiment.copy())
-        settings[-1]["ml_model"] = model
-        settings[-1]["ml_target_model"] = model
-
     # Varying epsilon-greedy
     for eps in [0.01, 0.025, 0.05, 0.2]:
         settings.append(baseline_experiment.copy())
         settings[-1]["eps_greedy_prob"] = eps
 
+    # Varying ml_model
+    for model in ['RandomForest', 'NeuralNetwork', 'XGBoost']:
+        settings.append(baseline_experiment.copy())
+        settings[-1]["ml_model"] = model
+        settings[-1]["ml_target_model"] = model
+
     seeds = np.random.randint(0, 2**32, size=30)
 
     for setting in settings:
-        MAPRs = [None] * 30
+        minima = [None] * 30
         times = [None] * 30
+        feasibility = [None] * 30
 
         with ProcessPoolExecutor(max_workers=cpu_count()) as executor:
             futures = {executor.submit(run_single, setting, idx, seeds, output_path, schwefel, pbounds, values, dim): idx for idx in range(30)}
             
             for future in as_completed(futures):
-                idx, result, elapsed = future.result()
-                MAPRs[idx] = result
+                idx, result, percentage_feasibility, elapsed = future.result()
+                minima[idx] = result
+                feasibility[idx] = percentage_feasibility
                 times[idx] = elapsed
+
+        result = {
+            'MAPR [%]': (mean(minima) - best_values[dim])/best_values[dim] * 100,
+            'feasibility [%]': mean(feasibility),
+            'time [s]': mean(times),
+            'seeds': seeds.tolist()
+        }
+
+        output_path_res = output_path + f"/{setting['ml_on_bounds']}/{setting['ml_on_target']}/{setting['epsilon_greedy']}/{setting['ml_bounds_type']}/{setting['ml_model']}/{setting['ml_target_type']}/{setting['ml_target_model']}/{setting['eps_greedy_prob']}"
+
+        with open(output_path_res + "/output.json", "w") as f:
+            json.dump(result, f, indent=4)
     

@@ -218,7 +218,7 @@ class TargetSpace(object):
         if self._debug: print("Registered optimization information:", info_new, sep="\n")
 
 
-    def probe(self, params, idx=None):
+    def probe(self, params, idx=None, feas=True):
         """
         Evaulates a single point x, to obtain the value y and then records them
         as observations.
@@ -242,7 +242,7 @@ class TargetSpace(object):
         #params = dict(zip(self._keys, x))
         #target = self.target_func(**params)
         target = self.target_func(x)
-        target_value = self.register(x, target, idx)
+        target_value = self.register(x, target, idx, feas)
         if self._debug: print("Probed target value:", target_value)
         return target_value
 
