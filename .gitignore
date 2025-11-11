@@ -35,3 +35,8 @@ venv.bak/
 
 # IDE files
 *.sublime-*
+
+# results
+*.png
+*.pdf
+*.csv

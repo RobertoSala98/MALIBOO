@@ -179,80 +179,117 @@ if __name__ == "__main__":
     print(f"Time: {time() - start_time}")
     """
 
-    dim = 8
+    for dim in [4, 12, 16]:
 
-    pbounds = {}
-    for _ in range(dim): 
-        if _ < 9:
-            pbounds[f"x0{_ + 1}"] = (-500.0, 500.0)
-        else:
-            pbounds[f"x{_ + 1}"] = (-500.0, 500.0)
-    
-    output_path = f"outputs/Schwefel_d={dim}"
-    """
-    seed = random.randint(0, 2**32 - 1)
+    #dim = 8
 
-    run_dMALIBOO(schwefel, pbounds, seed, output_path=output_path,
-                 adaptive_method=False, acq='ei', kernel='Matern', 
-                 ml_on_bounds=True, ml_on_target=True, epsilon_greedy=True, 
-                 ml_bounds_type='indicator', ml_model='Ridge', ml_target_type='indicator', ml_target_model='Ridge',
-                 eps_greedy_prob=0.1, values=values[:dim])
-    """
+        pbounds = {}
+        for _ in range(dim): 
+            if _ < 9:
+                pbounds[f"x0{_ + 1}"] = (-500.0, 500.0)
+            else:
+                pbounds[f"x{_ + 1}"] = (-500.0, 500.0)
+        
+        output_path = f"outputs/Schwefel_d={dim}"
+        """
+        seed = random.randint(0, 2**32 - 1)
 
-    baseline_experiment = {
-        "ml_on_bounds": True,
-        "ml_bounds_type": 'indicator',
-        "ml_model": 'Ridge',
-        "ml_on_target": True,
-        "ml_target_type": 'indicator',
-        "ml_target_model": 'Ridge',
-        "epsilon_greedy": True,
-        "eps_greedy_prob": 0.1
-    }
+        run_dMALIBOO(schwefel, pbounds, seed, output_path=output_path,
+                    adaptive_method=False, acq='ei', kernel='Matern', 
+                    ml_on_bounds=True, ml_on_target=True, epsilon_greedy=True, 
+                    ml_bounds_type='indicator', ml_model='Ridge', ml_target_type='indicator', ml_target_model='Ridge',
+                    eps_greedy_prob=0.1, values=values[:dim])
+        """
 
-    settings = [baseline_experiment]
-
-    # Varying ml_type
-    settings.append(baseline_experiment.copy())
-    settings[-1]["ml_bounds_type"] = 'probability'
-    settings[-1]["ml_target_type"] = 'probability'
-
-    # Varying epsilon-greedy
-    for eps in [0.01, 0.025, 0.05, 0.2]:
-        settings.append(baseline_experiment.copy())
-        settings[-1]["eps_greedy_prob"] = eps
-
-    # Varying ml_model
-    for model in ['RandomForest', 'NeuralNetwork', 'XGBoost']:
-        settings.append(baseline_experiment.copy())
-        settings[-1]["ml_model"] = model
-        settings[-1]["ml_target_model"] = model
-
-    seeds = np.random.randint(0, 2**32, size=30)
-
-    for setting in settings:
-        minima = [None] * 30
-        times = [None] * 30
-        feasibility = [None] * 30
-
-        with ProcessPoolExecutor(max_workers=cpu_count()) as executor:
-            futures = {executor.submit(run_single, setting, idx, seeds, output_path, schwefel, pbounds, values, dim): idx for idx in range(30)}
-            
-            for future in as_completed(futures):
-                idx, result, percentage_feasibility, elapsed = future.result()
-                minima[idx] = result
-                feasibility[idx] = percentage_feasibility
-                times[idx] = elapsed
-
-        result = {
-            'MAPR [%]': (mean(minima) - best_values[dim])/best_values[dim] * 100,
-            'feasibility [%]': mean(feasibility),
-            'time [s]': mean(times),
-            'seeds': seeds.tolist()
+        baseline_experiment = {
+            "ml_on_bounds": True,
+            "ml_bounds_type": 'indicator',
+            "ml_model": 'Ridge',
+            "ml_on_target": True,
+            "ml_target_type": 'indicator',
+            "ml_target_model": 'Ridge',
+            "epsilon_greedy": True,
+            "eps_greedy_prob": 0.1
         }
 
-        output_path_res = output_path + f"/{setting['ml_on_bounds']}/{setting['ml_on_target']}/{setting['epsilon_greedy']}/{setting['ml_bounds_type']}/{setting['ml_model']}/{setting['ml_target_type']}/{setting['ml_target_model']}/{setting['eps_greedy_prob']}"
+        settings = [baseline_experiment]
 
-        with open(output_path_res + "/output.json", "w") as f:
-            json.dump(result, f, indent=4)
+        """
+        # Varying ml_type
+        settings.append(baseline_experiment.copy())
+        settings[-1]["ml_bounds_type"] = 'probability'
+        settings[-1]["ml_target_type"] = 'probability'
+
+        # Varying epsilon-greedy
+        for eps in [0.01, 0.025, 0.05, 0.2]:
+            settings.append(baseline_experiment.copy())
+            settings[-1]["eps_greedy_prob"] = eps
+
+        # Varying ml_model
+        for model in ['RandomForest', 'NeuralNetwork', 'XGBoost']:
+            settings.append(baseline_experiment.copy())
+            settings[-1]["ml_model"] = model
+            settings[-1]["ml_target_model"] = model
+
+        seeds = np.random.randint(0, 2**32, size=30)
+        """
+
+        seeds = [
+            4117516280,
+            2017710568,
+            1554164860,
+            2428514276,
+            3892975583,
+            769570577,
+            2760276521,
+            1464149927,
+            3666577621,
+            635754389,
+            2164022139,
+            1228498405,
+            1138628168,
+            2694684922,
+            2263454923,
+            1392378990,
+            1355092076,
+            1085938188,
+            2880803786,
+            111154972,
+            86567288,
+            365966817,
+            2373883415,
+            599353926,
+            2510259273,
+            1857198506,
+            575627875,
+            1466135421,
+            270455077,
+            805797972
+        ]
+
+        for setting in settings:
+            minima = [None] * 30
+            times = [None] * 30
+            feasibility = [None] * 30
+
+            with ProcessPoolExecutor(max_workers=cpu_count()) as executor:
+                futures = {executor.submit(run_single, setting, idx, seeds, output_path, schwefel, pbounds, values, dim): idx for idx in range(30)}
+                
+                for future in as_completed(futures):
+                    idx, result, percentage_feasibility, elapsed = future.result()
+                    minima[idx] = result
+                    feasibility[idx] = percentage_feasibility
+                    times[idx] = elapsed
+
+            result = {
+                'MAPR [%]': (mean(minima) - best_values[dim])/best_values[dim] * 100,
+                'feasibility [%]': mean(feasibility),
+                'time [s]': mean(times),
+                'seeds': seeds
+            }
+
+            output_path_res = output_path + f"/{setting['ml_on_bounds']}/{setting['ml_on_target']}/{setting['epsilon_greedy']}/{setting['ml_bounds_type']}/{setting['ml_model']}/{setting['ml_target_type']}/{setting['ml_target_model']}/{setting['eps_greedy_prob']}"
+
+            with open(output_path_res + "/output.json", "w") as f:
+                json.dump(result, f, indent=4)
     
